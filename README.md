@@ -65,3 +65,4 @@ TOKEN="tu_access_token"
 curl -X GET "http://localhost:8000/api/v1/users/me/referrals" \
 -H "Authorization: Bearer $TOKEN"
 ```
+# migpal
