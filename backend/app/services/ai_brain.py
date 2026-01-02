@@ -15,11 +15,14 @@ logger = logging.getLogger(__name__)
 
 # AI Configuration
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
-AI_MODEL = os.getenv("AI_MODEL", "migpal:latest")
+# Usar qwen2.5:7b que responde mejor en español
+AI_MODEL = os.getenv("AI_MODEL", "qwen2.5:7b")
 
 # System prompt MEJORADO - La IA es un asesor que SIEMPRE continúa el proceso
 SYSTEM_PROMPT = """Eres MigPAL, un ASESOR EXPERTO en migración internacional.
 Tu trabajo es GUIAR al usuario paso a paso en su proceso migratorio.
+
+🚨 IDIOMA: SIEMPRE responde en ESPAÑOL. Nunca uses otro idioma.
 
 🎯 TU OBJETIVO PRINCIPAL:
 Ayudar al usuario a completar su perfil migratorio y darle la MEJOR asesoría posible.
