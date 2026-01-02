@@ -1,0 +1,35 @@
+{
+  "state": "profession",
+  "language": "es",
+  "profile": {
+    "personal": {
+      "telegram_name": "Hernan",
+      "name": "Hernan Jose Restrepo Muñoz",
+      "birth_date": "5 d emayo de 1973",
+      "nationality": "Colombiano",
+      "current_country": "Colombia",
+      "current_city": "Barranquilla",
+      "email": "ENC:I65D7qWAn5QA23XJtfwRV/wq99448Qi1Kly5+DZ3MkI=",
+      "phone": "ENC:YP4Gs/XZgshamyHf9A=="
+    },
+    "education": {
+      "level": "Universitario",
+      "status": "Terminado",
+      "field": "Tecnología",
+      "career": "Administrador de Empresas"
+    },
+    "work": {
+      "status": "Empresario"
+    },
+    "languages": {},
+    "history": {},
+    "financial": {}
+  },
+  "family_members": [],
+  "current_family_index": 0,
+  "preferences": {},
+  "selected_route": {},
+  "documents": [],
+  "created_at": "2026-01-02T14:09:05.735100",
+  "updated_at": "2026-01-02T14:10:20.782675"
+}

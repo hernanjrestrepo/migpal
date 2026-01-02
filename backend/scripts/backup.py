@@ -161,14 +161,17 @@ def list_backups():
     
     for i, backup in enumerate(backups, 1):
         # Try to read metadata
-        meta_path = backup.with_suffix("").with_suffix("_meta.json")
+        # backup name: migpal_backup_20260102_141040.tar.gz
+        # meta name: migpal_backup_20260102_141040_meta.json
+        backup_stem = backup.name.replace('.tar.gz', '')
+        meta_path = backup.parent / f"{backup_stem}_meta.json"
         if meta_path.exists():
             with open(meta_path) as f:
                 meta = json.load(f)
             date = meta.get("datetime", "Unknown")[:19]
             files = meta.get("files_count", "?")
         else:
-            date = backup.stem.replace("migpal_backup_", "")
+            date = backup_stem.replace("migpal_backup_", "")
             files = "?"
         
         size_mb = backup.stat().st_size / (1024 * 1024)
