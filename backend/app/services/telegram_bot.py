@@ -80,6 +80,14 @@ from app.services.translations import (
     SUPPORTED_LANGUAGES, TRANSLATIONS
 )
 
+# Import security module
+from app.services.security import (
+    check_rate_limit, safe_async_handler, sanitize_input,
+    validate_email, validate_phone, validate_date, validate_name,
+    encrypt_user_data, decrypt_user_data, log_user_action,
+    mask_sensitive_data
+)
+
 # In-memory cache (loaded from disk)
 user_data: Dict[int, Dict[str, Any]] = {}
 
@@ -145,17 +153,19 @@ STATE_CONSULTING = "consulting"
 
 
 def get_user_data(user_id: int) -> Dict[str, Any]:
-    """Get or create user data - loads from disk if exists"""
+    """Get or create user data - loads from disk if exists (with decryption)"""
     if user_id not in user_data:
         # Try to load from disk first
         saved_data = load_user_data(user_id)
         if saved_data:
-            user_data[user_id] = saved_data
-            logger.info(f"Loaded existing case for user {user_id}")
+            # Decrypt sensitive data when loading
+            user_data[user_id] = decrypt_user_data(saved_data)
+            logger.info(f"Loaded existing case for user (decrypted)")
         else:
             # Create new case
             user_data[user_id] = {
                 "state": STATE_START,
+                "language": "en",
                 "profile": {
                     "personal": {},
                     "education": {},
@@ -171,16 +181,18 @@ def get_user_data(user_id: int) -> Dict[str, Any]:
                 "documents": [],
                 "created_at": datetime.now().isoformat()
             }
+            log_user_action(user_id, "new_case", "Created new migration case")
     return user_data[user_id]
 
 
 def set_state(user_id: int, state: str):
-    """Set state and auto-save to disk for persistence"""
+    """Set state and auto-save to disk for persistence (with encryption)"""
     data = get_user_data(user_id)
     data["state"] = state
-    # Auto-save to disk for persistence
-    save_user_data(user_id, data)
-    logger.info(f"State changed for {user_id}: {state} (saved to disk)")
+    # Encrypt sensitive data before saving
+    encrypted_data = encrypt_user_data(data)
+    save_user_data(user_id, encrypted_data)
+    log_user_action(user_id, "state_change", f"State: {state}")
 
 
 def get_state(user_id: int) -> str:
@@ -268,11 +280,26 @@ class MigPALBot:
     
     # ============== COMMANDS ==============
     
+    async def _check_rate_limit(self, update) -> bool:
+        """Check rate limit and send message if exceeded"""
+        user_id = update.effective_user.id
+        allowed, message = check_rate_limit(user_id)
+        if not allowed:
+            await update.effective_message.reply_text(message)
+            return False
+        return True
+    
+    @safe_async_handler
     async def _cmd_start(self, update, context):
+        if not await self._check_rate_limit(update):
+            return
+        
         user_id = update.effective_user.id
         user_data[user_id] = get_user_data(user_id)
         user_data[user_id]["state"] = STATE_START
-        user_data[user_id]["profile"]["personal"]["telegram_name"] = update.effective_user.first_name
+        user_data[user_id]["profile"]["personal"]["telegram_name"] = sanitize_input(update.effective_user.first_name or "")
+        
+        log_user_action(user_id, "start", "Started bot")
         
         # Get user's language or default to showing language selection
         lang = user_data[user_id].get("language", "en")
