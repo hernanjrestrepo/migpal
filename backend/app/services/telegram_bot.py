@@ -2230,28 +2230,31 @@ Basado en tu perfil ({profession}, {education}):
     async def _process_with_ai_brain(self, message: str, user: dict, state: str) -> str:
         """
         Procesa TODOS los mensajes con IA.
-        La IA es el cerebro - entiende contexto y responde inteligentemente.
-        El usuario puede decir lo que quiera en cualquier momento.
+        La IA SIEMPRE continúa el proceso - nunca lo deja tirado.
+        Responde la pregunta Y luego continúa con el proceso.
         """
         try:
-            from app.services.ai_brain import process_with_ai, extract_profile_data
-            
-            # Cargar historial de conversación
-            conversations = load_conversations(user.get("user_id", 0), limit=10)
-            history = [{"role": "user" if c.get("role") == "user" else "assistant", 
-                       "content": c.get("message", "")} for c in conversations]
+            from app.services.ai_brain import process_with_ai, extract_data_from_message
             
             # Procesar con IA
-            result = await process_with_ai(message, user, history)
+            result = await process_with_ai(message, user)
             
             if result.get("success"):
                 response = result.get("response", "")
                 
-                # Extraer datos del perfil si la IA los detectó
-                extracted = extract_profile_data(message, result)
+                # Extraer datos del perfil del mensaje
+                extracted = result.get("extracted_data", {})
+                if not extracted:
+                    extracted = extract_data_from_message(message, user)
+                
                 if extracted:
                     self._update_profile_from_extracted(user, extracted)
-                    logger.info(f"Extracted data: {extracted}")
+                    # Guardar cambios
+                    user_id = user.get("user_id", 0)
+                    if user_id:
+                        encrypted_data = encrypt_user_data(user)
+                        save_user_data(user_id, encrypted_data)
+                    logger.info(f"Extracted and saved: {extracted}")
                 
                 # Guardar conversación
                 save_conversation(
@@ -2268,8 +2271,8 @@ Basado en tu perfil ({profession}, {education}):
                 
         except Exception as e:
             logger.error(f"AI Brain Error: {e}")
-            # Fallback
-            return await self._get_ai_response(message, user)
+            # Fallback con continuación del proceso
+            return await self._fallback_with_continuation(message, user)
     
     def _update_profile_from_extracted(self, user: dict, extracted: dict):
         """Actualiza el perfil del usuario con datos extraídos por la IA"""
@@ -2305,6 +2308,59 @@ Basado en tu perfil ({profession}, {education}):
             elif field == "migration_reason":
                 user["preferences"] = user.get("preferences", {})
                 user["preferences"]["reason"] = value
+    
+    async def _fallback_with_continuation(self, message: str, user: dict) -> str:
+        """
+        Respuesta de fallback que SIEMPRE continúa el proceso.
+        Nunca deja al usuario sin siguiente paso.
+        """
+        from app.services.ai_brain import get_next_question
+        
+        profile = user.get("profile", {})
+        personal = profile.get("personal", {})
+        name = personal.get("name", "")
+        
+        # Construir respuesta básica
+        response = ""
+        if name:
+            response = f"Entiendo, {name}. "
+        else:
+            response = "Entiendo. "
+        
+        # Respuesta basada en palabras clave
+        message_lower = message.lower()
+        
+        if "visa" in message_lower or "probabilidad" in message_lower:
+            education = profile.get("education", {}).get("level", "")
+            response += "\n\n📊 *Análisis de opciones de visa:*\n\n"
+            
+            if education in ["Universitario", "Maestría", "Doctorado"]:
+                response += "✅ Tu nivel educativo te da buenas opciones:\n"
+                response += "• H-1B (USA) - Para profesionales\n"
+                response += "• Express Entry (Canadá) - Alta probabilidad\n"
+                response += "• Blue Card (Alemania) - Excelente opción\n"
+            else:
+                response += "📝 Tus opciones principales:\n"
+                response += "• Visa de trabajo con sponsor\n"
+                response += "• Visa de estudiante\n"
+                response += "• Programas de trabajador calificado\n"
+        
+        elif "costo" in message_lower or "dinero" in message_lower:
+            response += "\n\n💰 *Costos aproximados:*\n"
+            response += "• Visa y trámites: $500-$2,000\n"
+            response += "• Primeros meses: $5,000-$15,000\n"
+        
+        else:
+            response += "Estoy aquí para ayudarte con tu proceso de migración."
+        
+        # SIEMPRE agregar siguiente pregunta
+        next_q = get_next_question(user)
+        if next_q:
+            response += f"\n\n📝 *Para continuar:* {next_q}"
+        else:
+            response += "\n\n✅ Tu perfil está completo. ¿Quieres que te dé recomendaciones específicas de visas?"
+        
+        return response
     
     async def _get_ai_response(self, question: str, user: dict) -> str:
         try:

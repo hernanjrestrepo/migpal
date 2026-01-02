@@ -1,10 +1,7 @@
 """
 MigPAL AI Brain - El cerebro del agente de IA
-Este módulo procesa TODOS los mensajes del usuario con IA
-La IA decide qué hacer: responder, preguntar, avanzar en el formulario, etc.
-
-PRINCIPIO: El usuario puede decir lo que quiera en cualquier momento.
-La IA entiende el contexto y responde inteligentemente.
+PRINCIPIO FUNDAMENTAL: La IA SIEMPRE continúa el proceso de migración.
+El usuario puede preguntar lo que quiera, la IA responde Y luego continúa.
 """
 
 import os
@@ -18,77 +15,137 @@ logger = logging.getLogger(__name__)
 
 # AI Configuration
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
-# Usar modelo migpal especializado si está disponible, sino qwen2.5:7b
 AI_MODEL = os.getenv("AI_MODEL", "migpal:latest")
 
-# System prompt para el agente de migración
-SYSTEM_PROMPT = """Eres MigPAL, un agente de inteligencia artificial especializado en migración internacional.
-Tu rol es ayudar a personas de todo el mundo a planificar y ejecutar su proceso migratorio.
+# System prompt MEJORADO - La IA es un asesor que SIEMPRE continúa el proceso
+SYSTEM_PROMPT = """Eres MigPAL, un ASESOR EXPERTO en migración internacional.
+Tu trabajo es GUIAR al usuario paso a paso en su proceso migratorio.
 
-PERSONALIDAD:
-- Eres amable, empático y profesional
-- Entiendes que migrar es un proceso emocional y estresante
-- Siempre das información precisa y actualizada
-- Nunca inventas información - si no sabes algo, lo dices
-- Hablas en el idioma del usuario
+🎯 TU OBJETIVO PRINCIPAL:
+Ayudar al usuario a completar su perfil migratorio y darle la MEJOR asesoría posible.
+SIEMPRE debes continuar el proceso, NUNCA dejarlo tirado.
 
-CAPACIDADES:
-- Conoces los procesos migratorios de USA, Canadá, España, Alemania, UK, Australia y más
-- Conoces tipos de visa: trabajo (H-1B, Blue Card), estudiante (F-1), inversión, familia, etc.
-- Puedes calcular probabilidades de éxito basado en el perfil
-- Conoces costos aproximados y tiempos de procesamiento
-- Puedes recomendar la mejor ruta migratoria según el perfil
-
-CONTEXTO DEL USUARIO:
+📋 INFORMACIÓN DEL USUARIO:
 {user_context}
 
-ESTADO ACTUAL DEL PROCESO:
+📊 ESTADO DEL PROCESO:
 {process_state}
 
-INSTRUCCIONES:
-1. SIEMPRE responde al usuario de forma natural y conversacional
-2. Si el usuario hace una pregunta, respóndela PRIMERO
-3. Si el usuario quiere hablar de algo, conversa con él
-4. Solo después de responder, puedes sugerir continuar con el proceso si es relevante
-5. NUNCA ignores lo que dice el usuario para forzar el formulario
-6. Si el usuario da información relevante para su perfil, extráela y guárdala
-7. Sé proactivo pero no invasivo
+🔴 REGLAS CRÍTICAS:
+1. RESPONDE la pregunta del usuario de forma ESPECÍFICA y ÚTIL
+2. USA los datos del perfil para dar asesoría PERSONALIZADA
+3. DESPUÉS de responder, SIEMPRE continúa el proceso preguntando lo siguiente
+4. Si falta información del perfil, pregúntala de forma natural
+5. Da PROBABILIDADES REALES basadas en el perfil (no genéricas)
+6. Menciona VISAS ESPECÍFICAS que aplican al usuario
+7. NUNCA des respuestas genéricas - USA el contexto del usuario
 
-FORMATO DE RESPUESTA:
-Responde en JSON con esta estructura:
-{
-    "response": "Tu respuesta al usuario (texto natural, puede incluir emojis)",
-    "extracted_data": {
-        "field": "value"  // Datos extraídos del mensaje (si hay)
-    },
-    "suggested_action": "continue_form|ask_question|provide_info|none",
-    "next_question": "Siguiente pregunta si suggested_action es ask_question",
-    "emotion": "neutral|happy|concerned|encouraging"
-}
+📝 FORMATO DE RESPUESTA:
+Responde de forma natural y conversacional. Al final, SIEMPRE:
+- Si respondiste una pregunta: "¿Continuamos con tu proceso? [pregunta siguiente]"
+- Si falta info del perfil: Pregunta lo que falta de forma amigable
+- Si el perfil está completo: Da recomendaciones específicas
+
+🎓 CONOCIMIENTO DE VISAS:
+- USA: H-1B (trabajo), F-1 (estudiante), EB-1/2/3 (green card), L-1 (transferencia), O-1 (talento)
+- Canadá: Express Entry (PR), Study Permit, LMIA, PNP
+- España: Trabajo, Estudiante, Nómada Digital, Arraigo
+- Alemania: Blue Card, Trabajo, Estudiante
+- UK: Skilled Worker, Student, Global Talent
+
+💡 EJEMPLO DE BUENA RESPUESTA:
+Usuario: "¿Qué visa me conviene?"
+Respuesta: "Basado en tu perfil (Ingeniero, 5 años experiencia, inglés avanzado), 
+tienes EXCELENTES opciones:
+
+🥇 H-1B (USA) - 70% probabilidad - Tu perfil técnico es ideal
+🥈 Express Entry (Canadá) - 85% probabilidad - Tu CRS sería ~450 puntos
+🥉 Blue Card (Alemania) - 90% probabilidad - Cumples todos los requisitos
+
+Te recomiendo Canadá por la mayor probabilidad. ¿Quieres que analicemos los requisitos específicos?"
 """
-
-PROFILE_FIELDS = {
-    "name": "Nombre completo",
-    "birth_date": "Fecha de nacimiento",
-    "nationality": "Nacionalidad",
-    "current_country": "País actual",
-    "current_city": "Ciudad actual",
-    "email": "Correo electrónico",
-    "phone": "Teléfono",
-    "education_level": "Nivel educativo",
-    "education_field": "Área de estudio",
-    "profession": "Profesión",
-    "work_experience": "Años de experiencia",
-    "english_level": "Nivel de inglés",
-    "savings": "Ahorros disponibles",
-    "destination_country": "País destino deseado",
-    "migration_reason": "Razón para migrar",
-    "timeline": "Tiempo planeado para migrar"
-}
 
 
 def build_user_context(user_data: Dict[str, Any]) -> str:
-    """Construye el contexto del usuario para la IA"""
+    """Construye el contexto COMPLETO del usuario"""
+    profile = user_data.get("profile", {})
+    personal = profile.get("personal", {})
+    education = profile.get("education", {})
+    work = profile.get("work", {})
+    languages = profile.get("languages", {})
+    history = profile.get("history", {})
+    financial = profile.get("financial", {})
+    preferences = user_data.get("preferences", {})
+    route = user_data.get("selected_route", {})
+    family = user_data.get("family_members", [])
+    
+    lines = ["=== PERFIL DEL USUARIO ==="]
+    
+    # Personal
+    if personal:
+        lines.append("\n👤 DATOS PERSONALES:")
+        if personal.get("name"): lines.append(f"  Nombre: {personal['name']}")
+        if personal.get("nationality"): lines.append(f"  Nacionalidad: {personal['nationality']}")
+        if personal.get("current_country"): lines.append(f"  País actual: {personal['current_country']}")
+        if personal.get("current_city"): lines.append(f"  Ciudad: {personal['current_city']}")
+        if personal.get("birth_date"): lines.append(f"  Nacimiento: {personal['birth_date']}")
+    
+    # Educación
+    if education:
+        lines.append("\n🎓 EDUCACIÓN:")
+        if education.get("level"): lines.append(f"  Nivel: {education['level']}")
+        if education.get("field"): lines.append(f"  Área: {education['field']}")
+        if education.get("career"): lines.append(f"  Carrera: {education['career']}")
+        if education.get("status"): lines.append(f"  Estado: {education['status']}")
+    
+    # Trabajo
+    if work:
+        lines.append("\n💼 TRABAJO:")
+        if work.get("status"): lines.append(f"  Situación: {work['status']}")
+        if work.get("profession"): lines.append(f"  Profesión: {work['profession']}")
+        if work.get("experience"): lines.append(f"  Experiencia: {work['experience']} años")
+    
+    # Idiomas
+    if languages:
+        lines.append("\n🌐 IDIOMAS:")
+        if languages.get("english"): lines.append(f"  Inglés: {languages['english']}")
+    
+    # Historial migratorio
+    if history:
+        lines.append("\n🛂 HISTORIAL:")
+        if history.get("visas"): lines.append(f"  Visas previas: {history['visas']}")
+        if history.get("rejections"): lines.append(f"  Rechazos: {history['rejections']}")
+    
+    # Financiero
+    if financial:
+        lines.append("\n💰 FINANCIERO:")
+        if financial.get("savings"): lines.append(f"  Ahorros: {financial['savings']}")
+    
+    # Preferencias
+    if preferences:
+        lines.append("\n🎯 PREFERENCIAS:")
+        if preferences.get("reason"): lines.append(f"  Razón migrar: {preferences['reason']}")
+        if preferences.get("destination"): lines.append(f"  Destino preferido: {preferences['destination']}")
+        if preferences.get("timeline"): lines.append(f"  Timeline: {preferences['timeline']}")
+    
+    # Ruta seleccionada
+    if route:
+        lines.append("\n✈️ RUTA SELECCIONADA:")
+        if route.get("country"): lines.append(f"  País: {route['country']}")
+        if route.get("visa_type"): lines.append(f"  Visa: {route['visa_type']}")
+    
+    # Familia
+    if family:
+        lines.append(f"\n👨‍👩‍👧 FAMILIA: {len(family)} miembro(s)")
+    
+    if len(lines) == 1:
+        return "Usuario nuevo - Sin información de perfil aún"
+    
+    return "\n".join(lines)
+
+
+def build_process_state(user_data: Dict[str, Any]) -> str:
+    """Construye el estado del proceso y qué falta"""
     profile = user_data.get("profile", {})
     personal = profile.get("personal", {})
     education = profile.get("education", {})
@@ -97,108 +154,74 @@ def build_user_context(user_data: Dict[str, Any]) -> str:
     preferences = user_data.get("preferences", {})
     route = user_data.get("selected_route", {})
     
-    context_parts = []
+    # Campos requeridos y su estado
+    required = {
+        "Nombre": personal.get("name"),
+        "Nacionalidad": personal.get("nationality"),
+        "País actual": personal.get("current_country"),
+        "Nivel educativo": education.get("level"),
+        "Profesión": work.get("profession"),
+        "Nivel de inglés": languages.get("english"),
+        "Razón para migrar": preferences.get("reason"),
+        "País destino": route.get("country") or preferences.get("destination"),
+    }
     
-    # Información personal
-    if personal.get("name"):
-        context_parts.append(f"Nombre: {personal['name']}")
-    if personal.get("nationality"):
-        context_parts.append(f"Nacionalidad: {personal['nationality']}")
-    if personal.get("current_country"):
-        context_parts.append(f"Vive en: {personal.get('current_city', '')}, {personal['current_country']}")
-    if personal.get("birth_date"):
-        context_parts.append(f"Fecha nacimiento: {personal['birth_date']}")
+    completed = [k for k, v in required.items() if v]
+    missing = [k for k, v in required.items() if not v]
     
-    # Educación
-    if education.get("level"):
-        edu_str = f"Educación: {education['level']}"
-        if education.get("career"):
-            edu_str += f" en {education['career']}"
-        context_parts.append(edu_str)
+    progress = int((len(completed) / len(required)) * 100)
     
-    # Trabajo
-    if work.get("profession"):
-        work_str = f"Profesión: {work['profession']}"
-        if work.get("experience"):
-            work_str += f" ({work['experience']} años)"
-        context_parts.append(work_str)
-    if work.get("status"):
-        context_parts.append(f"Situación laboral: {work['status']}")
+    lines = [f"📊 PROGRESO: {progress}%"]
     
-    # Idiomas
-    if languages.get("english"):
-        context_parts.append(f"Inglés: {languages['english']}")
+    if completed:
+        lines.append(f"✅ Completado: {', '.join(completed)}")
     
-    # Preferencias
-    if preferences.get("reason"):
-        context_parts.append(f"Razón para migrar: {preferences['reason']}")
-    if preferences.get("destination"):
-        context_parts.append(f"Destino preferido: {preferences['destination']}")
-    if preferences.get("timeline"):
-        context_parts.append(f"Timeline: {preferences['timeline']}")
+    if missing:
+        lines.append(f"❌ Falta: {', '.join(missing)}")
+        lines.append(f"\n🔔 SIGUIENTE PREGUNTA SUGERIDA: {missing[0]}")
+    else:
+        lines.append("\n✅ PERFIL COMPLETO - Listo para dar recomendaciones finales")
     
-    # Ruta seleccionada
-    if route.get("country"):
-        context_parts.append(f"País destino: {route['country']}")
-    if route.get("visa_type"):
-        context_parts.append(f"Tipo de visa: {route['visa_type']}")
-    
-    if not context_parts:
-        return "Usuario nuevo - sin información de perfil aún"
-    
-    return "\n".join(context_parts)
+    return "\n".join(lines)
 
 
-def build_process_state(user_data: Dict[str, Any]) -> str:
-    """Construye el estado del proceso para la IA"""
-    state = user_data.get("state", "start")
+def get_next_question(user_data: Dict[str, Any]) -> Optional[str]:
+    """Determina la siguiente pregunta a hacer"""
     profile = user_data.get("profile", {})
-    
-    # Determinar qué información falta
-    missing = []
     personal = profile.get("personal", {})
     education = profile.get("education", {})
     work = profile.get("work", {})
+    languages = profile.get("languages", {})
+    preferences = user_data.get("preferences", {})
+    route = user_data.get("selected_route", {})
     
-    if not personal.get("name"):
-        missing.append("nombre")
-    if not personal.get("nationality"):
-        missing.append("nacionalidad")
-    if not personal.get("current_country"):
-        missing.append("país actual")
-    if not education.get("level"):
-        missing.append("nivel educativo")
-    if not work.get("profession"):
-        missing.append("profesión")
+    questions = [
+        (personal.get("name"), "¿Cuál es tu nombre completo?"),
+        (personal.get("nationality"), "¿Cuál es tu nacionalidad?"),
+        (personal.get("current_country"), "¿En qué país vives actualmente?"),
+        (education.get("level"), "¿Cuál es tu nivel educativo? (Bachillerato, Técnico, Universitario, Maestría, Doctorado)"),
+        (work.get("profession"), "¿Cuál es tu profesión o a qué te dedicas?"),
+        (work.get("experience"), "¿Cuántos años de experiencia laboral tienes?"),
+        (languages.get("english"), "¿Cuál es tu nivel de inglés? (Ninguno, Básico, Intermedio, Avanzado)"),
+        (preferences.get("reason"), "¿Cuál es tu principal razón para migrar? (Trabajo, Estudios, Calidad de vida, Familia)"),
+        (preferences.get("destination") or route.get("country"), "¿A qué país te gustaría migrar?"),
+    ]
     
-    state_info = f"Estado actual: {state}\n"
+    for value, question in questions:
+        if not value:
+            return question
     
-    if missing:
-        state_info += f"Información pendiente: {', '.join(missing)}\n"
-    else:
-        state_info += "Perfil básico completo\n"
-    
-    # Progreso
-    total_fields = 10
-    filled = total_fields - len(missing)
-    progress = int((filled / total_fields) * 100)
-    state_info += f"Progreso del perfil: {progress}%"
-    
-    return state_info
+    return None
 
 
-async def process_with_ai(
-    message: str,
-    user_data: Dict[str, Any],
-    conversation_history: list = None
-) -> Dict[str, Any]:
+async def process_message(message: str, user_data: Dict[str, Any]) -> str:
     """
-    Procesa un mensaje del usuario con IA.
-    Retorna la respuesta y cualquier dato extraído.
+    Procesa un mensaje del usuario y genera una respuesta.
+    SIEMPRE continúa el proceso después de responder.
     """
-    
     user_context = build_user_context(user_data)
     process_state = build_process_state(user_data)
+    next_question = get_next_question(user_data)
     
     # Construir el prompt
     system = SYSTEM_PROMPT.format(
@@ -206,21 +229,13 @@ async def process_with_ai(
         process_state=process_state
     )
     
-    # Historial de conversación (últimos 5 mensajes)
-    history_text = ""
-    if conversation_history:
-        recent = conversation_history[-5:]
-        for msg in recent:
-            role = "Usuario" if msg.get("role") == "user" else "MigPAL"
-            history_text += f"{role}: {msg.get('content', '')}\n"
+    # Agregar instrucción específica sobre la siguiente pregunta
+    if next_question:
+        system += f"\n\n🔔 IMPORTANTE: Después de responder, pregunta: '{next_question}'"
+    else:
+        system += "\n\n🔔 IMPORTANTE: El perfil está completo. Da recomendaciones específicas de visas con probabilidades."
     
-    full_prompt = f"""
-{history_text}
-
-Usuario: {message}
-
-Responde en JSON válido:
-"""
+    prompt = f"El usuario dice: {message}\n\nResponde de forma útil y específica, usando el contexto del usuario."
     
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -229,11 +244,11 @@ Responde en JSON válido:
                 json={
                     "model": AI_MODEL,
                     "system": system,
-                    "prompt": full_prompt,
+                    "prompt": prompt,
                     "stream": False,
                     "options": {
                         "temperature": 0.7,
-                        "num_predict": 1000
+                        "num_predict": 800
                     }
                 }
             )
@@ -242,169 +257,167 @@ Responde en JSON válido:
                 result = response.json()
                 ai_response = result.get("response", "")
                 
-                # Intentar parsear como JSON
-                try:
-                    # Buscar JSON en la respuesta
-                    import re
-                    json_match = re.search(r'\{[\s\S]*\}', ai_response)
-                    if json_match:
-                        parsed = json.loads(json_match.group())
-                        return {
-                            "success": True,
-                            "response": parsed.get("response", ai_response),
-                            "extracted_data": parsed.get("extracted_data", {}),
-                            "suggested_action": parsed.get("suggested_action", "none"),
-                            "next_question": parsed.get("next_question", ""),
-                            "emotion": parsed.get("emotion", "neutral"),
-                            "raw": ai_response
-                        }
-                except json.JSONDecodeError:
-                    pass
+                # Si la respuesta no incluye continuación del proceso, agregarla
+                if next_question and "?" not in ai_response[-100:]:
+                    ai_response += f"\n\n📝 Para continuar con tu asesoría: {next_question}"
                 
-                # Si no es JSON válido, usar la respuesta directamente
-                return {
-                    "success": True,
-                    "response": ai_response,
-                    "extracted_data": {},
-                    "suggested_action": "none",
-                    "next_question": "",
-                    "emotion": "neutral",
-                    "raw": ai_response
-                }
+                return ai_response
             else:
                 logger.error(f"AI API error: {response.status_code}")
-                return {
-                    "success": False,
-                    "response": "Disculpa, tuve un problema procesando tu mensaje. ¿Puedes repetirlo?",
-                    "extracted_data": {},
-                    "suggested_action": "none",
-                    "error": f"API error: {response.status_code}"
-                }
+                return await fallback_response(message, user_data, next_question)
                 
-    except httpx.TimeoutException:
-        logger.error("AI timeout")
-        return {
-            "success": False,
-            "response": "Estoy procesando mucha información. Dame un momento y vuelve a intentar.",
-            "extracted_data": {},
-            "suggested_action": "none",
-            "error": "timeout"
-        }
     except Exception as e:
         logger.error(f"AI error: {e}")
-        return {
-            "success": False,
-            "response": "Ocurrió un error. Por favor intenta de nuevo.",
-            "extracted_data": {},
-            "suggested_action": "none",
-            "error": str(e)
-        }
+        return await fallback_response(message, user_data, next_question)
 
 
-async def quick_response(message: str, user_data: Dict[str, Any]) -> str:
-    """
-    Genera una respuesta rápida sin el formato JSON completo.
-    Útil para conversaciones más fluidas.
-    """
-    user_context = build_user_context(user_data)
+async def fallback_response(message: str, user_data: Dict[str, Any], next_question: Optional[str]) -> str:
+    """Respuesta de fallback si la IA falla"""
+    profile = user_data.get("profile", {})
+    personal = profile.get("personal", {})
+    name = personal.get("name", "")
     
-    simple_prompt = f"""Eres MigPAL, un asistente de migración amigable.
-
-Contexto del usuario:
-{user_context}
-
-El usuario dice: {message}
-
-Responde de forma natural, breve y útil. Si el usuario hace una pregunta sobre migración, respóndela. Si quiere conversar, conversa. Si da información sobre sí mismo, agradece y continúa la conversación.
-"""
+    response = f"Entiendo tu pregunta"
+    if name:
+        response = f"Entiendo tu pregunta, {name}"
     
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                f"{OLLAMA_URL}/api/generate",
-                json={
-                    "model": AI_MODEL,
-                    "prompt": simple_prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.8,
-                        "num_predict": 500
-                    }
-                }
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                return result.get("response", "¿Puedes repetir eso?")
-            
-    except Exception as e:
-        logger.error(f"Quick response error: {e}")
+    response += ". Déjame ayudarte con eso.\n\n"
     
-    return "Disculpa, ¿puedes repetir eso?"
-
-
-def extract_profile_data(message: str, ai_response: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Extrae datos del perfil del mensaje del usuario.
-    Combina la extracción de la IA con reglas básicas.
-    """
-    extracted = ai_response.get("extracted_data", {})
-    
-    # Reglas adicionales de extracción
+    # Dar una respuesta básica basada en palabras clave
     message_lower = message.lower()
     
-    # Detectar nacionalidades comunes
+    if "visa" in message_lower or "probabilidad" in message_lower:
+        education = profile.get("education", {}).get("level", "")
+        work = profile.get("work", {}).get("profession", "")
+        
+        response += "📊 *Análisis de tus opciones de visa:*\n\n"
+        
+        if education in ["Universitario", "Maestría", "Doctorado"]:
+            response += "✅ Tu nivel educativo te abre buenas opciones:\n"
+            response += "• H-1B (USA) - Para profesionales\n"
+            response += "• Express Entry (Canadá) - Alta probabilidad\n"
+            response += "• Blue Card (Alemania) - Excelente opción\n"
+        else:
+            response += "📝 Tus opciones principales:\n"
+            response += "• Visa de trabajo con sponsor\n"
+            response += "• Visa de estudiante\n"
+            response += "• Programas de trabajador calificado\n"
+    
+    elif "costo" in message_lower or "dinero" in message_lower or "precio" in message_lower:
+        response += "💰 *Costos aproximados de migración:*\n\n"
+        response += "• Visa y trámites: $500-$2,000\n"
+        response += "• Vuelos: $500-$1,500\n"
+        response += "• Primeros 3 meses: $5,000-$15,000\n"
+        response += "• Total recomendado: $10,000-$20,000 USD\n"
+    
+    elif "tiempo" in message_lower or "cuánto tarda" in message_lower:
+        response += "⏱️ *Tiempos aproximados:*\n\n"
+        response += "• Preparación de documentos: 1-2 meses\n"
+        response += "• Proceso de visa: 2-6 meses\n"
+        response += "• Total: 4-12 meses típicamente\n"
+    
+    else:
+        response += "Estoy aquí para ayudarte con tu proceso de migración. "
+        response += "Puedo asesorarte sobre visas, costos, tiempos y requisitos.\n"
+    
+    # SIEMPRE agregar la siguiente pregunta
+    if next_question:
+        response += f"\n\n📝 *Para darte mejor asesoría:* {next_question}"
+    
+    return response
+
+
+def extract_data_from_message(message: str, user_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Extrae datos del perfil del mensaje del usuario"""
+    extracted = {}
+    message_lower = message.lower()
+    
+    # Detectar nacionalidades
     nationalities = {
-        "colombiano": "Colombiano", "colombiana": "Colombiano",
-        "mexicano": "Mexicano", "mexicana": "Mexicano",
-        "venezolano": "Venezolano", "venezolana": "Venezolano",
+        "colombiano": "Colombiano", "colombiana": "Colombiano", "colombia": "Colombiano",
+        "mexicano": "Mexicano", "mexicana": "Mexicano", "méxico": "Mexicano", "mexico": "Mexicano",
+        "venezolano": "Venezolano", "venezolana": "Venezolano", "venezuela": "Venezolano",
         "argentino": "Argentino", "argentina": "Argentino",
-        "peruano": "Peruano", "peruana": "Peruano",
-        "chileno": "Chileno", "chilena": "Chileno",
-        "ecuatoriano": "Ecuatoriano", "ecuatoriana": "Ecuatoriano",
+        "peruano": "Peruano", "peruana": "Peruano", "perú": "Peruano", "peru": "Peruano",
+        "chileno": "Chileno", "chilena": "Chileno", "chile": "Chileno",
+        "ecuatoriano": "Ecuatoriano", "ecuatoriana": "Ecuatoriano", "ecuador": "Ecuatoriano",
+        "brasileño": "Brasileño", "brasileña": "Brasileño", "brasil": "Brasileño",
     }
     
     for key, value in nationalities.items():
-        if key in message_lower:
+        if key in message_lower and "soy" in message_lower:
             extracted["nationality"] = value
             break
     
     # Detectar países destino
     destinations = {
-        "estados unidos": "USA", "usa": "USA", "eeuu": "USA",
+        "estados unidos": "USA", "usa": "USA", "eeuu": "USA", "norteamérica": "USA",
         "canadá": "Canadá", "canada": "Canadá",
         "españa": "España", "espana": "España",
         "alemania": "Alemania", "germany": "Alemania",
         "australia": "Australia",
         "reino unido": "UK", "uk": "UK", "inglaterra": "UK",
+        "francia": "Francia", "france": "Francia",
+        "italia": "Italia", "italy": "Italia",
     }
     
     for key, value in destinations.items():
-        if key in message_lower:
-            extracted["destination_country"] = value
+        if key in message_lower and ("quiero" in message_lower or "ir a" in message_lower or "migrar" in message_lower):
+            extracted["destination"] = value
             break
     
     # Detectar niveles de inglés
-    english_levels = {
-        "no hablo inglés": "Ninguno", "no sé inglés": "Ninguno",
-        "básico": "Básico", "basico": "Básico",
-        "intermedio": "Intermedio",
-        "avanzado": "Avanzado", "fluido": "Avanzado", "nativo": "Nativo",
-    }
+    if "inglés" in message_lower or "ingles" in message_lower:
+        if "no hablo" in message_lower or "no sé" in message_lower or "nada" in message_lower:
+            extracted["english_level"] = "Ninguno"
+        elif "básico" in message_lower or "basico" in message_lower or "poco" in message_lower:
+            extracted["english_level"] = "Básico"
+        elif "intermedio" in message_lower:
+            extracted["english_level"] = "Intermedio"
+        elif "avanzado" in message_lower or "fluido" in message_lower or "bien" in message_lower:
+            extracted["english_level"] = "Avanzado"
     
-    for key, value in english_levels.items():
-        if key in message_lower:
-            extracted["english_level"] = value
+    # Detectar profesiones comunes
+    professions = [
+        "ingeniero", "doctor", "médico", "abogado", "contador", "programador",
+        "desarrollador", "diseñador", "arquitecto", "enfermero", "profesor",
+        "administrador", "empresario", "comerciante", "vendedor"
+    ]
+    
+    for prof in professions:
+        if prof in message_lower and ("soy" in message_lower or "trabajo" in message_lower):
+            extracted["profession"] = prof.capitalize()
             break
     
     return extracted
 
 
-# Exportar funciones principales
+# Función principal exportada
+async def process_with_ai(message: str, user_data: Dict[str, Any], conversation_history: list = None) -> Dict[str, Any]:
+    """
+    Función principal para procesar mensajes con IA.
+    Retorna respuesta y datos extraídos.
+    """
+    # Extraer datos del mensaje
+    extracted = extract_data_from_message(message, user_data)
+    
+    # Procesar con IA
+    response = await process_message(message, user_data)
+    
+    return {
+        "success": True,
+        "response": response,
+        "extracted_data": extracted,
+        "next_question": get_next_question(user_data)
+    }
+
+
+# Exportar
 __all__ = [
     'process_with_ai',
-    'quick_response',
-    'extract_profile_data',
+    'process_message',
+    'extract_data_from_message',
+    'get_next_question',
     'build_user_context',
     'build_process_state'
 ]
