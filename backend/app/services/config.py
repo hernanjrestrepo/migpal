@@ -24,7 +24,6 @@ class Config:
     """Central configuration class"""
     
     # ============== BOT CONFIG ==============
-    BOT_VERSION = "5.2"
     BOT_NAME = "MigPAL"
     BOT_USERNAME = "@MigPAL_Bot"
     BOT_URL = "https://t.me/MigPAL_Bot"
@@ -100,7 +99,7 @@ class Config:
     def get_env_summary(cls) -> dict:
         """Get a summary of current configuration (safe for logging)"""
         return {
-            "version": cls.BOT_VERSION,
+            "bot_name": cls.BOT_NAME,
             "ai_provider": cls.AI_PROVIDER,
             "ai_model": cls.AI_MODEL,
             "features": {

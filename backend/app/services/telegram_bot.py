@@ -1,25 +1,31 @@
 """
-MigPAL Telegram Bot Service - V5.1 GLOBAL
+MigPAL Telegram Bot Service - GLOBAL
 Bot GLOBAL para migrantes de TODO EL MUNDO
+https://t.me/MigPAL_Bot
 
-Características:
+Características Completas:
 - Soporte para 25+ idiomas
-- Cobertura global de países destino
+- Cobertura global de países destino (25+)
+- Cobertura global de nacionalidades (100+)
 - Perfilamiento en 7 fases
-- OCR para documentos
+- OCR para documentos (qwen3-vl)
 - Score de probabilidad de éxito
-- Calculadora de costos
+- Calculadora de costos inteligente
 - Sistema de emergencias /sos
 - Comunidad de migrantes
-- Persistencia de datos
+- Persistencia de datos con encriptación
 - Checklist inteligente de documentos
-- Tracking de aplicación
+- Tracking de aplicación en tiempo real
 - Mensajes motivacionales
-- Sistema de mentores
+- Sistema de mentores verificados
 - Directorio de abogados
-- Bolsa de trabajo
-- Guía de establecimiento
-- Generación de reportes
+- Bolsa de trabajo con visa sponsorship
+- Guía de establecimiento por país
+- Generación de reportes PDF
+- Rate limiting y seguridad
+- Hot-reload para desarrollo
+- Backup automático
+- Sistema de notificaciones
 """
 
 import os
@@ -200,7 +206,7 @@ def get_state(user_id: int) -> str:
 
 
 class MigPALBot:
-    """MigPAL Telegram Bot V3.1"""
+    """MigPAL Telegram Bot - Global Migration Assistant"""
     
     def __init__(self, token: str = TELEGRAM_BOT_TOKEN):
         self.token = token
@@ -249,12 +255,12 @@ class MigPALBot:
         self.application.add_handler(MessageHandler(filters.PHOTO, self._handle_photo))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message))
         
-        logger.info("🤖 MigPAL Bot V5.1 GLOBAL starting...")
+        logger.info("🤖 MigPAL Bot GLOBAL starting...")
         self._running = True
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling(drop_pending_updates=True)
-        logger.info("✅ MigPAL Bot V5.1 GLOBAL is running!")
+        logger.info("✅ MigPAL Bot GLOBAL is running!")
         
     async def stop(self):
         if self.application and self._running:
@@ -333,7 +339,7 @@ class MigPALBot:
         lang = get_user_data(user_id).get("language", "en")
         
         await update.message.reply_text(
-            "🆘 *MigPAL Help V5.1 GLOBAL*\n\n"
+            "🆘 *MigPAL Help - Global Migration Assistant*\n\n"
             "*📝 Process / Proceso:*\n"
             "/start - Start / Iniciar\n"
             "/nuevo - Restart / Reiniciar\n"

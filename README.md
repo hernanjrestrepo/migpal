@@ -1,307 +1,215 @@
-# MigPAL - Plataforma de Asistencia Integral para Migrantes
+# 🌍 MigPAL - Global Migration Assistant
 
-**MigPAL** es una plataforma digital que ayuda a personas a navegar procesos de migración internacional con guía paso a paso, información actualizada y asistencia con IA.
+> **Tu asistente de migración GLOBAL**
+> Bot de Telegram que ayuda a migrantes de TODO EL MUNDO
 
-## 🎯 ¿Qué es MigPAL?
+[![Bot](https://img.shields.io/badge/Telegram-@MigPAL__Bot-blue)](https://t.me/MigPAL_Bot)
 
-MigPAL es una herramienta de asistencia migratoria que proporciona:
+---
 
-- ✅ **Guía personalizada** basada en tu perfil y objetivos
-- ✅ **10+ procesos migratorios** con requisitos, costos y tiempos reales
-- ✅ **Asistente IA** para responder preguntas sobre migración
-- ✅ **Gestión de documentos** para organizar tu proceso
-- ✅ **Directorio de servicios** (abogados, vivienda, empleo)
-- ✅ **Timeline interactivo** para seguir tu progreso
+## 🚀 Características
 
-## 🚀 Inicio Rápido
+### 🌐 Cobertura Global
+- **25+ idiomas** soportados
+- **100+ nacionalidades**
+- **25+ países destino** (USA, Canadá, España, Alemania, UK, Australia, etc.)
 
-Ver **[INICIO_RAPIDO.md](INICIO_RAPIDO.md)** para instrucciones detalladas.
+### 📋 Funcionalidades Principales
 
-### Instalación Básica
+| Comando | Descripción |
+|---------|-------------|
+| `/start` | Iniciar - Selección de idioma |
+| `/nuevo` | Reiniciar perfil completo |
+| `/perfil` | Ver tu perfil actual |
+| `/estado` | Ver progreso del proceso |
+| `/score` | Calcular probabilidad de éxito |
+| `/costos` | Calculadora de costos |
+| `/checklist` | Lista de documentos requeridos |
+| `/tracking` | Seguimiento de aplicación |
+| `/mentores` | Conectar con mentores verificados |
+| `/abogados` | Directorio de abogados |
+| `/empleos` | Bolsa de trabajo con visa sponsorship |
+| `/guia` | Guías de establecimiento por país |
+| `/motivacion` | Mensaje motivacional |
+| `/reporte` | Generar reporte PDF |
+| `/comunidad` | Grupos de apoyo |
+| `/sos` | Ayuda de emergencia 24/7 |
+| `/idioma` | Cambiar idioma |
+| `/help` | Ayuda completa |
 
-```bash
-# Backend
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-alembic upgrade head
-python populate_db.py
-uvicorn app.api:app --reload
+### 🔒 Seguridad
+- Encriptación de datos sensibles
+- Rate limiting (protección contra abuso)
+- Validación de inputs
+- Audit logging
 
-# Frontend
-cd frontend
-npm install
-npm run dev
-```
+### 🛠️ Desarrollo
+- Hot-reload automático
+- Backup programado
+- Sistema de notificaciones
 
-## 📋 Funcionalidades
+---
 
-### ✅ Gestión de Usuarios
-- Registro y autenticación segura
-- Perfiles personalizados
-- Roles (usuario/administrador)
-
-### ✅ Assessment Migratorio
-- Cuestionario de evaluación
-- Análisis de elegibilidad
-- Recomendaciones personalizadas
-
-### ✅ Procesos Migratorios
-- 10 rutas reales (US, Canadá, España, Alemania, Australia, UK)
-- Requisitos detallados por proceso
-- Costos y tiempos estimados
-- Niveles de dificultad y tasas de éxito
-
-### ✅ Asistente IA
-- Chat interactivo con IA
-- Guía paso a paso personalizada
-- Análisis de elegibilidad
-- Historial de conversaciones
-
-### ✅ Gestión de Documentos
-- Carga y organización de documentos
-- Tracking de estado
-- Vinculación con procesos
-
-### ✅ Proveedores de Servicios
-- Abogados de inmigración
-- Servicios de vivienda
-- Agencias de empleo
-- Consultores educativos
-
-## 🏗️ Arquitectura
+## 📁 Estructura del Proyecto
 
 ```
 migpal/
-├── backend/              # API FastAPI
+├── backend/
 │   ├── app/
-│   │   ├── models/      # Modelos de datos
-│   │   ├── routes/      # Endpoints API
-│   │   ├── utils/       # Utilidades (incluye AI)
-│   │   └── config.py    # Configuración
-│   ├── alembic/         # Migraciones BD
-│   └── populate_db.py   # Datos iniciales
-├── frontend/            # Interfaz web
-│   └── src/
-│       ├── pages/       # Páginas HTML
-│       ├── js/          # JavaScript
-│       └── css/         # Estilos
-└── docs/                # Documentación
+│   │   ├── services/
+│   │   │   ├── telegram_bot.py      # Bot principal
+│   │   │   ├── migpal_features.py   # Funcionalidades avanzadas
+│   │   │   ├── translations.py      # 25+ idiomas
+│   │   │   ├── case_storage.py      # Persistencia JSON
+│   │   │   ├── database.py          # SQLite
+│   │   │   ├── pdf_generator.py     # Reportes PDF
+│   │   │   ├── security.py          # Seguridad
+│   │   │   ├── notifications.py     # Notificaciones
+│   │   │   └── config.py            # Configuración
+│   │   ├── models/                  # Modelos de datos
+│   │   ├── routes/                  # API REST
+│   │   └── utils/                   # Utilidades
+│   ├── data/
+│   │   ├── cases/                   # Datos de usuarios
+│   │   └── reports/                 # PDFs generados
+│   ├── scripts/
+│   │   └── backup.py                # Sistema de backup
+│   ├── run_telegram_bot.py          # Runner producción
+│   └── run_telegram_bot_dev.py      # Runner desarrollo (hot-reload)
+├── frontend/                        # Web UI (opcional)
+└── docs/                            # Documentación
 ```
 
-## 🔧 Configuración
+---
 
-### Variables de Entorno Requeridas
+## 🚀 Inicio Rápido
 
+### 1. Clonar y configurar
 ```bash
-# AI Assistant (Requerido para funcionalidad completa)
-AI_PROVIDER=anthropic  # o openai, gemini
-AI_API_KEY=tu-api-key
-AI_MODEL=claude-3-5-sonnet-20241022
-
-# Base de Datos
-DATABASE_URL=sqlite:///./migpal.db
-
-# Autenticación
-AUTH_SECRET_KEY=tu-secret-key-segura
-AUTH_ALGORITHM=HS256
-AUTH_ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# Email (Opcional)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=tu-email
-SMTP_PASSWORD=tu-password
-
-# Frontend
-FRONTEND_URL=http://localhost:3000
+cd /workspace/hjrm/migpal/backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-## 📚 Documentación
-
-- **[INICIO_RAPIDO.md](INICIO_RAPIDO.md)** - Guía de inicio rápido
-- **[.env.example](.env.example)** - Plantilla de configuración
-- **[Backend README](backend/README.md)** - Documentación del backend
-- **API Docs:** http://localhost:8000/docs (Swagger UI)
-
-## 🧪 Testing
-
+### 2. Configurar variables de entorno
 ```bash
-# Test E2E completo
-./verify_e2e.sh
-
-# Tests unitarios
-cd backend
-pytest
+# Crear archivo .env
+cat > .env << EOF
+TELEGRAM_BOT_TOKEN=tu_token_aqui
+AI_PROVIDER=ollama
+AI_MODEL=qwen2.5:7b
+OLLAMA_URL=http://127.0.0.1:11434
+EOF
 ```
 
-## 🌟 Características Técnicas
+### 3. Ejecutar el bot
 
-- **Backend:** FastAPI + SQLModel + Alembic
-- **Base de Datos:** SQLite (desarrollo) / PostgreSQL (producción)
-- **Autenticación:** JWT con bcrypt
-- **IA:** Soporte para Anthropic, OpenAI, Gemini
-- **Frontend:** HTML5 + JavaScript vanilla
-- **API:** RESTful con documentación OpenAPI
-
-## 📊 Estado del Proyecto
-
-- ✅ Backend API completo
-- ✅ Frontend funcional
-- ✅ Base de datos con datos reales
-- ✅ Asistente IA integrado
-- ✅ Sistema de documentos
-- ✅ Directorio de servicios
-- ✅ Tests E2E
-- ✅ **Bot de Telegram** (@MigPAL_Bot)
-
-## 🤖 Bot de Telegram
-
-MigPAL tiene un bot de Telegram integrado para asistencia migratoria.
-
-### Acceso al Bot
-- **Bot:** [@MigPAL_Bot](https://t.me/MigPAL_Bot)
-- **Link directo:** https://t.me/MigPAL_Bot
-
-### Comandos Disponibles
-| Comando | Descripción |
-|---------|-------------|
-| `/start` | Iniciar conversación |
-| `/help` | Ver ayuda |
-| `/nuevo` | Iniciar nueva conversación |
-| `/paises` | Ver países disponibles |
-| `/procesos` | Ver procesos migratorios |
-
-### Iniciar el Bot
-
+**Modo Desarrollo (con hot-reload):**
 ```bash
-# Opción 1: Script directo
-./start_telegram_bot.sh
+python run_telegram_bot_dev.py
+```
 
-# Opción 2: Manual
-cd backend
-pip install python-telegram-bot==21.7
+**Modo Producción:**
+```bash
 python run_telegram_bot.py
 ```
 
-### Configuración
+**Con tmux (recomendado):**
+```bash
+tmux new-session -d -s migpal_bot -c /workspace/hjrm/migpal/backend \
+  'source .venv/bin/activate && python run_telegram_bot_dev.py'
+```
 
-El token del bot está configurado en:
-- `backend/app/config.py` - Variable `TELEGRAM_BOT_TOKEN`
-- O variable de entorno `TELEGRAM_BOT_TOKEN`
+---
 
-## 🤝 Contribuir
+## 📊 Comandos de Administración
 
-Este es un proyecto de código abierto. Las contribuciones son bienvenidas.
+### Ver logs del bot
+```bash
+tmux attach -t migpal_bot
+```
+
+### Reiniciar bot
+```bash
+tmux kill-session -t migpal_bot
+tmux new-session -d -s migpal_bot -c /workspace/hjrm/migpal/backend \
+  'source .venv/bin/activate && python run_telegram_bot_dev.py'
+```
+
+### Backup manual
+```bash
+cd /workspace/hjrm/migpal/backend
+source .venv/bin/activate
+python scripts/backup.py
+```
+
+### Listar backups
+```bash
+python scripts/backup.py --list
+```
+
+### Restaurar backup
+```bash
+python scripts/backup.py --restore nombre_backup.tar.gz
+```
+
+---
+
+## 🔧 Configuración
+
+### Variables de Entorno
+
+| Variable | Descripción | Default |
+|----------|-------------|---------|
+| `TELEGRAM_BOT_TOKEN` | Token del bot | Requerido |
+| `AI_PROVIDER` | Proveedor de IA | `ollama` |
+| `AI_MODEL` | Modelo de IA | `qwen2.5:7b` |
+| `OLLAMA_URL` | URL de Ollama | `http://127.0.0.1:11434` |
+| `MIGPAL_ENCRYPTION_KEY` | Clave de encriptación | Default (cambiar en prod) |
+| `RATE_LIMIT_PER_MINUTE` | Límite por minuto | `30` |
+| `RATE_LIMIT_PER_HOUR` | Límite por hora | `200` |
+| `ENABLE_OCR` | Habilitar OCR | `true` |
+| `ENABLE_PDF_REPORTS` | Habilitar PDFs | `true` |
+| `BACKUP_ENABLED` | Habilitar backup | `true` |
+| `BACKUP_INTERVAL_HOURS` | Intervalo de backup | `6` |
+
+---
+
+## 🌍 Idiomas Soportados
+
+| Código | Idioma | Código | Idioma |
+|--------|--------|--------|--------|
+| es | Español | en | English |
+| pt | Português | fr | Français |
+| de | Deutsch | it | Italiano |
+| zh | 中文 | ja | 日本語 |
+| ko | 한국어 | ar | العربية |
+| hi | हिन्दी | ru | Русский |
+| tr | Türkçe | vi | Tiếng Việt |
+| th | ไทย | id | Bahasa Indonesia |
+| pl | Polski | uk | Українська |
+| nl | Nederlands | fa | فارسی |
+| tl | Tagalog | bn | বাংলা |
+| sw | Kiswahili | ro | Română |
+| el | Ελληνικά | he | עברית |
+| cs | Čeština | hu | Magyar |
+| sv | Svenska | da | Dansk |
+| fi | Suomi | no | Norsk |
+
+---
+
+## 📞 Soporte
+
+- **Bot**: https://t.me/MigPAL_Bot
+- **Emergencias**: Usa `/sos` en el bot
+
+---
 
 ## 📄 Licencia
 
-MIT License
-
-## 🆘 Soporte
-
-Para problemas o preguntas:
-1. Revisa la documentación en `/docs`
-2. Consulta [INICIO_RAPIDO.md](INICIO_RAPIDO.md)
-3. Verifica los logs del sistema
+Proyecto privado - Todos los derechos reservados
 
 ---
 
-## 📝 Historial de Sesiones de Desarrollo
-
-### Sesión 2026-01-02 (Bot Telegram V3 FULL)
-- **Descripción:** Bot completo con 7 fases de proceso migratorio
-- **Estado:** ✅ Completado
-
-#### Características V3:
-- ✅ Botones interactivos (InlineKeyboard)
-- ✅ Perfilamiento profundo del solicitante
-- ✅ Encuestas individuales por familiar
-- ✅ Selección de país, estado, ciudad
-- ✅ Gestión de documentos (fotos/PDF)
-- ✅ Integración con IA (Ollama + GPU)
-- ✅ Comandos: /start, /help, /nuevo, /perfil, /estado
-
-#### Las 7 Fases del Proceso:
-
-**FASE 1: Perfil Personal**
-- Nombre completo
-- Fecha de nacimiento
-- Nacionalidad
-- País y ciudad actual
-- Email y teléfono
-- Nivel educativo y campo
-- Profesión y experiencia
-- Nivel de inglés
-- LinkedIn / CV
-- Historial de visas
-- Antecedentes
-- Situación financiera
-
-**FASE 2: Familia**
-- Estado familiar (solo/pareja/familia)
-- Cantidad de miembros
-- Por cada familiar:
-  - Nombre y relación
-  - Fecha de nacimiento
-  - Profesión/ocupación
-  - Nivel educativo
-  - Nivel de inglés
-  - Preferencias personales
-  - Preocupaciones
-
-**FASE 3: Preferencias y Consenso**
-- Razón principal para migrar
-- Plazo deseado
-- País preferido
-- Preferencia de clima
-- Tamaño de ciudad
-- Presupuesto inicial
-
-**FASE 4: Exploración de Opciones**
-- Análisis del perfil
-- Recomendación de países
-- Tipos de visa disponibles
-- Selección de ruta
-
-**FASE 5: Planificación Detallada**
-- Selección de estado/región
-- Selección de ciudad
-- Tipo de vivienda
-- Presupuesto de vivienda
-
-**FASE 6: Documentación**
-- Lista de documentos requeridos
-- Carga de documentos (fotos/PDF)
-- Revisión de documentos
-
-**FASE 7: Formularios**
-- Diligenciamiento de formularios
-- Revisión final
-- Recomendaciones
-
-- **Archivos:**
-  - `backend/app/services/telegram_bot.py` (V3 FULL)
-  - `backend/run_telegram_bot.py`
-  - `start_telegram_bot.sh`
-
-### Sesión 2026-01-02 (Anterior)
-- **ID:** `20260102-31142796-ea9d-48c3-aed6-d68fcad6cdeb`
-- **Descripción:** Lectura de chats de Emigpal y actualización de README
-- **Estado:** ✅ Completado
-
-### Estado Actual del Proyecto
-- ✅ Backend API completo con FastAPI
-- ✅ Frontend funcional con HTML5 + JavaScript
-- ✅ Base de datos con datos reales de procesos migratorios
-- ✅ Asistente IA integrado (Anthropic, OpenAI, Gemini, Ollama)
-- ✅ Sistema de gestión de documentos
-- ✅ Directorio de servicios (abogados, vivienda, empleo)
-- ✅ Tests E2E implementados
-- ✅ 10+ procesos migratorios configurados (US, Canadá, España, Alemania, Australia, UK)
-- ✅ **Bot de Telegram** (@MigPAL_Bot) - NUEVO
-
----
-
-**MigPAL** - Tu compañero en el viaje migratorio 🌍✈️
+*MigPAL - Helping migrants from ALL OVER THE WORLD* 🌍✨

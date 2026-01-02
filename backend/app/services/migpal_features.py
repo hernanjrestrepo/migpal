@@ -1,6 +1,16 @@
 """
-MigPAL Advanced Features Module - V5.0
+MigPAL Advanced Features Module
 Funcionalidades avanzadas para el bot de migración
+
+Incluye:
+- Mensajes motivacionales multiidioma
+- Checklist de documentos por visa/país
+- Tracking de aplicación
+- Base de datos de mentores
+- Directorio de abogados
+- Bolsa de trabajo
+- Guías de establecimiento
+- Generación de reportes
 """
 
 import os
