@@ -166,10 +166,12 @@ def get_user_data(user_id: int) -> Dict[str, Any]:
         if saved_data:
             # Decrypt sensitive data when loading
             user_data[user_id] = decrypt_user_data(saved_data)
+            user_data[user_id]["user_id"] = user_id  # Ensure user_id is set
             logger.info(f"Loaded existing case for user (decrypted)")
         else:
             # Create new case
             user_data[user_id] = {
+                "user_id": user_id,
                 "state": STATE_START,
                 "language": "en",
                 "profile": {
@@ -1642,13 +1644,29 @@ class MigPALBot:
     # ============== MESSAGE HANDLER ==============
     
     async def _handle_message(self, update, context):
+        """Handler principal de mensajes - LA IA ES EL CEREBRO"""
         user_id = update.effective_user.id
         text = update.message.text.strip()
         state = get_state(user_id)
         user = get_user_data(user_id)
         
-        logger.info(f"MSG: {user_id} | {state} | {text[:30]}")
+        logger.info(f"MSG: {user_id} | {state} | {text[:50]}")
         
+        # Mostrar que estamos procesando
+        await update.message.chat.send_action("typing")
+        
+        # SIEMPRE procesar con IA primero
+        ai_response = await self._process_with_ai_brain(text, user, state)
+        
+        # Enviar respuesta de la IA
+        if ai_response:
+            await update.message.reply_text(ai_response, parse_mode='Markdown')
+        
+        # Si estamos en un estado de formulario Y la IA extrajo datos, guardarlos
+        # Pero la IA ya respondió al usuario de forma natural
+        return
+        
+        # ===== LEGACY: Solo se usa si la IA falla =====
         # ===== NAME =====
         if state == STATE_NAME:
             user["profile"]["personal"]["name"] = text
@@ -2208,6 +2226,85 @@ Basado en tu perfil ({profession}, {education}):
                 "*Total: 4-12 meses*"
             )
         return "Info no disponible"
+    
+    async def _process_with_ai_brain(self, message: str, user: dict, state: str) -> str:
+        """
+        Procesa TODOS los mensajes con IA.
+        La IA es el cerebro - entiende contexto y responde inteligentemente.
+        El usuario puede decir lo que quiera en cualquier momento.
+        """
+        try:
+            from app.services.ai_brain import process_with_ai, extract_profile_data
+            
+            # Cargar historial de conversación
+            conversations = load_conversations(user.get("user_id", 0), limit=10)
+            history = [{"role": "user" if c.get("role") == "user" else "assistant", 
+                       "content": c.get("message", "")} for c in conversations]
+            
+            # Procesar con IA
+            result = await process_with_ai(message, user, history)
+            
+            if result.get("success"):
+                response = result.get("response", "")
+                
+                # Extraer datos del perfil si la IA los detectó
+                extracted = extract_profile_data(message, result)
+                if extracted:
+                    self._update_profile_from_extracted(user, extracted)
+                    logger.info(f"Extracted data: {extracted}")
+                
+                # Guardar conversación
+                save_conversation(
+                    user.get("user_id", 0),
+                    message,
+                    response,
+                    role="user"
+                )
+                
+                return response
+            else:
+                # Fallback a respuesta simple
+                return await self._get_ai_response(message, user)
+                
+        except Exception as e:
+            logger.error(f"AI Brain Error: {e}")
+            # Fallback
+            return await self._get_ai_response(message, user)
+    
+    def _update_profile_from_extracted(self, user: dict, extracted: dict):
+        """Actualiza el perfil del usuario con datos extraídos por la IA"""
+        profile = user.get("profile", {})
+        
+        field_mapping = {
+            "name": ("personal", "name"),
+            "nationality": ("personal", "nationality"),
+            "current_country": ("personal", "current_country"),
+            "current_city": ("personal", "current_city"),
+            "email": ("personal", "email"),
+            "phone": ("personal", "phone"),
+            "birth_date": ("personal", "birth_date"),
+            "education_level": ("education", "level"),
+            "education_field": ("education", "field"),
+            "profession": ("work", "profession"),
+            "work_experience": ("work", "experience"),
+            "english_level": ("languages", "english"),
+            "destination_country": None,  # Goes to selected_route
+            "migration_reason": None,  # Goes to preferences
+        }
+        
+        for field, value in extracted.items():
+            if field in field_mapping and field_mapping[field]:
+                section, key = field_mapping[field]
+                if section not in profile:
+                    profile[section] = {}
+                profile[section][key] = value
+                logger.info(f"Updated profile: {section}.{key} = {value}")
+            elif field == "destination_country":
+                user["selected_route"] = user.get("selected_route", {})
+                user["selected_route"]["country"] = value
+            elif field == "migration_reason":
+                user["preferences"] = user.get("preferences", {})
+                user["preferences"]["reason"] = value
     
     async def _get_ai_response(self, question: str, user: dict) -> str:
         try:
