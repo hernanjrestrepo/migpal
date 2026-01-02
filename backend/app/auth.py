@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlmodel import Session, select
@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 from app.config import settings
 from app.db.session import get_session
 from app.models.user import User
+from app.utils.audit import log_action
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 

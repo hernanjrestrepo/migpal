@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Proceso - MigPAL</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0.5rem;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--gray-300);
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding-bottom: 2rem;
+        }
+        
+        .timeline-marker {
+            position: absolute;
+            left: -1.5rem;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid var(--gray-300);
+        }
+        
+        .timeline-marker.completed {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .timeline-marker.current {
+            background: orange;
+            border-color: orange;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .timeline-content {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--gray-300);
+        }
+        
+        .timeline-content.completed {
+            background: var(--gray-50);
+        }
+        
+        .timeline-content.current {
+            border-color: orange;
+            border-width: 2px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">MigPAL</div>
+                <nav>
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="assessment.html">Diagnóstico</a></li>
+                        <li><a href="routes.html">Rutas Legales</a></li>
+                        <li><a href="ai-assistant.html">Asistente IA</a></li>
+                        <li><a href="services.html">Servicios</a></li>
+                        <li><a href="documents.html">Documentos</a></li>
+                    </ul>
+                </nav>
+                <div id="user-info"></div>
+            </div>
+        </div>
+    </header>
+    
+    <main class="container">
+        <div class="dashboard-header">
+            <h1>Mi Proceso Migratorio</h1>
+            <p>Seguimiento detallado de tu progreso</p>
+        </div>
+        
+        <div id="no-process" style="display: none;" class="card">
+            <div class="text-center" style="padding: 2rem;">
+                <h3>No has seleccionado un proceso migratorio</h3>
+                <p>Completa tu diagnóstico y selecciona una ruta para comenzar</p>
+                <div style="margin-top: 1rem;">
+                    <a href="assessment.html" class="btn btn-primary">Completar Diagnóstico</a>
+                    <a href="routes.html" class="btn btn-secondary">Explorar Rutas</a>
+                </div>
+            </div>
+        </div>
+        
+        <div id="process-container" style="display: none;">
+            <!-- Process Overview -->
+            <div class="card mb-4">
+                <div id="process-overview"></div>
+            </div>
+            
+            <!-- Timeline -->
+            <div class="card mb-4">
+                <h3>Timeline del Proceso</h3>
+                <div id="timeline-container" class="timeline">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="grid grid-2">
+                <div class="card">
+                    <h3>Próximos Pasos</h3>
+                    <div id="next-steps-container"></div>
+                </div>
+                
+                <div class="card">
+                    <h3>Recursos Útiles</h3>
+                    <div id="resources-container"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script src="js/app.js"></script>
+    <script>
+        requireAuth();
+        initUserInfo();
+        
+        const stages = [
+            { id: 'assessment', label: 'Diagnóstico', icon: '📋' },
+            { id: 'preparation', label: 'Preparación', icon: '📚' },
+            { id: 'application', label: 'Aplicación', icon: '📝' },
+            { id: 'waiting', label: 'En Espera', icon: '⏳' },
+            { id: 'approved', label: 'Aprobado', icon: '✅' }
+        ];
+        
+        async function loadProcess() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/migration/my-process`, {
+                    headers: {
+                        'Authorization': `Bearer ${auth.getToken()}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (!data.process) {
+                        document.getElementById('no-process').style.display = 'block';
+                        return;
+                    }
+                    
+                    document.getElementById('process-container').style.display = 'block';
+                    displayProcessOverview(data.process, data.profile);
+                    displayTimeline(data.profile.current_stage);
+                    displayNextSteps(data.profile.current_stage);
+                    displayResources(data.process);
+                } else {
+                    document.getElementById('no-process').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('no-process').style.display = 'block';
+            }
+        }
+        
+        function displayProcessOverview(process, profile) {
+            const container = document.getElementById('process-overview');
+            
+            const progress = calculateProgress(profile.current_stage);
+            
+            container.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <h2>${process.name}</h2>
+                        <p style="color: var(--gray-600);">${process.country_from} → ${process.country_to}</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 2rem; font-weight: bold; color: var(--primary-color);">
+                            ${progress}%
+                        </div>
+                        <small>Progreso</small>
+                    </div>
+                </div>
+                
+                <div style="background: var(--gray-200); height: 1rem; border-radius: 0.5rem; overflow: hidden;">
+                    <div style="background: var(--primary-color); height: 100%; width: ${progress}%; transition: width 0.3s;"></div>
+                </div>
+                
+                <div class="grid grid-3 mt-4">
+                    <div>
+                        <strong>Etapa Actual:</strong><br>
+                        ${getStageLabel(profile.current_stage)}
+                    </div>
+                    <div>
+                        <strong>Tiempo Estimado:</strong><br>
+                        ${process.estimated_time_months} meses
+                    </div>
+                    <div>
+                        <strong>Costo Estimado:</strong><br>
+                        $${process.estimated_cost_min.toLocaleString()} - $${process.estimated_cost_max.toLocaleString()}
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button onclick="updateStage()" class="btn btn-primary">Actualizar Etapa</button>
+                    <a href="routes.html?process=${process.id}" class="btn btn-secondary">Ver Detalles</a>
+                    <a href="ai-assistant.html" class="btn btn-secondary">Consultar IA</a>
+                </div>
+            `;
+        }
+        
+        function displayTimeline(currentStage) {
+            const container = document.getElementById('timeline-container');
+            const currentIndex = stages.findIndex(s => s.id === currentStage);
+            
+            let html = '';
+            stages.forEach((stage, index) => {
+                const isCompleted = index < currentIndex;
+                const isCurrent = index === currentIndex;
+                const isPending = index > currentIndex;
+                
+                let markerClass = '';
+                let contentClass = '';
+                
+                if (isCompleted) {
+                    markerClass = 'completed';
+                    contentClass = 'completed';
+                } else if (isCurrent) {
+                    markerClass = 'current';
+                    contentClass = 'current';
+                }
+                
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-marker ${markerClass}"></div>
+                        <div class="timeline-content ${contentClass}">
+                            <h4>${stage.icon} ${stage.label}</h4>
+                            <p>${getStageDescription(stage.id)}</p>
+                            ${isCurrent ? '<strong style="color: orange;">← Estás aquí</strong>' : ''}
+                            ${isCompleted ? '<span style="color: green;">✓ Completado</span>' : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function displayNextSteps(currentStage) {
+            const container = document.getElementById('next-steps-container');
+            const steps = getNextStepsForStage(currentStage);
+            
+            let html = '<ul style="list-style: none; padding: 0;">';
+            steps.forEach(step => {
+                html += `<li style="padding: 0.5rem 0; border-bottom: 1px solid var(--gray-200);">✓ ${step}</li>`;
+            });
+            html += '</ul>';
+            
+            container.innerHTML = html;
+        }
+        
+        function displayResources(process) {
+            const container = document.getElementById('resources-container');
+            
+            container.innerHTML = `
+                <ul style="list-style: none; padding: 0;">
+                    <li style="padding: 0.5rem 0;">
+                        <a href="documents.html" class="btn btn-sm btn-secondary" style="width: 100%;">
+                            📄 Gestionar Documentos
+                        </a>
+                    </li>
+                    <li style="padding: 0.5rem 0;">
+                        <a href="services.html?country=${process.country_to}" class="btn btn-sm btn-secondary" style="width: 100%;">
+                            🤝 Buscar Servicios
+                        </a>
+                    </li>
+                    <li style="padding: 0.5rem 0;">
+                        <a href="ai-assistant.html" class="btn btn-sm btn-secondary" style="width: 100%;">
+                            🤖 Consultar Asistente IA
+                        </a>
+                    </li>
+                    <li style="padding: 0.5rem 0;">
+                        <a href="routes.html" class="btn btn-sm btn-secondary" style="width: 100%;">
+                            🗺️ Explorar Otras Rutas
+                        </a>
+                    </li>
+                </ul>
+            `;
+        }
+        
+        function calculateProgress(stage) {
+            const progress = {
+                'assessment': 20,
+                'preparation': 40,
+                'application': 60,
+                'waiting': 80,
+                'approved': 100,
+                'rejected': 0
+            };
+            return progress[stage] || 0;
+        }
+        
+        function getStageLabel(stage) {
+            const labels = {
+                'assessment': 'Diagnóstico',
+                'preparation': 'Preparación',
+                'application': 'Aplicación',
+                'waiting': 'En Espera',
+                'approved': 'Aprobado',
+                'rejected': 'Rechazado'
+            };
+            return labels[stage] || stage;
+        }
+        
+        function getStageDescription(stage) {
+            const descriptions = {
+                'assessment': 'Evaluación inicial de tu perfil y elegibilidad',
+                'preparation': 'Reunir documentos y preparar aplicación',
+                'application': 'Enviar aplicación y documentos requeridos',
+                'waiting': 'Esperar respuesta de las autoridades',
+                'approved': '¡Felicidades! Tu proceso ha sido aprobado'
+            };
+            return descriptions[stage] || '';
+        }
+        
+        function getNextStepsForStage(stage) {
+            const steps = {
+                'assessment': [
+                    'Completa tu perfil migratorio',
+                    'Revisa los requisitos del proceso',
+                    'Consulta con el asistente IA'
+                ],
+                'preparation': [
+                    'Reúne todos los documentos requeridos',
+                    'Contacta con abogados si es necesario',
+                    'Prepara tu presupuesto',
+                    'Traduce documentos si es necesario'
+                ],
+                'application': [
+                    'Completa todos los formularios',
+                    'Sube documentos al sistema',
+                    'Paga las tasas requeridas',
+                    'Envía la aplicación'
+                ],
+                'waiting': [
+                    'Monitorea el estado de tu aplicación',
+                    'Responde a solicitudes adicionales',
+                    'Prepara para entrevista si aplica',
+                    'Mantén tus documentos actualizados'
+                ],
+                'approved': [
+                    'Planifica tu mudanza',
+                    'Busca vivienda en destino',
+                    'Explora oportunidades de empleo',
+                    'Prepara tu llegada'
+                ]
+            };
+            return steps[stage] || ['Consulta con el asistente IA para próximos pasos'];
+        }
+        
+        async function updateStage() {
+            const currentStageIndex = stages.findIndex(s => s.id === document.querySelector('.timeline-marker.current')?.closest('.timeline-item')?.querySelector('h4')?.textContent.includes(s.label));
+            
+            const newStage = prompt(`Selecciona la nueva etapa:\n${stages.map((s, i) => `${i + 1}. ${s.label}`).join('\n')}`);
+            
+            if (!newStage) return;
+            
+            const stageIndex = parseInt(newStage) - 1;
+            if (stageIndex < 0 || stageIndex >= stages.length) {
+                alert('Etapa inválida');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/migration/update-stage?new_stage=${stages[stageIndex].id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${auth.getToken()}`
+                    }
+                });
+                
+                if (response.ok) {
+                    alert('Etapa actualizada exitosamente');
+                    loadProcess();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.detail || 'No se pudo actualizar la etapa'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+            }
+        }
+        
+        loadProcess();
+    </script>
+</body>
+</html>

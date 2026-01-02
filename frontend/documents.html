@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentos - MigPAL</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">MigPAL</div>
+                <nav>
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="assessment.html">Diagnóstico</a></li>
+                        <li><a href="routes.html">Rutas Legales</a></li>
+                        <li><a href="ai-assistant.html">Asistente IA</a></li>
+                        <li><a href="services.html">Servicios</a></li>
+                        <li><a href="documents.html" class="active">Documentos</a></li>
+                    </ul>
+                </nav>
+                <div id="user-info"></div>
+            </div>
+        </div>
+    </header>
+    
+    <main class="container">
+        <div class="dashboard-header">
+            <h1>Mis Documentos</h1>
+            <p>Gestiona todos tus documentos migratorios</p>
+        </div>
+        
+        <!-- Upload Section -->
+        <div class="card mb-4">
+            <h3>Subir Nuevo Documento</h3>
+            <form id="upload-form">
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label for="doc_name">Nombre del Documento *</label>
+                        <input type="text" id="doc_name" required 
+                               placeholder="Ej: Pasaporte, Diploma Universitario">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="doc_type">Tipo de Documento *</label>
+                        <select id="doc_type" required>
+                            <option value="">Selecciona...</option>
+                            <option value="passport">Pasaporte</option>
+                            <option value="birth_certificate">Acta de Nacimiento</option>
+                            <option value="diploma">Diploma/Título</option>
+                            <option value="work_permit">Permiso de Trabajo</option>
+                            <option value="police_clearance">Certificado de Antecedentes</option>
+                            <option value="medical_exam">Examen Médico</option>
+                            <option value="financial_proof">Comprobante Financiero</option>
+                            <option value="employment_letter">Carta de Empleo</option>
+                            <option value="marriage_certificate">Acta de Matrimonio</option>
+                            <option value="other">Otro</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="doc_file">Archivo *</label>
+                    <input type="file" id="doc_file" required 
+                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                    <small>Formatos aceptados: PDF, JPG, PNG, DOC, DOCX (máx. 10MB)</small>
+                </div>
+                
+                <div class="alert alert-info">
+                    <strong>Nota:</strong> Esta es una versión de demostración. En producción, los archivos se subirían a un servicio de almacenamiento seguro (AWS S3, Google Cloud Storage, etc.).
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <span id="upload-text">Subir Documento</span>
+                        <span id="upload-loading" style="display: none;">Subiendo...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Documents List -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3>Mis Documentos</h3>
+                <div>
+                    <label>
+                        <input type="checkbox" id="filter_pending" onchange="applyFilters()"> Pendientes
+                    </label>
+                    <label style="margin-left: 1rem;">
+                        <input type="checkbox" id="filter_verified" onchange="applyFilters()"> Verificados
+                    </label>
+                </div>
+            </div>
+            
+            <div id="documents-container">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+        
+        <!-- Document Checklist -->
+        <div class="card mt-4">
+            <h3>Checklist de Documentos Comunes</h3>
+            <p>Documentos típicamente requeridos para procesos migratorios:</p>
+            
+            <div class="grid grid-2">
+                <div>
+                    <h4>Documentos de Identidad</h4>
+                    <ul>
+                        <li>✓ Pasaporte vigente</li>
+                        <li>✓ Acta de nacimiento</li>
+                        <li>✓ Fotografías tamaño pasaporte</li>
+                        <li>✓ Identificación oficial</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4>Documentos Educativos</h4>
+                    <ul>
+                        <li>✓ Diplomas y certificados</li>
+                        <li>✓ Transcripciones académicas</li>
+                        <li>✓ Evaluación de credenciales</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4>Documentos Laborales</h4>
+                    <ul>
+                        <li>✓ Cartas de empleo</li>
+                        <li>✓ Comprobantes de experiencia</li>
+                        <li>✓ Referencias laborales</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4>Documentos Legales</h4>
+                    <ul>
+                        <li>✓ Certificado de antecedentes</li>
+                        <li>✓ Examen médico</li>
+                        <li>✓ Comprobantes financieros</li>
+                        <li>✓ Actas familiares (si aplica)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="alert alert-warning mt-4">
+                <strong>Importante:</strong> Los requisitos específicos varían según el tipo de visa y país de destino. Consulta con el asistente IA o un abogado para tu caso específico.
+            </div>
+        </div>
+    </main>
+    
+    <script src="js/app.js"></script>
+    <script>
+        requireAuth();
+        initUserInfo();
+        
+        let allDocuments = [];
+        
+        async function loadDocuments() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/documents`, {
+                    headers: {
+                        'Authorization': `Bearer ${auth.getToken()}`
+                    }
+                });
+                
+                if (response.ok) {
+                    allDocuments = await response.json();
+                    displayDocuments(allDocuments);
+                } else {
+                    document.getElementById('documents-container').innerHTML = 
+                        '<div class="alert alert-error">Error al cargar documentos</div>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('documents-container').innerHTML = 
+                    '<div class="alert alert-error">Error de conexión</div>';
+            }
+        }
+        
+        function displayDocuments(documents) {
+            const container = document.getElementById('documents-container');
+            
+            if (documents.length === 0) {
+                container.innerHTML = '<p class="text-center">No has subido documentos aún</p>';
+                return;
+            }
+            
+            let html = '<table style="width: 100%;"><thead><tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>';
+            
+            documents.forEach(doc => {
+                const statusBadge = {
+                    'pending': '<span style="background: orange; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem;">⏳ Pendiente</span>',
+                    'verified': '<span style="background: green; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem;">✓ Verificado</span>',
+                    'rejected': '<span style="background: red; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem;">✗ Rechazado</span>'
+                }[doc.status] || doc.status;
+                
+                const date = new Date(doc.uploaded_at).toLocaleDateString('es');
+                
+                html += `
+                    <tr>
+                        <td>${doc.name}</td>
+                        <td>${doc.type}</td>
+                        <td>${statusBadge}</td>
+                        <td>${date}</td>
+                        <td>
+                            <button onclick="viewDocument(${doc.id})" class="btn btn-sm btn-secondary">Ver</button>
+                            <button onclick="deleteDocument(${doc.id})" class="btn btn-sm" style="background: red; color: white;">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+                
+                if (doc.verification_notes) {
+                    html += `
+                        <tr>
+                            <td colspan="5" style="background: var(--gray-50); padding: 0.5rem;">
+                                <small><strong>Notas:</strong> ${doc.verification_notes}</small>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        document.getElementById('upload-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const uploadText = document.getElementById('upload-text');
+            const uploadLoading = document.getElementById('upload-loading');
+            
+            submitBtn.disabled = true;
+            uploadText.style.display = 'none';
+            uploadLoading.style.display = 'inline';
+            
+            const file = document.getElementById('doc_file').files[0];
+            
+            // In production, upload file to S3/Cloud Storage first
+            // For now, we'll just register the document metadata
+            const documentData = {
+                name: document.getElementById('doc_name').value,
+                type: document.getElementById('doc_type').value,
+                file_path: `/uploads/${Date.now()}_${file.name}`, // Simulated path
+                file_size: file.size,
+                mime_type: file.type
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/documents`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${auth.getToken()}`
+                    },
+                    body: JSON.stringify(documentData)
+                });
+                
+                if (response.ok) {
+                    alert('Documento subido exitosamente');
+                    document.getElementById('upload-form').reset();
+                    loadDocuments();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.detail || 'No se pudo subir el documento'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+            } finally {
+                submitBtn.disabled = false;
+                uploadText.style.display = 'inline';
+                uploadLoading.style.display = 'none';
+            }
+        });
+        
+        async function deleteDocument(docId) {
+            if (!confirm('¿Estás seguro de que deseas eliminar este documento?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/documents/${docId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${auth.getToken()}`
+                    }
+                });
+                
+                if (response.ok) {
+                    alert('Documento eliminado');
+                    loadDocuments();
+                } else {
+                    alert('Error al eliminar documento');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+            }
+        }
+        
+        function viewDocument(docId) {
+            const doc = allDocuments.find(d => d.id === docId);
+            if (doc) {
+                alert(`Documento: ${doc.name}\nTipo: ${doc.type}\nEstado: ${doc.status}\n\nEn producción, aquí se abriría el archivo.`);
+            }
+        }
+        
+        function applyFilters() {
+            const showPending = document.getElementById('filter_pending').checked;
+            const showVerified = document.getElementById('filter_verified').checked;
+            
+            if (!showPending && !showVerified) {
+                displayDocuments(allDocuments);
+                return;
+            }
+            
+            const filtered = allDocuments.filter(doc => {
+                if (showPending && doc.status === 'pending') return true;
+                if (showVerified && doc.status === 'verified') return true;
+                return false;
+            });
+            
+            displayDocuments(filtered);
+        }
+        
+        loadDocuments();
+    </script>
+</body>
+</html>

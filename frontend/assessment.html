@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico Migratorio - MigPAL</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">MigPAL</div>
+                <nav>
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="assessment.html" class="active">Diagnóstico</a></li>
+                        <li><a href="routes.html">Rutas Legales</a></li>
+                        <li><a href="ai-assistant.html">Asistente IA</a></li>
+                        <li><a href="services.html">Servicios</a></li>
+                        <li><a href="documents.html">Documentos</a></li>
+                    </ul>
+                </nav>
+                <div id="user-info"></div>
+            </div>
+        </div>
+    </header>
+    
+    <main class="container">
+        <div class="dashboard-header">
+            <h1>Diagnóstico Migratorio</h1>
+            <p>Completa tu perfil para recibir recomendaciones personalizadas</p>
+        </div>
+        
+        <div id="existing-profile" style="display: none;" class="alert alert-info mb-4">
+            Ya tienes un perfil migratorio. <a href="#" onclick="loadExistingProfile(); return false;">Ver y editar</a>
+        </div>
+        
+        <div class="card">
+            <form id="assessment-form">
+                <h3>Información Básica</h3>
+                
+                <div class="form-group">
+                    <label for="current_country">País de Origen *</label>
+                    <input type="text" id="current_country" name="current_country" required 
+                           placeholder="Ej: México, Colombia, Venezuela">
+                </div>
+                
+                <div class="form-group">
+                    <label for="target_country">País de Destino *</label>
+                    <input type="text" id="target_country" name="target_country" required 
+                           placeholder="Ej: Estados Unidos, Canadá, España">
+                </div>
+                
+                <div class="form-group">
+                    <label for="age">Edad</label>
+                    <input type="number" id="age" name="age" min="18" max="100" 
+                           placeholder="Tu edad">
+                </div>
+                
+                <h3 class="mt-4">Educación y Experiencia</h3>
+                
+                <div class="form-group">
+                    <label for="education_level">Nivel Educativo *</label>
+                    <select id="education_level" name="education_level" required>
+                        <option value="">Selecciona...</option>
+                        <option value="high_school">Secundaria</option>
+                        <option value="bachelor">Licenciatura</option>
+                        <option value="master">Maestría</option>
+                        <option value="phd">Doctorado</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="work_experience_years">Años de Experiencia Laboral *</label>
+                    <input type="number" id="work_experience_years" name="work_experience_years" 
+                           min="0" max="50" required placeholder="0">
+                </div>
+                
+                <div class="form-group">
+                    <label for="occupation">Ocupación/Profesión</label>
+                    <input type="text" id="occupation" name="occupation" 
+                           placeholder="Ej: Ingeniero, Médico, Profesor">
+                </div>
+                
+                <div class="form-group">
+                    <label for="language_skills">Idiomas que Hablas *</label>
+                    <textarea id="language_skills" name="language_skills" required 
+                              placeholder='Formato JSON: {"español": "nativo", "inglés": "intermedio", "francés": "básico"}'
+                              rows="3"></textarea>
+                    <small>Indica tu nivel: nativo, avanzado, intermedio, básico</small>
+                </div>
+                
+                <h3 class="mt-4">Situación Familiar</h3>
+                
+                <div class="form-group">
+                    <label for="family_status">Estado Familiar *</label>
+                    <select id="family_status" name="family_status" required>
+                        <option value="">Selecciona...</option>
+                        <option value="single">Soltero/a</option>
+                        <option value="married">Casado/a</option>
+                        <option value="married_with_children">Casado/a con hijos</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="dependents">Número de Dependientes</label>
+                    <input type="number" id="dependents" name="dependents" 
+                           min="0" max="10" value="0">
+                </div>
+                
+                <h3 class="mt-4">Recursos y Urgencia</h3>
+                
+                <div class="form-group">
+                    <label for="budget_usd">Presupuesto Disponible (USD) *</label>
+                    <input type="number" id="budget_usd" name="budget_usd" 
+                           min="0" step="100" required placeholder="5000">
+                    <small>Presupuesto estimado para el proceso migratorio</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="urgency">Urgencia *</label>
+                    <select id="urgency" name="urgency" required>
+                        <option value="">Selecciona...</option>
+                        <option value="low">Baja - Puedo esperar más de 2 años</option>
+                        <option value="medium">Media - Entre 6 meses y 2 años</option>
+                        <option value="high">Alta - Necesito migrar en menos de 6 meses</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <span id="submit-text">Completar Diagnóstico</span>
+                        <span id="submit-loading" style="display: none;">Procesando...</span>
+                    </button>
+                    <a href="dashboard.html" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+        
+        <div id="results-container" style="display: none;" class="mt-4">
+            <div class="card">
+                <h2>Resultados de tu Diagnóstico</h2>
+                <div id="results-content"></div>
+            </div>
+        </div>
+    </main>
+    
+    <script src="js/app.js"></script>
+    <script>
+        requireAuth();
+        initUserInfo();
+        
+        // Check if profile exists
+        async function checkExistingProfile() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/assessment/my-profile`, {
+                    headers: {
+                        'Authorization': `Bearer ${auth.getToken()}`
+                    }
+                });
+                
+                if (response.ok) {
+                    document.getElementById('existing-profile').style.display = 'block';
+                }
+            } catch (error) {
+                console.log('No existing profile');
+            }
+        }
+        
+        async function loadExistingProfile() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/assessment/my-profile`, {
+                    headers: {
+                        'Authorization': `Bearer ${auth.getToken()}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const profile = await response.json();
+                    
+                    // Fill form with existing data
+                    document.getElementById('current_country').value = profile.current_country;
+                    document.getElementById('target_country').value = profile.target_country;
+                    document.getElementById('age').value = profile.age || '';
+                    document.getElementById('education_level').value = profile.education_level;
+                    document.getElementById('work_experience_years').value = profile.work_experience_years;
+                    document.getElementById('occupation').value = profile.occupation || '';
+                    document.getElementById('language_skills').value = profile.language_skills;
+                    document.getElementById('family_status').value = profile.family_status;
+                    document.getElementById('dependents').value = profile.dependents;
+                    document.getElementById('budget_usd').value = profile.budget_usd;
+                    document.getElementById('urgency').value = profile.urgency;
+                    
+                    document.getElementById('submit-text').textContent = 'Actualizar Diagnóstico';
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            }
+        }
+        
+        document.getElementById('assessment-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const submitText = document.getElementById('submit-text');
+            const submitLoading = document.getElementById('submit-loading');
+            
+            submitBtn.disabled = true;
+            submitText.style.display = 'none';
+            submitLoading.style.display = 'inline';
+            
+            const formData = {
+                current_country: document.getElementById('current_country').value,
+                target_country: document.getElementById('target_country').value,
+                age: parseInt(document.getElementById('age').value) || null,
+                education_level: document.getElementById('education_level').value,
+                work_experience_years: parseInt(document.getElementById('work_experience_years').value),
+                occupation: document.getElementById('occupation').value || null,
+                language_skills: document.getElementById('language_skills').value,
+                family_status: document.getElementById('family_status').value,
+                dependents: parseInt(document.getElementById('dependents').value),
+                budget_usd: parseFloat(document.getElementById('budget_usd').value),
+                urgency: document.getElementById('urgency').value
+            };
+            
+            try {
+                // Check if updating or creating
+                const existingResponse = await fetch(`${API_BASE_URL}/assessment/my-profile`, {
+                    headers: {
+                        'Authorization': `Bearer ${auth.getToken()}`
+                    }
+                });
+                
+                let response;
+                if (existingResponse.ok) {
+                    // Update
+                    response = await fetch(`${API_BASE_URL}/assessment/my-profile`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${auth.getToken()}`
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                } else {
+                    // Create
+                    response = await fetch(`${API_BASE_URL}/assessment/start`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${auth.getToken()}`
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                }
+                
+                if (response.ok) {
+                    // Get results
+                    const resultsResponse = await fetch(`${API_BASE_URL}/assessment/results`, {
+                        headers: {
+                            'Authorization': `Bearer ${auth.getToken()}`
+                        }
+                    });
+                    
+                    if (resultsResponse.ok) {
+                        const results = await resultsResponse.json();
+                        displayResults(results);
+                    }
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.detail || 'No se pudo completar el diagnóstico'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al procesar el diagnóstico');
+            } finally {
+                submitBtn.disabled = false;
+                submitText.style.display = 'inline';
+                submitLoading.style.display = 'none';
+            }
+        });
+        
+        function displayResults(results) {
+            const container = document.getElementById('results-content');
+            const recommendations = results.recommendations || [];
+            
+            let html = `
+                <div class="alert alert-success mb-4">
+                    <strong>¡Diagnóstico completado!</strong> Encontramos ${recommendations.length} rutas migratorias para ti.
+                </div>
+                
+                <h3>Tus Mejores Opciones</h3>
+            `;
+            
+            if (recommendations.length === 0) {
+                html += '<p>No se encontraron rutas disponibles. Intenta ajustar tu perfil o consulta con el asistente IA.</p>';
+            } else {
+                html += '<div class="grid grid-1">';
+                recommendations.slice(0, 5).forEach(rec => {
+                    const process = rec.process;
+                    const score = Math.round(rec.match_score);
+                    
+                    html += `
+                        <div class="card">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div style="flex: 1;">
+                                    <h4>${process.name}</h4>
+                                    <p style="margin: 0.5rem 0;">${process.description}</p>
+                                    <div style="margin-top: 1rem;">
+                                        <strong>Tipo:</strong> ${process.visa_type}<br>
+                                        <strong>Tiempo:</strong> ${process.estimated_time_months} meses<br>
+                                        <strong>Costo:</strong> $${process.estimated_cost_min.toLocaleString()} - $${process.estimated_cost_max.toLocaleString()} USD<br>
+                                        <strong>Dificultad:</strong> ${process.difficulty_level}<br>
+                                        <strong>Tasa de éxito:</strong> ${process.success_rate}%
+                                    </div>
+                                </div>
+                                <div style="text-align: center; margin-left: 1rem;">
+                                    <div style="font-size: 2rem; font-weight: bold; color: var(--primary-color);">
+                                        ${score}%
+                                    </div>
+                                    <small>Compatibilidad</small>
+                                </div>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <a href="routes.html?process=${process.id}" class="btn btn-sm btn-primary">Ver Detalles</a>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            html += `
+                <div class="mt-4 text-center">
+                    <a href="routes.html" class="btn btn-primary">Explorar Todas las Rutas</a>
+                    <a href="ai-assistant.html" class="btn btn-secondary">Consultar con IA</a>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+            document.getElementById('results-container').style.display = 'block';
+            
+            // Scroll to results
+            document.getElementById('results-container').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        checkExistingProfile();
+    </script>
+</body>
+</html>

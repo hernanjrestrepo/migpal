@@ -19,9 +19,13 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # --- IMPORTANTE: importar modelos para que SQLModel registre tablas ---
-# Ajusta estos imports si tus rutas difieren.
 from app.models.user import User  # noqa: F401
-from app.models.referral_level import ReferralLevel  # noqa: F401
+from app.models.migration_process import MigrationProcess  # noqa: F401
+from app.models.user_migration_profile import UserMigrationProfile  # noqa: F401
+from app.models.service_provider import ServiceProvider  # noqa: F401
+from app.models.document import Document  # noqa: F401
+from app.models.ai_conversation import AIConversation  # noqa: F401
+from app.models.audit_log import AuditLog  # noqa: F401
 
 from sqlmodel import SQLModel
 target_metadata = SQLModel.metadata

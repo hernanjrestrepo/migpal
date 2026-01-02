@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servicios - MigPAL</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">MigPAL</div>
+                <nav>
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="assessment.html">Diagnóstico</a></li>
+                        <li><a href="routes.html">Rutas Legales</a></li>
+                        <li><a href="ai-assistant.html">Asistente IA</a></li>
+                        <li><a href="services.html" class="active">Servicios</a></li>
+                        <li><a href="documents.html">Documentos</a></li>
+                    </ul>
+                </nav>
+                <div id="user-info"></div>
+            </div>
+        </div>
+    </header>
+    
+    <main class="container">
+        <div class="dashboard-header">
+            <h1>Directorio de Servicios</h1>
+            <p>Conecta con profesionales y servicios verificados</p>
+        </div>
+        
+        <!-- Service Type Tabs -->
+        <div class="card mb-4">
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button onclick="loadServices('all')" class="btn btn-sm" id="tab-all">
+                    Todos
+                </button>
+                <button onclick="loadServices('lawyer')" class="btn btn-sm" id="tab-lawyer">
+                    ⚖️ Abogados
+                </button>
+                <button onclick="loadServices('housing')" class="btn btn-sm" id="tab-housing">
+                    🏠 Vivienda
+                </button>
+                <button onclick="loadServices('employment')" class="btn btn-sm" id="tab-employment">
+                    💼 Empleo
+                </button>
+                <button onclick="loadServices('education')" class="btn btn-sm" id="tab-education">
+                    🎓 Educación
+                </button>
+            </div>
+        </div>
+        
+        <!-- Filters -->
+        <div class="card mb-4">
+            <h3>Filtros</h3>
+            <div class="grid grid-3">
+                <div class="form-group">
+                    <label for="filter_country">País</label>
+                    <input type="text" id="filter_country" placeholder="Ej: Estados Unidos">
+                </div>
+                <div class="form-group">
+                    <label for="filter_city">Ciudad</label>
+                    <input type="text" id="filter_city" placeholder="Ej: Nueva York">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="filter_verified"> Solo verificados
+                    </label>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button onclick="applyFilters()" class="btn btn-primary">Aplicar Filtros</button>
+                <button onclick="clearFilters()" class="btn btn-secondary">Limpiar</button>
+            </div>
+        </div>
+        
+        <!-- Services List -->
+        <div id="services-container">
+            <div class="loading"><div class="spinner"></div></div>
+        </div>
+    </main>
+    
+    <script src="js/app.js"></script>
+    <script>
+        requireAuth();
+        initUserInfo();
+        
+        let currentType = 'all';
+        let allServices = [];
+        
+        async function loadServices(type = 'all') {
+            currentType = type;
+            
+            // Update active tab
+            document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+            });
+            document.getElementById(`tab-${type}`).classList.remove('btn-secondary');
+            document.getElementById(`tab-${type}`).classList.add('btn-primary');
+            
+            const container = document.getElementById('services-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                let url = `${API_BASE_URL}/services/`;
+                if (type !== 'all') {
+                    url = `${API_BASE_URL}/services/${type === 'lawyer' ? 'lawyers' : type}`;
+                }
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${auth.getToken()}`
+                    }
+                });
+                
+                if (response.ok) {
+                    allServices = await response.json();
+                    displayServices(allServices);
+                } else {
+                    container.innerHTML = '<div class="alert alert-error">Error al cargar servicios</div>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                container.innerHTML = '<div class="alert alert-error">Error de conexión</div>';
+            }
+        }
+        
+        function displayServices(services) {
+            const container = document.getElementById('services-container');
+            
+            if (services.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-info">
+                        No se encontraron servicios con los filtros aplicados.
+                        <a href="#" onclick="clearFilters(); return false;">Limpiar filtros</a>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div class="grid grid-1">';
+            
+            services.forEach(service => {
+                const typeIcon = {
+                    'lawyer': '⚖️',
+                    'housing': '🏠',
+                    'employment': '💼',
+                    'education': '🎓'
+                }[service.type] || '📋';
+                
+                const typeLabel = {
+                    'lawyer': 'Abogado',
+                    'housing': 'Vivienda',
+                    'employment': 'Empleo',
+                    'education': 'Educación'
+                }[service.type] || service.type;
+                
+                const stars = '⭐'.repeat(Math.round(service.rating));
+                
+                let specializations = [];
+                try {
+                    specializations = JSON.parse(service.specializations);
+                } catch (e) {
+                    specializations = [service.specializations];
+                }
+                
+                html += `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <h3 style="margin: 0;">${typeIcon} ${service.name}</h3>
+                                    ${service.verified ? '<span style="background: green; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">✓ Verificado</span>' : ''}
+                                </div>
+                                
+                                <p style="margin: 0.5rem 0; color: var(--gray-600);">
+                                    ${typeLabel} • ${service.city}, ${service.country}
+                                </p>
+                                
+                                <p style="margin: 0.5rem 0;">${service.description}</p>
+                                
+                                <div style="margin-top: 1rem;">
+                                    <strong>Especialidades:</strong>
+                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                                        ${specializations.map(spec => 
+                                            `<span style="padding: 0.25rem 0.5rem; background: var(--gray-100); border-radius: 4px; font-size: 0.875rem;">${spec}</span>`
+                                        ).join('')}
+                                    </div>
+                                </div>
+                                
+                                ${service.rating > 0 ? `
+                                    <div style="margin-top: 0.5rem;">
+                                        <strong>Calificación:</strong> ${stars} (${service.rating}/5)
+                                    </div>
+                                ` : ''}
+                                
+                                ${service.price_range ? `
+                                    <div style="margin-top: 0.5rem;">
+                                        <strong>Rango de precios:</strong> ${service.price_range}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                ${service.contact_email ? `
+                                    <a href="mailto:${service.contact_email}" class="btn btn-sm btn-primary">
+                                        📧 Email
+                                    </a>
+                                ` : ''}
+                                ${service.contact_phone ? `
+                                    <a href="tel:${service.contact_phone}" class="btn btn-sm btn-secondary">
+                                        📞 ${service.contact_phone}
+                                    </a>
+                                ` : ''}
+                                ${service.website ? `
+                                    <a href="${service.website}" target="_blank" class="btn btn-sm btn-secondary">
+                                        🌐 Sitio Web
+                                    </a>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        function applyFilters() {
+            const country = document.getElementById('filter_country').value.toLowerCase();
+            const city = document.getElementById('filter_city').value.toLowerCase();
+            const verifiedOnly = document.getElementById('filter_verified').checked;
+            
+            const filtered = allServices.filter(service => {
+                const matchCountry = !country || service.country.toLowerCase().includes(country);
+                const matchCity = !city || service.city.toLowerCase().includes(city);
+                const matchVerified = !verifiedOnly || service.verified;
+                
+                return matchCountry && matchCity && matchVerified;
+            });
+            
+            displayServices(filtered);
+        }
+        
+        function clearFilters() {
+            document.getElementById('filter_country').value = '';
+            document.getElementById('filter_city').value = '';
+            document.getElementById('filter_verified').checked = false;
+            displayServices(allServices);
+        }
+        
+        // Load all services by default
+        loadServices('all');
+    </script>
+</body>
+</html>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rutas Legales - MigPAL</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">MigPAL</div>
+                <nav>
+                    <ul>
+                        <li><a href="dashboard.html">Dashboard</a></li>
+                        <li><a href="assessment.html">Diagnóstico</a></li>
+                        <li><a href="routes.html" class="active">Rutas Legales</a></li>
+                        <li><a href="ai-assistant.html">Asistente IA</a></li>
+                        <li><a href="services.html">Servicios</a></li>
+                        <li><a href="documents.html">Documentos</a></li>
+                    </ul>
+                </nav>
+                <div id="user-info"></div>
+            </div>
+        </div>
+    </header>
+    
+    <main class="container">
+        <div class="dashboard-header">
+            <h1>Rutas Legales Migratorias</h1>
+            <p>Explora procesos migratorios disponibles</p>
+        </div>
+        
+        <!-- Filters -->
+        <div class="card mb-4">
+            <h3>Filtros</h3>
+            <div class="grid grid-3">
+                <div class="form-group">
+                    <label for="filter_country">País de Destino</label>
+                    <input type="text" id="filter_country" placeholder="Ej: Estados Unidos">
+                </div>
+                <div class="form-group">
+                    <label for="filter_visa_type">Tipo de Visa</label>
+                    <select id="filter_visa_type">
+                        <option value="">Todos</option>
+                        <option value="work">Trabajo</option>
+                        <option value="study">Estudio</option>
+                        <option value="family">Familiar</option>
+                        <option value="asylum">Asilo</option>
+                        <option value="permanent_residence">Residencia Permanente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filter_max_cost">Costo Máximo (USD)</label>
+                    <input type="number" id="filter_max_cost" placeholder="10000">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button onclick="applyFilters()" class="btn btn-primary">Aplicar Filtros</button>
+                <button onclick="clearFilters()" class="btn btn-secondary">Limpiar</button>
+            </div>
+        </div>
+        
+        <!-- Process Detail Modal (shown when ?process=id in URL) -->
+        <div id="process-detail" style="display: none;" class="card mb-4">
+            <div id="process-detail-content"></div>
+        </div>
+        
+        <!-- Processes List -->
+        <div id="processes-container">
+            <div class="loading"><div class="spinner"></div></div>
+        </div>
+    </main>
+    
+    <script src="js/app.js"></script>
+    <script>
+        requireAuth();
+        initUserInfo();
+        
+        let allProcesses = [];
+        
+        async function loadProcesses() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/migration/processes`, {
+                    headers: {
+                        'Authorization': `Bearer ${auth.getToken()}`
+                    }
+                });
+                
+                if (response.ok) {
+                    allProcesses = await response.json();
+                    displayProcesses(allProcesses);
+                    
+                    // Check if specific process requested
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const processId = urlParams.get('process');
+                    if (processId) {
+                        loadProcessDetail(processId);
+                    }
+                } else {
+                    document.getElementById('processes-container').innerHTML = 
+                        '<div class="alert alert-error">Error al cargar rutas migratorias</div>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('processes-container').innerHTML = 
+                    '<div class="alert alert-error">Error de conexión</div>';
+            }
+        }
+        
+        function displayProcesses(processes) {
+            const container = document.getElementById('processes-container');
+            
+            if (processes.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-info">
+                        No se encontraron rutas con los filtros aplicados.
+                        <a href="#" onclick="clearFilters(); return false;">Limpiar filtros</a>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div class="grid grid-1">';
+            
+            processes.forEach(process => {
+                const difficultyColor = {
+                    'easy': 'green',
+                    'medium': 'orange',
+                    'hard': 'red'
+                }[process.difficulty_level] || 'gray';
+                
+                html += `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
+                                <h3>${process.name}</h3>
+                                <p style="margin: 0.5rem 0; color: var(--gray-600);">
+                                    ${process.country_from} → ${process.country_to}
+                                </p>
+                                <p style="margin: 0.5rem 0;">${process.description}</p>
+                                
+                                <div style="margin-top: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                                    <span style="padding: 0.25rem 0.5rem; background: var(--gray-100); border-radius: 4px;">
+                                        📋 ${process.visa_type}
+                                    </span>
+                                    <span style="padding: 0.25rem 0.5rem; background: var(--gray-100); border-radius: 4px;">
+                                        ⏱️ ${process.estimated_time_months} meses
+                                    </span>
+                                    <span style="padding: 0.25rem 0.5rem; background: var(--gray-100); border-radius: 4px;">
+                                        💰 $${process.estimated_cost_min.toLocaleString()} - $${process.estimated_cost_max.toLocaleString()}
+                                    </span>
+                                    <span style="padding: 0.25rem 0.5rem; background: ${difficultyColor}20; color: ${difficultyColor}; border-radius: 4px;">
+                                        🎯 ${process.difficulty_level}
+                                    </span>
+                                    <span style="padding: 0.25rem 0.5rem; background: var(--gray-100); border-radius: 4px;">
+                                        ✅ ${process.success_rate}% éxito
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                            <button onclick="loadProcessDetail(${process.id})" class="btn btn-sm btn-primary">
+                                Ver Detalles
+                            </button>
+                            <button onclick="selectProcess(${process.id})" class="btn btn-sm btn-secondary">
+                                Seleccionar Esta Ruta
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        async function loadProcessDetail(processId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/migration/processes/${processId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${auth.getToken()}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const process = await response.json();
+                    displayProcessDetail(process);
+                } else {
+                    alert('Error al cargar detalles del proceso');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+            }
+        }
+        
+        function displayProcessDetail(process) {
+            const container = document.getElementById('process-detail-content');
+            
+            let requirements = [];
+            try {
+                requirements = JSON.parse(process.requirements);
+            } catch (e) {
+                requirements = [process.requirements];
+            }
+            
+            const html = `
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <h2>${process.name}</h2>
+                    <button onclick="closeProcessDetail()" class="btn btn-sm btn-secondary">Cerrar</button>
+                </div>
+                
+                <div class="grid grid-2 mt-4">
+                    <div>
+                        <h3>Información General</h3>
+                        <p><strong>Origen:</strong> ${process.country_from}</p>
+                        <p><strong>Destino:</strong> ${process.country_to}</p>
+                        <p><strong>Tipo de Visa:</strong> ${process.visa_type}</p>
+                        <p><strong>Dificultad:</strong> ${process.difficulty_level}</p>
+                        <p><strong>Tasa de Éxito:</strong> ${process.success_rate}%</p>
+                    </div>
+                    
+                    <div>
+                        <h3>Tiempos y Costos</h3>
+                        <p><strong>Tiempo Estimado:</strong> ${process.estimated_time_months} meses</p>
+                        <p><strong>Costo Mínimo:</strong> $${process.estimated_cost_min.toLocaleString()} USD</p>
+                        <p><strong>Costo Máximo:</strong> $${process.estimated_cost_max.toLocaleString()} USD</p>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h3>Descripción</h3>
+                    <p>${process.description}</p>
+                </div>
+                
+                <div class="mt-4">
+                    <h3>Requisitos</h3>
+                    <ul>
+                        ${requirements.map(req => `<li>${req}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <div class="mt-4">
+                    <button onclick="selectProcess(${process.id})" class="btn btn-primary">
+                        Seleccionar Esta Ruta
+                    </button>
+                    <a href="ai-assistant.html?topic=process_${process.id}" class="btn btn-secondary">
+                        Consultar con IA
+                    </a>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+            document.getElementById('process-detail').style.display = 'block';
+            document.getElementById('process-detail').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function closeProcessDetail() {
+            document.getElementById('process-detail').style.display = 'none';
+            // Remove process parameter from URL
+            const url = new URL(window.location);
+            url.searchParams.delete('process');
+            window.history.replaceState({}, '', url);
+        }
+        
+        async function selectProcess(processId) {
+            if (!confirm('¿Deseas seleccionar esta ruta migratoria como tu proceso actual?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/migration/select/${processId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${auth.getToken()}`
+                    }
+                });
+                
+                if (response.ok) {
+                    alert('¡Ruta seleccionada exitosamente! Ahora puedes ver tu progreso en el dashboard.');
+                    window.location.href = 'dashboard.html';
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.detail || 'No se pudo seleccionar la ruta'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión');
+            }
+        }
+        
+        function applyFilters() {
+            const country = document.getElementById('filter_country').value.toLowerCase();
+            const visaType = document.getElementById('filter_visa_type').value;
+            const maxCost = parseFloat(document.getElementById('filter_max_cost').value) || Infinity;
+            
+            const filtered = allProcesses.filter(process => {
+                const matchCountry = !country || process.country_to.toLowerCase().includes(country);
+                const matchVisaType = !visaType || process.visa_type === visaType;
+                const matchCost = process.estimated_cost_max <= maxCost;
+                
+                return matchCountry && matchVisaType && matchCost;
+            });
+            
+            displayProcesses(filtered);
+        }
+        
+        function clearFilters() {
+            document.getElementById('filter_country').value = '';
+            document.getElementById('filter_visa_type').value = '';
+            document.getElementById('filter_max_cost').value = '';
+            displayProcesses(allProcesses);
+        }
+        
+        loadProcesses();
+    </script>
+</body>
+</html>
