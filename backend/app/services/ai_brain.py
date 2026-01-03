@@ -19,9 +19,9 @@ PRINCIPIOS V8 - CONSULTIVO:
 
 import os
 import logging
+import re
 import httpx
-import json
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -385,7 +385,6 @@ def filter_response(text: str) -> str:
     result = text.strip()
     
     # Eliminar CUALQUIER texto que no sea español (detectar caracteres chinos, etc.)
-    import re
     # Mantener solo caracteres latinos, números, emojis comunes y puntuación
     result = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u20000-\u2a6df\u2a700-\u2b73f\u2b740-\u2b81f\u2b820-\u2ceaf\uf900-\ufaff\u2f800-\u2fa1f]+', '', result)
     

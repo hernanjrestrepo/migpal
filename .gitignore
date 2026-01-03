@@ -123,3 +123,7 @@ venv.bak/
 *.db-journal
 /logs/*
 !/logs/.gitkeep
+
+# User data (sensitive - do not track)
+/backend/data/cases/
+/backend/backups/

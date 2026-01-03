@@ -5,7 +5,7 @@
 
 [![Bot](https://img.shields.io/badge/Telegram-@MigPAL__Bot-blue)](https://t.me/MigPAL_Bot)
 [![Version](https://img.shields.io/badge/Version-2.0-green)]()
-[![AI](https://img.shields.io/badge/AI-Qwen2.5:7b-purple)]()
+[![AI](https://img.shields.io/badge/AI-MigPAL_Llama3-purple)]()
 
 ---
 
@@ -39,11 +39,13 @@ MigPAL no es un chatbot genérico. Es un **consultor profesional** que:
 
 ## 🚀 Características V2.0
 
-### 🧠 AI Brain V7 - Empático
-- Respuestas cortas (3-5 líneas)
-- UNA pregunta a la vez
-- Nunca dice "¿Te quedó claro?"
-- Información real y específica
+### 🧠 AI Brain V8 - Consultivo
+- **Modelo**: migpal:latest (Llama 3, conversacional)
+- Respuestas cortas (4-6 líneas)
+- **YO GUÍO**: El bot guía, el cliente confirma
+- Nunca dice "¿Te quedó claro?" ni menciona abogados
+- Usa toda la información del perfil del cliente
+- Detección de intención del mensaje
 
 ### 🗺️ Flujo de Conversación Guiado
 33 estados definidos para una experiencia estructurada:
@@ -164,11 +166,11 @@ migpal/
 # Base de datos
 DATABASE_URL=sqlite:///./migpal.db
 
-# AI - Ollama
+# AI - Ollama (Modelo MigPAL basado en Llama 3)
 AI_PROVIDER=ollama
-AI_MODEL=qwen2.5:7b
+AI_MODEL=migpal:latest
 OLLAMA_URL=http://127.0.0.1:11434
-AI_TEMPERATURE=0.5
+AI_TEMPERATURE=0.6
 
 # RapidAPI - Búsqueda de empleos
 RAPIDAPI_KEY=tu_key_aqui
@@ -273,9 +275,18 @@ tmux new-session -d -s migpal_bot 'source .venv/bin/activate && python run_teleg
 
 ---
 
-## 📝 Changelog V2.0
+## 📝 Changelog
 
-### Nuevas Características
+### V2.1 (3 Enero 2026)
+- ✅ **AI Brain V8 CONSULTIVO** - Cambio de modelo
+- ✅ Modelo: qwen2.5:7b → migpal:latest (Llama 3)
+- ✅ Enfoque consultivo: "Yo guío, cliente confirma"
+- ✅ Detección de intención del mensaje
+- ✅ Filtro mejorado para texto en otros idiomas
+- ✅ Eliminación de menciones de "abogado"
+- ✅ Respuestas basadas en el perfil completo del cliente
+
+### V2.0 (3 Enero 2026)
 - ✅ AI Brain V7 con enfoque empático
 - ✅ Flujo de conversación guiado (33 estados)
 - ✅ Sistema de scoring personalizado
@@ -283,12 +294,6 @@ tmux new-session -d -s migpal_bot 'source .venv/bin/activate && python run_teleg
 - ✅ Integración con LinkedIn Jobs API
 - ✅ Nueva estructura de precios ($300-$400)
 - ✅ Política de no devolución
-
-### Mejoras
-- ✅ Respuestas más cortas y directas
-- ✅ Eliminación de frases repetitivas
-- ✅ Mejor manejo de contexto
-- ✅ Exploración uno por uno (no listas)
 
 ---
 
@@ -300,11 +305,11 @@ Proyecto privado - Todos los derechos reservados
 
 ## 📅 Última Actualización
 
-**3 de Enero 2026** - V2.0 Completo
+**3 de Enero 2026** - V2.1 (AI Brain V8 Consultivo)
 
 ### Estado del Sistema
 - 🟢 Bot: **Funcionando** (tmux: migpal_bot)
-- 🟢 AI: **Activo** (Ollama qwen2.5:7b)
+- 🟢 AI: **Activo** (Ollama migpal:latest - Llama 3)
 - 🟢 APIs: **Configuradas** (RapidAPI)
 - 🟢 Base de datos: **864+ ciudades**
 
