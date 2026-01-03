@@ -174,18 +174,18 @@ class JobSearchEngine:
         """
         jobs = []
         
-        # Buscar primero en Active Jobs DB API (más completa)
-        active_jobs = await self._search_active_jobs_api(
-            query, location, limit, offset
+        # Buscar primero en JSearch API (agregador de LinkedIn, Indeed, Glassdoor, etc.)
+        jsearch_jobs = await self._search_jsearch_api(
+            query, location, limit, remote_only
         )
-        jobs.extend(active_jobs)
+        jobs.extend(jsearch_jobs)
         
-        # Si no hay suficientes resultados, buscar en LinkedIn API
+        # Si no hay suficientes resultados, intentar Active Jobs DB
         if len(jobs) < limit:
-            linkedin_jobs = await self._search_linkedin_api(
+            active_jobs = await self._search_active_jobs_api(
                 query, location, limit - len(jobs), offset
             )
-            jobs.extend(linkedin_jobs)
+            jobs.extend(active_jobs)
         
         # Si no hay API key o no hay resultados, usar datos de ejemplo
         if not jobs:
@@ -211,6 +211,179 @@ class JobSearchEngine:
         jobs.sort(key=lambda x: x.salary_max or x.salary_min or 0, reverse=True)
         
         return jobs[:limit]
+    
+    async def _search_jsearch_api(
+        self,
+        query: str,
+        location: str,
+        limit: int = 10,
+        remote_only: bool = False
+    ) -> List[JobListing]:
+        """
+        Busca en JSearch API (RapidAPI)
+        Agregador de LinkedIn, Indeed, Glassdoor, ZipRecruiter, etc.
+        
+        Endpoint: https://jsearch.p.rapidapi.com/search
+        """
+        
+        if not RAPIDAPI_KEY:
+            logger.warning("No RAPIDAPI_KEY configured for JSearch API")
+            return []
+        
+        try:
+            client = await self._get_client()
+            
+            # Construir query
+            search_query = f"{query} in {location}"
+            
+            params = {
+                "query": search_query,
+                "page": "1",
+                "num_pages": "1",
+                "country": "us",
+                "language": "en"
+            }
+            
+            if remote_only:
+                params["remote_jobs_only"] = "true"
+            
+            headers = {
+                "x-rapidapi-host": JSEARCH_API_HOST,
+                "x-rapidapi-key": RAPIDAPI_KEY
+            }
+            
+            logger.info(f"Searching JSearch API: {search_query}")
+            
+            response = await client.get(
+                f"https://{JSEARCH_API_HOST}/search",
+                params=params,
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                jobs = []
+                
+                if data.get("status") != "OK":
+                    logger.error(f"JSearch API returned status: {data.get('status')}")
+                    return []
+                
+                job_list = data.get("data", [])
+                
+                for job in job_list[:limit]:
+                    # Extraer datos del job
+                    title = job.get("job_title", "")
+                    company = job.get("employer_name", "")
+                    location_str = job.get("job_location", job.get("job_city", ""))
+                    description = job.get("job_description", "")
+                    
+                    # Obtener el mejor link para aplicar
+                    apply_url = job.get("job_apply_link", "")
+                    apply_options = job.get("apply_options", [])
+                    
+                    # Preferir LinkedIn o Indeed si están disponibles
+                    for option in apply_options:
+                        publisher = option.get("publisher", "").lower()
+                        if "linkedin" in publisher or "indeed" in publisher:
+                            apply_url = option.get("apply_link", apply_url)
+                            break
+                    
+                    # Extraer salario
+                    salary_min = job.get("job_min_salary") or 0
+                    salary_max = job.get("job_max_salary") or 0
+                    salary_period = job.get("job_salary_period", "yearly")
+                    
+                    # Si no hay salario en campos específicos, buscar en descripción
+                    if not salary_min and not salary_max:
+                        # Buscar patrones de salario en la descripción
+                        salary_match = self._extract_salary_from_text(description)
+                        if salary_match:
+                            salary_min, salary_max = salary_match
+                    
+                    # Detectar si es remoto
+                    is_remote = job.get("job_is_remote", False)
+                    
+                    # Detectar visa sponsorship
+                    visa_sponsor = self._detect_visa_sponsorship(description)
+                    
+                    # Detectar nivel de experiencia
+                    exp_level = self._detect_experience_level(title)
+                    
+                    # Extraer beneficios
+                    benefits_raw = job.get("job_benefits", [])
+                    benefits = [b.replace("_", " ").title() for b in benefits_raw] if benefits_raw else []
+                    
+                    # Extraer requisitos de highlights
+                    highlights = job.get("job_highlights", {})
+                    requirements = highlights.get("Qualifications", [])[:5]
+                    if not requirements:
+                        requirements = self._extract_requirements(description)
+                    
+                    jobs.append(JobListing(
+                        job_id=job.get("job_id", str(hash(title + company))),
+                        title=title,
+                        company=company,
+                        company_logo=job.get("employer_logo", "") or "",
+                        location=location_str,
+                        city=job.get("job_city", ""),
+                        state=job.get("job_state", ""),
+                        is_remote=is_remote,
+                        job_type=job.get("job_employment_type", "Full-time"),
+                        salary_min=int(salary_min) if salary_min else 0,
+                        salary_max=int(salary_max) if salary_max else 0,
+                        salary_currency="USD",
+                        salary_period=salary_period or "yearly",
+                        description=description[:1500] if description else "",
+                        requirements=requirements,
+                        benefits=benefits or self._extract_benefits(description),
+                        posted_date=job.get("job_posted_at", "Recently"),
+                        apply_url=apply_url,
+                        source="jsearch",
+                        visa_sponsorship=visa_sponsor,
+                        experience_level=exp_level,
+                        industry=job.get("job_publisher", ""),
+                    ))
+                
+                logger.info(f"Found {len(jobs)} jobs from JSearch API")
+                return jobs
+            else:
+                logger.error(f"JSearch API error: {response.status_code} - {response.text[:200]}")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error searching JSearch API: {e}")
+            return []
+    
+    def _extract_salary_from_text(self, text: str) -> tuple:
+        """Extrae salario del texto de descripción"""
+        if not text:
+            return None
+        
+        import re
+        
+        # Patrones comunes de salario
+        patterns = [
+            r'\$([\d,]+)\s*[-–]\s*\$([\d,]+)\s*(?:per year|annually|/year|/yr)',
+            r'\$([\d,]+)\s*[-–]\s*\$([\d,]+)\s*(?:per year|annually)?',
+            r'salary[:\s]+\$([\d,]+)\s*[-–]\s*\$([\d,]+)',
+            r'([\d,]+)\s*[-–]\s*([\d,]+)\s*(?:USD|per year)',
+        ]
+        
+        text_lower = text.lower()
+        
+        for pattern in patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                try:
+                    min_sal = int(match.group(1).replace(',', ''))
+                    max_sal = int(match.group(2).replace(',', ''))
+                    # Validar que sean salarios razonables (anuales)
+                    if 20000 <= min_sal <= 1000000 and 20000 <= max_sal <= 1000000:
+                        return (min_sal, max_sal)
+                except:
+                    pass
+        
+        return None
     
     async def _search_active_jobs_api(
         self,
