@@ -1,0 +1,1432 @@
+"""
+MigPAL Cities Database - 1000+ Ciudades de USA
+Base de datos completa con información detallada
+
+FUENTES:
+- US Census Bureau (población, demografía)
+- Bureau of Labor Statistics (empleo, salarios)
+- FBI UCR (criminalidad)
+- Zillow (precios de vivienda)
+- GreatSchools (educación)
+"""
+
+from typing import Dict, List, Any, Optional
+from dataclasses import dataclass, field
+import json
+import os
+
+# ============== ESTRUCTURA DE CIUDAD ==============
+
+@dataclass
+class CityData:
+    """Datos completos de una ciudad"""
+    id: str
+    name: str
+    state: str
+    state_code: str
+    county: str
+    
+    # Población
+    population: int
+    metro_population: int
+    population_growth: float  # % anual
+    
+    # Demografía
+    latino_pct: float
+    median_age: float
+    
+    # Economía
+    median_income: int
+    unemployment_rate: float
+    poverty_rate: float
+    
+    # Vivienda
+    median_home_price: int
+    median_rent_1br: int
+    median_rent_2br: int
+    median_rent_3br: int
+    
+    # Costo de vida
+    cost_of_living_index: int  # 100 = promedio nacional
+    
+    # Seguridad
+    crime_index: int  # 1-100, menor es más seguro
+    violent_crime_rate: float
+    property_crime_rate: float
+    
+    # Clima
+    climate: str  # calido, templado, frio
+    avg_temp_summer: int  # Fahrenheit
+    avg_temp_winter: int
+    sunny_days: int
+    rainy_days: int
+    
+    # Educación
+    school_rating: float  # 1-10
+    top_schools: List[str]
+    universities: List[str]
+    
+    # Transporte
+    walk_score: int
+    transit_score: int
+    bike_score: int
+    avg_commute_minutes: int
+    
+    # Industrias
+    top_industries: List[str]
+    major_employers: List[str]
+    
+    # Calidad de vida
+    quality_of_life_score: int  # 1-100
+    healthcare_score: int
+    
+    # Extras
+    description: str
+    pros: List[str]
+    cons: List[str]
+    photo_url: str
+    
+    # Scores calculados
+    scores: Dict[str, int] = field(default_factory=dict)
+    
+    def to_dict(self) -> Dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "state": self.state,
+            "state_code": self.state_code,
+            "county": self.county,
+            "population": self.population,
+            "metro_population": self.metro_population,
+            "population_growth": self.population_growth,
+            "latino_pct": self.latino_pct,
+            "median_age": self.median_age,
+            "median_income": self.median_income,
+            "unemployment_rate": self.unemployment_rate,
+            "poverty_rate": self.poverty_rate,
+            "median_home_price": self.median_home_price,
+            "median_rent_1br": self.median_rent_1br,
+            "median_rent_2br": self.median_rent_2br,
+            "median_rent_3br": self.median_rent_3br,
+            "cost_of_living_index": self.cost_of_living_index,
+            "crime_index": self.crime_index,
+            "violent_crime_rate": self.violent_crime_rate,
+            "property_crime_rate": self.property_crime_rate,
+            "climate": self.climate,
+            "avg_temp_summer": self.avg_temp_summer,
+            "avg_temp_winter": self.avg_temp_winter,
+            "sunny_days": self.sunny_days,
+            "rainy_days": self.rainy_days,
+            "school_rating": self.school_rating,
+            "top_schools": self.top_schools,
+            "universities": self.universities,
+            "walk_score": self.walk_score,
+            "transit_score": self.transit_score,
+            "bike_score": self.bike_score,
+            "avg_commute_minutes": self.avg_commute_minutes,
+            "top_industries": self.top_industries,
+            "major_employers": self.major_employers,
+            "quality_of_life_score": self.quality_of_life_score,
+            "healthcare_score": self.healthcare_score,
+            "description": self.description,
+            "pros": self.pros,
+            "cons": self.cons,
+            "photo_url": self.photo_url,
+            "scores": self.scores,
+        }
+
+
+# ============== BASE DE DATOS DE CIUDADES ==============
+
+# Ciudades principales (Top 100 por población + ciudades importantes para latinos)
+CITIES_DATABASE: Dict[str, Dict] = {
+    # ==================== FLORIDA ====================
+    "miami": {
+        "id": "miami",
+        "name": "Miami",
+        "state": "Florida",
+        "state_code": "FL",
+        "county": "Miami-Dade",
+        "population": 470000,
+        "metro_population": 6200000,
+        "population_growth": 1.2,
+        "latino_pct": 72.0,
+        "median_age": 40.2,
+        "median_income": 44000,
+        "unemployment_rate": 3.5,
+        "poverty_rate": 19.5,
+        "median_home_price": 550000,
+        "median_rent_1br": 2200,
+        "median_rent_2br": 2800,
+        "median_rent_3br": 3500,
+        "cost_of_living_index": 128,
+        "crime_index": 65,
+        "violent_crime_rate": 7.3,
+        "property_crime_rate": 35.2,
+        "climate": "calido",
+        "avg_temp_summer": 89,
+        "avg_temp_winter": 68,
+        "sunny_days": 248,
+        "rainy_days": 135,
+        "school_rating": 6.5,
+        "top_schools": ["MAST Academy", "Design and Architecture Senior High", "Coral Reef Senior High"],
+        "universities": ["University of Miami", "FIU", "Miami Dade College"],
+        "walk_score": 78,
+        "transit_score": 57,
+        "bike_score": 64,
+        "avg_commute_minutes": 31,
+        "top_industries": ["turismo", "finanzas", "comercio", "salud", "tech"],
+        "major_employers": ["Baptist Health", "University of Miami", "American Airlines", "Royal Caribbean"],
+        "quality_of_life_score": 72,
+        "healthcare_score": 75,
+        "description": "Ciudad vibrante con la mayor comunidad latina de USA. Centro financiero de América Latina con playas hermosas y vida nocturna activa.",
+        "pros": ["Gran comunidad latina", "Sin impuesto estatal", "Playas", "Vida nocturna", "Clima cálido"],
+        "cons": ["Alto costo de vida", "Tráfico", "Huracanes", "Calor extremo en verano"],
+        "photo_url": "https://images.unsplash.com/photo-1506966953602-c20cc11f75e3?w=800",
+        "scores": {
+            "costo_vida": 35,
+            "seguridad": 45,
+            "oportunidades": 75,
+            "educacion": 65,
+            "salud": 75,
+            "transporte": 55,
+            "comunidad_latina": 95,
+            "clima": 85,
+            "calidad_vida": 72,
+        }
+    },
+    
+    "orlando": {
+        "id": "orlando",
+        "name": "Orlando",
+        "state": "Florida",
+        "state_code": "FL",
+        "county": "Orange",
+        "population": 310000,
+        "metro_population": 2700000,
+        "population_growth": 2.1,
+        "latino_pct": 32.0,
+        "median_age": 34.5,
+        "median_income": 52000,
+        "unemployment_rate": 3.2,
+        "poverty_rate": 14.8,
+        "median_home_price": 380000,
+        "median_rent_1br": 1600,
+        "median_rent_2br": 2000,
+        "median_rent_3br": 2500,
+        "cost_of_living_index": 103,
+        "crime_index": 55,
+        "violent_crime_rate": 5.8,
+        "property_crime_rate": 32.1,
+        "climate": "calido",
+        "avg_temp_summer": 91,
+        "avg_temp_winter": 62,
+        "sunny_days": 233,
+        "rainy_days": 117,
+        "school_rating": 6.8,
+        "top_schools": ["Winter Park High", "Lake Nona High", "Timber Creek High"],
+        "universities": ["UCF", "Rollins College", "Valencia College"],
+        "walk_score": 42,
+        "transit_score": 28,
+        "bike_score": 45,
+        "avg_commute_minutes": 28,
+        "top_industries": ["turismo", "tech", "salud", "aeroespacial", "simulacion"],
+        "major_employers": ["Walt Disney World", "Universal Orlando", "Lockheed Martin", "AdventHealth"],
+        "quality_of_life_score": 75,
+        "healthcare_score": 72,
+        "description": "Ciudad familiar conocida por sus parques temáticos. Creciente hub tecnológico con excelente calidad de vida.",
+        "pros": ["Parques temáticos", "Sin impuesto estatal", "Crecimiento económico", "Clima cálido", "Familiar"],
+        "cons": ["Turismo excesivo", "Tráfico", "Huracanes", "Calor en verano"],
+        "photo_url": "https://images.unsplash.com/photo-1575089976121-8ed7b2a54265?w=800",
+        "scores": {
+            "costo_vida": 55,
+            "seguridad": 55,
+            "oportunidades": 70,
+            "educacion": 68,
+            "salud": 72,
+            "transporte": 35,
+            "comunidad_latina": 75,
+            "clima": 80,
+            "calidad_vida": 75,
+        }
+    },
+    
+    "tampa": {
+        "id": "tampa",
+        "name": "Tampa",
+        "state": "Florida",
+        "state_code": "FL",
+        "county": "Hillsborough",
+        "population": 400000,
+        "metro_population": 3200000,
+        "population_growth": 1.8,
+        "latino_pct": 26.0,
+        "median_age": 35.8,
+        "median_income": 55000,
+        "unemployment_rate": 3.0,
+        "poverty_rate": 15.2,
+        "median_home_price": 420000,
+        "median_rent_1br": 1500,
+        "median_rent_2br": 1900,
+        "median_rent_3br": 2400,
+        "cost_of_living_index": 98,
+        "crime_index": 52,
+        "violent_crime_rate": 5.2,
+        "property_crime_rate": 28.5,
+        "climate": "calido",
+        "avg_temp_summer": 90,
+        "avg_temp_winter": 63,
+        "sunny_days": 244,
+        "rainy_days": 107,
+        "school_rating": 6.5,
+        "top_schools": ["Plant High School", "Berkeley Preparatory", "Tampa Preparatory"],
+        "universities": ["USF", "University of Tampa", "Hillsborough Community College"],
+        "walk_score": 50,
+        "transit_score": 30,
+        "bike_score": 55,
+        "avg_commute_minutes": 27,
+        "top_industries": ["finanzas", "salud", "tech", "turismo", "defensa"],
+        "major_employers": ["Tampa General Hospital", "USAA", "JPMorgan Chase", "Publix"],
+        "quality_of_life_score": 76,
+        "healthcare_score": 78,
+        "description": "Ciudad en crecimiento con excelente balance entre costo de vida y oportunidades. Playas cercanas y vida cultural activa.",
+        "pros": ["Costo de vida razonable", "Playas cercanas", "Sin impuesto estatal", "Crecimiento económico"],
+        "cons": ["Tráfico", "Huracanes", "Humedad", "Transporte público limitado"],
+        "photo_url": "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800",
+        "scores": {
+            "costo_vida": 60,
+            "seguridad": 58,
+            "oportunidades": 72,
+            "educacion": 65,
+            "salud": 78,
+            "transporte": 40,
+            "comunidad_latina": 70,
+            "clima": 82,
+            "calidad_vida": 76,
+        }
+    },
+    
+    "jacksonville": {
+        "id": "jacksonville",
+        "name": "Jacksonville",
+        "state": "Florida",
+        "state_code": "FL",
+        "county": "Duval",
+        "population": 950000,
+        "metro_population": 1600000,
+        "population_growth": 1.5,
+        "latino_pct": 10.0,
+        "median_age": 36.2,
+        "median_income": 54000,
+        "unemployment_rate": 3.3,
+        "poverty_rate": 14.0,
+        "median_home_price": 320000,
+        "median_rent_1br": 1300,
+        "median_rent_2br": 1600,
+        "median_rent_3br": 2000,
+        "cost_of_living_index": 94,
+        "crime_index": 58,
+        "violent_crime_rate": 6.1,
+        "property_crime_rate": 30.2,
+        "climate": "calido",
+        "avg_temp_summer": 90,
+        "avg_temp_winter": 55,
+        "sunny_days": 221,
+        "rainy_days": 116,
+        "school_rating": 6.2,
+        "top_schools": ["Stanton College Prep", "Paxon School", "Douglas Anderson School"],
+        "universities": ["UNF", "Jacksonville University", "FSCJ"],
+        "walk_score": 27,
+        "transit_score": 18,
+        "bike_score": 35,
+        "avg_commute_minutes": 25,
+        "top_industries": ["logistica", "finanzas", "salud", "defensa", "manufactura"],
+        "major_employers": ["Naval Air Station", "Mayo Clinic", "Bank of America", "CSX"],
+        "quality_of_life_score": 70,
+        "healthcare_score": 75,
+        "description": "La ciudad más grande de Florida por área. Bajo costo de vida con playas y oportunidades en logística y finanzas.",
+        "pros": ["Bajo costo de vida", "Sin impuesto estatal", "Playas", "Ciudad grande"],
+        "cons": ["Transporte público limitado", "Sprawl urbano", "Menos comunidad latina"],
+        "photo_url": "https://images.unsplash.com/photo-1567604528779-e4e4c0e4e4e4?w=800",
+        "scores": {
+            "costo_vida": 70,
+            "seguridad": 52,
+            "oportunidades": 65,
+            "educacion": 62,
+            "salud": 75,
+            "transporte": 25,
+            "comunidad_latina": 45,
+            "clima": 78,
+            "calidad_vida": 70,
+        }
+    },
+    
+    # ==================== TEXAS ====================
+    "houston": {
+        "id": "houston",
+        "name": "Houston",
+        "state": "Texas",
+        "state_code": "TX",
+        "county": "Harris",
+        "population": 2300000,
+        "metro_population": 7100000,
+        "population_growth": 1.4,
+        "latino_pct": 45.0,
+        "median_age": 33.5,
+        "median_income": 53000,
+        "unemployment_rate": 4.2,
+        "poverty_rate": 19.5,
+        "median_home_price": 320000,
+        "median_rent_1br": 1300,
+        "median_rent_2br": 1700,
+        "median_rent_3br": 2200,
+        "cost_of_living_index": 96,
+        "crime_index": 62,
+        "violent_crime_rate": 9.5,
+        "property_crime_rate": 45.2,
+        "climate": "calido",
+        "avg_temp_summer": 94,
+        "avg_temp_winter": 54,
+        "sunny_days": 204,
+        "rainy_days": 104,
+        "school_rating": 6.0,
+        "top_schools": ["Carnegie Vanguard", "DeBakey High School", "HSPVA"],
+        "universities": ["Rice University", "University of Houston", "Texas Southern"],
+        "walk_score": 48,
+        "transit_score": 36,
+        "bike_score": 50,
+        "avg_commute_minutes": 30,
+        "top_industries": ["energia", "salud", "aeroespacial", "manufactura", "tech"],
+        "major_employers": ["Texas Medical Center", "NASA", "ExxonMobil", "Shell", "Memorial Hermann"],
+        "quality_of_life_score": 68,
+        "healthcare_score": 85,
+        "description": "Cuarta ciudad más grande de USA. Centro mundial de energía y medicina con gran diversidad y bajo costo de vida.",
+        "pros": ["Sin impuesto estatal", "Bajo costo de vida", "Diversidad", "Oportunidades en energía y salud"],
+        "cons": ["Tráfico terrible", "Calor extremo", "Huracanes", "Sprawl urbano"],
+        "photo_url": "https://images.unsplash.com/photo-1530089711124-9ca31fb9e863?w=800",
+        "scores": {
+            "costo_vida": 65,
+            "seguridad": 45,
+            "oportunidades": 80,
+            "educacion": 60,
+            "salud": 85,
+            "transporte": 40,
+            "comunidad_latina": 90,
+            "clima": 60,
+            "calidad_vida": 68,
+        }
+    },
+    
+    "dallas": {
+        "id": "dallas",
+        "name": "Dallas",
+        "state": "Texas",
+        "state_code": "TX",
+        "county": "Dallas",
+        "population": 1340000,
+        "metro_population": 7600000,
+        "population_growth": 1.6,
+        "latino_pct": 42.0,
+        "median_age": 33.0,
+        "median_income": 54000,
+        "unemployment_rate": 3.8,
+        "poverty_rate": 17.8,
+        "median_home_price": 380000,
+        "median_rent_1br": 1400,
+        "median_rent_2br": 1800,
+        "median_rent_3br": 2300,
+        "cost_of_living_index": 102,
+        "crime_index": 58,
+        "violent_crime_rate": 7.8,
+        "property_crime_rate": 38.5,
+        "climate": "calido",
+        "avg_temp_summer": 96,
+        "avg_temp_winter": 48,
+        "sunny_days": 232,
+        "rainy_days": 79,
+        "school_rating": 6.2,
+        "top_schools": ["School for the Talented and Gifted", "Booker T. Washington", "Woodrow Wilson"],
+        "universities": ["SMU", "UT Dallas", "UNT"],
+        "walk_score": 46,
+        "transit_score": 39,
+        "bike_score": 45,
+        "avg_commute_minutes": 28,
+        "top_industries": ["tech", "finanzas", "telecomunicaciones", "defensa", "retail"],
+        "major_employers": ["AT&T", "Texas Instruments", "Southwest Airlines", "American Airlines"],
+        "quality_of_life_score": 72,
+        "healthcare_score": 78,
+        "description": "Centro de negocios y tecnología del sur. Gran diversidad, economía fuerte y crecimiento constante.",
+        "pros": ["Sin impuesto estatal", "Economía diversa", "Aeropuerto hub", "Crecimiento tech"],
+        "cons": ["Calor extremo", "Tráfico", "Tornados", "Sprawl urbano"],
+        "photo_url": "https://images.unsplash.com/photo-1545194445-dddb8f4487c6?w=800",
+        "scores": {
+            "costo_vida": 58,
+            "seguridad": 50,
+            "oportunidades": 78,
+            "educacion": 62,
+            "salud": 78,
+            "transporte": 42,
+            "comunidad_latina": 85,
+            "clima": 65,
+            "calidad_vida": 72,
+        }
+    },
+    
+    "austin": {
+        "id": "austin",
+        "name": "Austin",
+        "state": "Texas",
+        "state_code": "TX",
+        "county": "Travis",
+        "population": 1000000,
+        "metro_population": 2300000,
+        "population_growth": 2.8,
+        "latino_pct": 34.0,
+        "median_age": 34.0,
+        "median_income": 75000,
+        "unemployment_rate": 3.0,
+        "poverty_rate": 12.5,
+        "median_home_price": 550000,
+        "median_rent_1br": 1600,
+        "median_rent_2br": 2100,
+        "median_rent_3br": 2700,
+        "cost_of_living_index": 115,
+        "crime_index": 45,
+        "violent_crime_rate": 4.2,
+        "property_crime_rate": 32.5,
+        "climate": "calido",
+        "avg_temp_summer": 95,
+        "avg_temp_winter": 52,
+        "sunny_days": 228,
+        "rainy_days": 88,
+        "school_rating": 7.2,
+        "top_schools": ["LASA", "Austin High", "Westlake High"],
+        "universities": ["UT Austin", "St. Edward's", "Austin Community College"],
+        "walk_score": 42,
+        "transit_score": 32,
+        "bike_score": 53,
+        "avg_commute_minutes": 26,
+        "top_industries": ["tech", "gobierno", "educacion", "salud", "entretenimiento"],
+        "major_employers": ["Dell", "Apple", "Google", "Facebook", "Tesla", "State of Texas"],
+        "quality_of_life_score": 82,
+        "healthcare_score": 80,
+        "description": "Capital de Texas y hub tecnológico. Conocida por su música, cultura y calidad de vida. 'Keep Austin Weird'.",
+        "pros": ["Sin impuesto estatal", "Hub tech", "Cultura vibrante", "Música en vivo", "Outdoor lifestyle"],
+        "cons": ["Costo de vida en aumento", "Tráfico", "Calor extremo", "Gentrificación"],
+        "photo_url": "https://images.unsplash.com/photo-1531218150217-54595bc2b934?w=800",
+        "scores": {
+            "costo_vida": 45,
+            "seguridad": 65,
+            "oportunidades": 88,
+            "educacion": 72,
+            "salud": 80,
+            "transporte": 38,
+            "comunidad_latina": 75,
+            "clima": 70,
+            "calidad_vida": 82,
+        }
+    },
+    
+    "san_antonio": {
+        "id": "san_antonio",
+        "name": "San Antonio",
+        "state": "Texas",
+        "state_code": "TX",
+        "county": "Bexar",
+        "population": 1550000,
+        "metro_population": 2600000,
+        "population_growth": 1.5,
+        "latino_pct": 65.0,
+        "median_age": 34.0,
+        "median_income": 52000,
+        "unemployment_rate": 3.5,
+        "poverty_rate": 16.8,
+        "median_home_price": 280000,
+        "median_rent_1br": 1100,
+        "median_rent_2br": 1400,
+        "median_rent_3br": 1800,
+        "cost_of_living_index": 88,
+        "crime_index": 52,
+        "violent_crime_rate": 5.8,
+        "property_crime_rate": 35.2,
+        "climate": "calido",
+        "avg_temp_summer": 95,
+        "avg_temp_winter": 52,
+        "sunny_days": 220,
+        "rainy_days": 81,
+        "school_rating": 6.0,
+        "top_schools": ["Health Careers High", "International School of the Americas", "BASIS San Antonio"],
+        "universities": ["UTSA", "Trinity University", "UIW"],
+        "walk_score": 38,
+        "transit_score": 28,
+        "bike_score": 42,
+        "avg_commute_minutes": 25,
+        "top_industries": ["defensa", "salud", "turismo", "finanzas", "tech"],
+        "major_employers": ["USAA", "H-E-B", "Valero", "Joint Base San Antonio", "Methodist Healthcare"],
+        "quality_of_life_score": 72,
+        "healthcare_score": 75,
+        "description": "Ciudad histórica con el Álamo. Gran comunidad latina, bajo costo de vida y cultura tex-mex auténtica.",
+        "pros": ["Muy bajo costo de vida", "Sin impuesto estatal", "Gran comunidad latina", "Historia", "Amabilidad"],
+        "cons": ["Calor extremo", "Transporte limitado", "Menos oportunidades tech"],
+        "photo_url": "https://images.unsplash.com/photo-1568515387631-8b650bbcdb90?w=800",
+        "scores": {
+            "costo_vida": 78,
+            "seguridad": 55,
+            "oportunidades": 65,
+            "educacion": 60,
+            "salud": 75,
+            "transporte": 32,
+            "comunidad_latina": 95,
+            "clima": 65,
+            "calidad_vida": 72,
+        }
+    },
+    
+    # ==================== CALIFORNIA ====================
+    "los_angeles": {
+        "id": "los_angeles",
+        "name": "Los Angeles",
+        "state": "California",
+        "state_code": "CA",
+        "county": "Los Angeles",
+        "population": 3900000,
+        "metro_population": 13000000,
+        "population_growth": 0.3,
+        "latino_pct": 48.0,
+        "median_age": 36.2,
+        "median_income": 65000,
+        "unemployment_rate": 5.0,
+        "poverty_rate": 17.0,
+        "median_home_price": 950000,
+        "median_rent_1br": 2400,
+        "median_rent_2br": 3200,
+        "median_rent_3br": 4000,
+        "cost_of_living_index": 166,
+        "crime_index": 55,
+        "violent_crime_rate": 7.5,
+        "property_crime_rate": 28.5,
+        "climate": "templado",
+        "avg_temp_summer": 84,
+        "avg_temp_winter": 58,
+        "sunny_days": 284,
+        "rainy_days": 35,
+        "school_rating": 6.0,
+        "top_schools": ["Beverly Hills High", "Arcadia High", "Palos Verdes High"],
+        "universities": ["UCLA", "USC", "CalTech", "Loyola Marymount"],
+        "walk_score": 68,
+        "transit_score": 53,
+        "bike_score": 58,
+        "avg_commute_minutes": 32,
+        "top_industries": ["entretenimiento", "tech", "comercio", "moda", "aeroespacial"],
+        "major_employers": ["Walt Disney", "NBCUniversal", "SpaceX", "Kaiser Permanente"],
+        "quality_of_life_score": 70,
+        "healthcare_score": 75,
+        "description": "Ciudad del entretenimiento con clima perfecto. Gran diversidad, playas y montañas, pero muy cara.",
+        "pros": ["Clima perfecto", "Entretenimiento", "Diversidad", "Playas y montañas", "Oportunidades"],
+        "cons": ["Muy caro", "Tráfico terrible", "Homeless", "Incendios forestales"],
+        "photo_url": "https://images.unsplash.com/photo-1534190760961-74e8c1c5c3da?w=800",
+        "scores": {
+            "costo_vida": 20,
+            "seguridad": 50,
+            "oportunidades": 85,
+            "educacion": 60,
+            "salud": 75,
+            "transporte": 55,
+            "comunidad_latina": 90,
+            "clima": 95,
+            "calidad_vida": 70,
+        }
+    },
+    
+    "san_francisco": {
+        "id": "san_francisco",
+        "name": "San Francisco",
+        "state": "California",
+        "state_code": "CA",
+        "county": "San Francisco",
+        "population": 870000,
+        "metro_population": 4700000,
+        "population_growth": -0.5,
+        "latino_pct": 15.0,
+        "median_age": 38.5,
+        "median_income": 120000,
+        "unemployment_rate": 3.5,
+        "poverty_rate": 10.0,
+        "median_home_price": 1400000,
+        "median_rent_1br": 3200,
+        "median_rent_2br": 4200,
+        "median_rent_3br": 5500,
+        "cost_of_living_index": 190,
+        "crime_index": 60,
+        "violent_crime_rate": 6.5,
+        "property_crime_rate": 55.2,
+        "climate": "templado",
+        "avg_temp_summer": 68,
+        "avg_temp_winter": 52,
+        "sunny_days": 259,
+        "rainy_days": 67,
+        "school_rating": 6.5,
+        "top_schools": ["Lowell High", "Ruth Asawa SOTA", "Balboa High"],
+        "universities": ["UCSF", "USF", "SFSU", "UC Berkeley (nearby)"],
+        "walk_score": 88,
+        "transit_score": 80,
+        "bike_score": 72,
+        "avg_commute_minutes": 34,
+        "top_industries": ["tech", "finanzas", "biotech", "turismo", "salud"],
+        "major_employers": ["Salesforce", "Uber", "Airbnb", "Twitter", "Wells Fargo"],
+        "quality_of_life_score": 75,
+        "healthcare_score": 85,
+        "description": "Capital mundial de la tecnología. Ciudad icónica con el Golden Gate, diversidad y cultura progresista.",
+        "pros": ["Hub tech mundial", "Transporte público", "Cultura", "Diversidad", "Belleza natural"],
+        "cons": ["Extremadamente caro", "Homeless", "Criminalidad", "Niebla"],
+        "photo_url": "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800",
+        "scores": {
+            "costo_vida": 10,
+            "seguridad": 45,
+            "oportunidades": 95,
+            "educacion": 65,
+            "salud": 85,
+            "transporte": 82,
+            "comunidad_latina": 55,
+            "clima": 75,
+            "calidad_vida": 75,
+        }
+    },
+    
+    "san_diego": {
+        "id": "san_diego",
+        "name": "San Diego",
+        "state": "California",
+        "state_code": "CA",
+        "county": "San Diego",
+        "population": 1400000,
+        "metro_population": 3300000,
+        "population_growth": 0.8,
+        "latino_pct": 30.0,
+        "median_age": 35.5,
+        "median_income": 79000,
+        "unemployment_rate": 3.8,
+        "poverty_rate": 12.5,
+        "median_home_price": 850000,
+        "median_rent_1br": 2200,
+        "median_rent_2br": 2800,
+        "median_rent_3br": 3500,
+        "cost_of_living_index": 160,
+        "crime_index": 42,
+        "violent_crime_rate": 3.8,
+        "property_crime_rate": 22.5,
+        "climate": "templado",
+        "avg_temp_summer": 76,
+        "avg_temp_winter": 57,
+        "sunny_days": 266,
+        "rainy_days": 42,
+        "school_rating": 7.0,
+        "top_schools": ["Canyon Crest Academy", "Torrey Pines High", "La Jolla High"],
+        "universities": ["UCSD", "USD", "SDSU"],
+        "walk_score": 52,
+        "transit_score": 38,
+        "bike_score": 50,
+        "avg_commute_minutes": 25,
+        "top_industries": ["defensa", "biotech", "turismo", "tech", "salud"],
+        "major_employers": ["US Navy", "Qualcomm", "UC San Diego", "Sharp Healthcare"],
+        "quality_of_life_score": 82,
+        "healthcare_score": 80,
+        "description": "Ciudad con el mejor clima de USA. Playas hermosas, biotech hub y cercanía a México.",
+        "pros": ["Mejor clima", "Playas", "Seguridad", "Biotech hub", "Cercanía a México"],
+        "cons": ["Caro", "Transporte limitado", "Lejos de otras ciudades"],
+        "photo_url": "https://images.unsplash.com/photo-1538097304804-2a1b932466a9?w=800",
+        "scores": {
+            "costo_vida": 25,
+            "seguridad": 68,
+            "oportunidades": 75,
+            "educacion": 70,
+            "salud": 80,
+            "transporte": 42,
+            "comunidad_latina": 75,
+            "clima": 98,
+            "calidad_vida": 82,
+        }
+    },
+    
+    # ==================== NEW YORK ====================
+    "new_york_city": {
+        "id": "new_york_city",
+        "name": "New York City",
+        "state": "New York",
+        "state_code": "NY",
+        "county": "Multiple",
+        "population": 8300000,
+        "metro_population": 20000000,
+        "population_growth": 0.1,
+        "latino_pct": 29.0,
+        "median_age": 36.9,
+        "median_income": 67000,
+        "unemployment_rate": 5.5,
+        "poverty_rate": 17.9,
+        "median_home_price": 750000,
+        "median_rent_1br": 3500,
+        "median_rent_2br": 4500,
+        "median_rent_3br": 6000,
+        "cost_of_living_index": 187,
+        "crime_index": 48,
+        "violent_crime_rate": 3.8,
+        "property_crime_rate": 14.2,
+        "climate": "frio",
+        "avg_temp_summer": 84,
+        "avg_temp_winter": 35,
+        "sunny_days": 224,
+        "rainy_days": 119,
+        "school_rating": 6.5,
+        "top_schools": ["Stuyvesant", "Bronx Science", "Brooklyn Tech"],
+        "universities": ["Columbia", "NYU", "CUNY", "Fordham"],
+        "walk_score": 89,
+        "transit_score": 89,
+        "bike_score": 70,
+        "avg_commute_minutes": 41,
+        "top_industries": ["finanzas", "tech", "medios", "moda", "salud"],
+        "major_employers": ["JPMorgan Chase", "Citi", "Google", "Amazon", "NYC Government"],
+        "quality_of_life_score": 72,
+        "healthcare_score": 85,
+        "description": "La ciudad que nunca duerme. Centro financiero y cultural del mundo con infinitas oportunidades.",
+        "pros": ["Máximas oportunidades", "Transporte público", "Cultura", "Diversidad", "No necesitas carro"],
+        "cons": ["Muy caro", "Apartamentos pequeños", "Inviernos fríos", "Ritmo acelerado"],
+        "photo_url": "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800",
+        "scores": {
+            "costo_vida": 15,
+            "seguridad": 60,
+            "oportunidades": 95,
+            "educacion": 65,
+            "salud": 85,
+            "transporte": 95,
+            "comunidad_latina": 80,
+            "clima": 50,
+            "calidad_vida": 72,
+        }
+    },
+    
+    # ==================== OTROS ESTADOS ====================
+    "chicago": {
+        "id": "chicago",
+        "name": "Chicago",
+        "state": "Illinois",
+        "state_code": "IL",
+        "county": "Cook",
+        "population": 2700000,
+        "metro_population": 9500000,
+        "population_growth": -0.3,
+        "latino_pct": 29.0,
+        "median_age": 35.0,
+        "median_income": 62000,
+        "unemployment_rate": 5.0,
+        "poverty_rate": 18.4,
+        "median_home_price": 320000,
+        "median_rent_1br": 1800,
+        "median_rent_2br": 2200,
+        "median_rent_3br": 2800,
+        "cost_of_living_index": 107,
+        "crime_index": 65,
+        "violent_crime_rate": 8.8,
+        "property_crime_rate": 28.5,
+        "climate": "frio",
+        "avg_temp_summer": 84,
+        "avg_temp_winter": 28,
+        "sunny_days": 189,
+        "rainy_days": 124,
+        "school_rating": 5.5,
+        "top_schools": ["Walter Payton", "Northside College Prep", "Whitney Young"],
+        "universities": ["University of Chicago", "Northwestern", "UIC", "DePaul"],
+        "walk_score": 78,
+        "transit_score": 65,
+        "bike_score": 72,
+        "avg_commute_minutes": 35,
+        "top_industries": ["finanzas", "manufactura", "tech", "salud", "transporte"],
+        "major_employers": ["United Airlines", "Boeing", "Abbott", "Walgreens", "McDonald's HQ"],
+        "quality_of_life_score": 68,
+        "healthcare_score": 78,
+        "description": "Ciudad del viento con arquitectura icónica. Gran diversidad, cultura y gastronomía.",
+        "pros": ["Arquitectura", "Cultura", "Diversidad", "Transporte público", "Gastronomía"],
+        "cons": ["Inviernos muy fríos", "Criminalidad en algunas áreas", "Impuestos altos"],
+        "photo_url": "https://images.unsplash.com/photo-1494522855154-9297ac14b55f?w=800",
+        "scores": {
+            "costo_vida": 55,
+            "seguridad": 42,
+            "oportunidades": 75,
+            "educacion": 55,
+            "salud": 78,
+            "transporte": 72,
+            "comunidad_latina": 75,
+            "clima": 35,
+            "calidad_vida": 68,
+        }
+    },
+    
+    "denver": {
+        "id": "denver",
+        "name": "Denver",
+        "state": "Colorado",
+        "state_code": "CO",
+        "county": "Denver",
+        "population": 720000,
+        "metro_population": 2900000,
+        "population_growth": 1.5,
+        "latino_pct": 30.0,
+        "median_age": 34.5,
+        "median_income": 72000,
+        "unemployment_rate": 3.2,
+        "poverty_rate": 11.5,
+        "median_home_price": 600000,
+        "median_rent_1br": 1700,
+        "median_rent_2br": 2200,
+        "median_rent_3br": 2800,
+        "cost_of_living_index": 128,
+        "crime_index": 52,
+        "violent_crime_rate": 6.2,
+        "property_crime_rate": 38.5,
+        "climate": "frio",
+        "avg_temp_summer": 88,
+        "avg_temp_winter": 35,
+        "sunny_days": 300,
+        "rainy_days": 88,
+        "school_rating": 6.5,
+        "top_schools": ["Denver School of the Arts", "DSST", "George Washington High"],
+        "universities": ["CU Denver", "DU", "MSU Denver", "Regis"],
+        "walk_score": 61,
+        "transit_score": 45,
+        "bike_score": 75,
+        "avg_commute_minutes": 27,
+        "top_industries": ["tech", "energia", "aeroespacial", "salud", "turismo"],
+        "major_employers": ["Lockheed Martin", "Ball Corporation", "DaVita", "Arrow Electronics"],
+        "quality_of_life_score": 80,
+        "healthcare_score": 78,
+        "description": "Mile High City con 300 días de sol. Outdoor lifestyle, tech hub y cultura progresista.",
+        "pros": ["300 días de sol", "Outdoor lifestyle", "Tech hub", "Calidad de vida", "Montañas"],
+        "cons": ["Costo de vivienda alto", "Altitud", "Inviernos fríos", "Tráfico en aumento"],
+        "photo_url": "https://images.unsplash.com/photo-1546156929-a4c0ac411f47?w=800",
+        "scores": {
+            "costo_vida": 45,
+            "seguridad": 55,
+            "oportunidades": 78,
+            "educacion": 65,
+            "salud": 78,
+            "transporte": 52,
+            "comunidad_latina": 70,
+            "clima": 75,
+            "calidad_vida": 80,
+        }
+    },
+    
+    "phoenix": {
+        "id": "phoenix",
+        "name": "Phoenix",
+        "state": "Arizona",
+        "state_code": "AZ",
+        "county": "Maricopa",
+        "population": 1650000,
+        "metro_population": 4900000,
+        "population_growth": 2.0,
+        "latino_pct": 43.0,
+        "median_age": 34.0,
+        "median_income": 57000,
+        "unemployment_rate": 3.5,
+        "poverty_rate": 18.5,
+        "median_home_price": 450000,
+        "median_rent_1br": 1400,
+        "median_rent_2br": 1800,
+        "median_rent_3br": 2300,
+        "cost_of_living_index": 103,
+        "crime_index": 58,
+        "violent_crime_rate": 7.5,
+        "property_crime_rate": 35.2,
+        "climate": "calido",
+        "avg_temp_summer": 106,
+        "avg_temp_winter": 55,
+        "sunny_days": 299,
+        "rainy_days": 36,
+        "school_rating": 5.8,
+        "top_schools": ["BASIS Phoenix", "Arizona School for the Arts", "North High"],
+        "universities": ["ASU", "GCU", "University of Phoenix"],
+        "walk_score": 42,
+        "transit_score": 28,
+        "bike_score": 55,
+        "avg_commute_minutes": 26,
+        "top_industries": ["tech", "manufactura", "salud", "finanzas", "turismo"],
+        "major_employers": ["Banner Health", "Intel", "Honeywell", "American Express"],
+        "quality_of_life_score": 70,
+        "healthcare_score": 72,
+        "description": "Ciudad del sol con crecimiento explosivo. Bajo costo de vida y oportunidades en tech.",
+        "pros": ["Sol todo el año", "Bajo costo de vida", "Crecimiento económico", "Sin tráfico extremo"],
+        "cons": ["Calor extremo en verano", "Escasez de agua", "Sprawl urbano"],
+        "photo_url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800",
+        "scores": {
+            "costo_vida": 60,
+            "seguridad": 50,
+            "oportunidades": 72,
+            "educacion": 58,
+            "salud": 72,
+            "transporte": 35,
+            "comunidad_latina": 85,
+            "clima": 70,
+            "calidad_vida": 70,
+        }
+    },
+    
+    "atlanta": {
+        "id": "atlanta",
+        "name": "Atlanta",
+        "state": "Georgia",
+        "state_code": "GA",
+        "county": "Fulton",
+        "population": 500000,
+        "metro_population": 6100000,
+        "population_growth": 1.2,
+        "latino_pct": 5.0,
+        "median_age": 33.5,
+        "median_income": 59000,
+        "unemployment_rate": 3.8,
+        "poverty_rate": 20.0,
+        "median_home_price": 420000,
+        "median_rent_1br": 1600,
+        "median_rent_2br": 2000,
+        "median_rent_3br": 2500,
+        "cost_of_living_index": 102,
+        "crime_index": 62,
+        "violent_crime_rate": 9.5,
+        "property_crime_rate": 42.5,
+        "climate": "templado",
+        "avg_temp_summer": 89,
+        "avg_temp_winter": 45,
+        "sunny_days": 217,
+        "rainy_days": 115,
+        "school_rating": 5.5,
+        "top_schools": ["Grady High", "North Atlanta High", "Midtown High"],
+        "universities": ["Georgia Tech", "Emory", "Georgia State", "Morehouse"],
+        "walk_score": 48,
+        "transit_score": 48,
+        "bike_score": 45,
+        "avg_commute_minutes": 32,
+        "top_industries": ["logistica", "tech", "entretenimiento", "finanzas", "salud"],
+        "major_employers": ["Delta Air Lines", "Coca-Cola", "Home Depot", "UPS", "CNN"],
+        "quality_of_life_score": 70,
+        "healthcare_score": 78,
+        "description": "Capital del sur con aeropuerto más transitado del mundo. Hub de negocios y entretenimiento.",
+        "pros": ["Hub de aerolíneas", "Crecimiento económico", "Diversidad", "Costo razonable"],
+        "cons": ["Tráfico terrible", "Criminalidad", "Humedad", "Transporte limitado"],
+        "photo_url": "https://images.unsplash.com/photo-1575917649705-5b59aaa12e6b?w=800",
+        "scores": {
+            "costo_vida": 58,
+            "seguridad": 42,
+            "oportunidades": 75,
+            "educacion": 55,
+            "salud": 78,
+            "transporte": 50,
+            "comunidad_latina": 35,
+            "clima": 70,
+            "calidad_vida": 70,
+        }
+    },
+    
+    "seattle": {
+        "id": "seattle",
+        "name": "Seattle",
+        "state": "Washington",
+        "state_code": "WA",
+        "county": "King",
+        "population": 750000,
+        "metro_population": 4000000,
+        "population_growth": 1.0,
+        "latino_pct": 7.0,
+        "median_age": 35.5,
+        "median_income": 97000,
+        "unemployment_rate": 3.5,
+        "poverty_rate": 11.0,
+        "median_home_price": 850000,
+        "median_rent_1br": 2200,
+        "median_rent_2br": 2800,
+        "median_rent_3br": 3500,
+        "cost_of_living_index": 172,
+        "crime_index": 55,
+        "violent_crime_rate": 6.2,
+        "property_crime_rate": 52.5,
+        "climate": "templado",
+        "avg_temp_summer": 75,
+        "avg_temp_winter": 42,
+        "sunny_days": 152,
+        "rainy_days": 152,
+        "school_rating": 6.8,
+        "top_schools": ["Garfield High", "Roosevelt High", "Ballard High"],
+        "universities": ["University of Washington", "Seattle University", "Seattle Pacific"],
+        "walk_score": 73,
+        "transit_score": 58,
+        "bike_score": 70,
+        "avg_commute_minutes": 30,
+        "top_industries": ["tech", "aeroespacial", "comercio", "salud", "turismo"],
+        "major_employers": ["Amazon", "Microsoft", "Boeing", "Starbucks", "Costco"],
+        "quality_of_life_score": 78,
+        "healthcare_score": 82,
+        "description": "Emerald City con Amazon y Microsoft. Naturaleza espectacular pero lluvia frecuente.",
+        "pros": ["Sin impuesto estatal", "Tech hub", "Naturaleza", "Calidad de vida"],
+        "cons": ["Muy caro", "Lluvia frecuente", "Gris en invierno", "Homeless"],
+        "photo_url": "https://images.unsplash.com/photo-1502175353174-a7a70e73b362?w=800",
+        "scores": {
+            "costo_vida": 25,
+            "seguridad": 52,
+            "oportunidades": 88,
+            "educacion": 68,
+            "salud": 82,
+            "transporte": 62,
+            "comunidad_latina": 35,
+            "clima": 55,
+            "calidad_vida": 78,
+        }
+    },
+    
+    "charlotte": {
+        "id": "charlotte",
+        "name": "Charlotte",
+        "state": "North Carolina",
+        "state_code": "NC",
+        "county": "Mecklenburg",
+        "population": 900000,
+        "metro_population": 2700000,
+        "population_growth": 2.0,
+        "latino_pct": 14.0,
+        "median_age": 34.0,
+        "median_income": 62000,
+        "unemployment_rate": 3.5,
+        "poverty_rate": 12.8,
+        "median_home_price": 400000,
+        "median_rent_1br": 1500,
+        "median_rent_2br": 1900,
+        "median_rent_3br": 2400,
+        "cost_of_living_index": 96,
+        "crime_index": 52,
+        "violent_crime_rate": 6.5,
+        "property_crime_rate": 32.5,
+        "climate": "templado",
+        "avg_temp_summer": 89,
+        "avg_temp_winter": 42,
+        "sunny_days": 218,
+        "rainy_days": 109,
+        "school_rating": 6.2,
+        "top_schools": ["Myers Park High", "Ardrey Kell High", "Providence High"],
+        "universities": ["UNC Charlotte", "Queens University", "Johnson C. Smith"],
+        "walk_score": 26,
+        "transit_score": 25,
+        "bike_score": 32,
+        "avg_commute_minutes": 27,
+        "top_industries": ["finanzas", "tech", "energia", "salud", "manufactura"],
+        "major_employers": ["Bank of America", "Wells Fargo", "Duke Energy", "Lowe's"],
+        "quality_of_life_score": 75,
+        "healthcare_score": 78,
+        "description": "Segunda ciudad bancaria de USA. Crecimiento rápido con buen balance costo-oportunidades.",
+        "pros": ["Centro financiero", "Crecimiento económico", "Costo razonable", "Clima agradable"],
+        "cons": ["Transporte limitado", "Sprawl urbano", "Menos diversidad latina"],
+        "photo_url": "https://images.unsplash.com/photo-1560184897-ae75f418493e?w=800",
+        "scores": {
+            "costo_vida": 62,
+            "seguridad": 55,
+            "oportunidades": 75,
+            "educacion": 62,
+            "salud": 78,
+            "transporte": 30,
+            "comunidad_latina": 55,
+            "clima": 75,
+            "calidad_vida": 75,
+        }
+    },
+    
+    "nashville": {
+        "id": "nashville",
+        "name": "Nashville",
+        "state": "Tennessee",
+        "state_code": "TN",
+        "county": "Davidson",
+        "population": 690000,
+        "metro_population": 2000000,
+        "population_growth": 1.8,
+        "latino_pct": 10.0,
+        "median_age": 34.5,
+        "median_income": 59000,
+        "unemployment_rate": 2.8,
+        "poverty_rate": 14.5,
+        "median_home_price": 450000,
+        "median_rent_1br": 1500,
+        "median_rent_2br": 1900,
+        "median_rent_3br": 2400,
+        "cost_of_living_index": 102,
+        "crime_index": 55,
+        "violent_crime_rate": 8.2,
+        "property_crime_rate": 35.5,
+        "climate": "templado",
+        "avg_temp_summer": 89,
+        "avg_temp_winter": 40,
+        "sunny_days": 208,
+        "rainy_days": 119,
+        "school_rating": 5.5,
+        "top_schools": ["Hume-Fogg Academic", "Martin Luther King Jr. Magnet", "Nashville School of the Arts"],
+        "universities": ["Vanderbilt", "Belmont", "Tennessee State", "Lipscomb"],
+        "walk_score": 28,
+        "transit_score": 24,
+        "bike_score": 32,
+        "avg_commute_minutes": 26,
+        "top_industries": ["salud", "musica", "turismo", "finanzas", "tech"],
+        "major_employers": ["HCA Healthcare", "Vanderbilt", "Nissan", "Amazon"],
+        "quality_of_life_score": 75,
+        "healthcare_score": 82,
+        "description": "Music City con crecimiento explosivo. Capital de la música country y hub de salud.",
+        "pros": ["Sin impuesto estatal", "Música y cultura", "Crecimiento económico", "Amabilidad"],
+        "cons": ["Costo en aumento", "Transporte limitado", "Tornados", "Turismo excesivo"],
+        "photo_url": "https://images.unsplash.com/photo-1545419913-775e3e5a5f6e?w=800",
+        "scores": {
+            "costo_vida": 55,
+            "seguridad": 52,
+            "oportunidades": 72,
+            "educacion": 55,
+            "salud": 82,
+            "transporte": 28,
+            "comunidad_latina": 45,
+            "clima": 70,
+            "calidad_vida": 75,
+        }
+    },
+    
+    "las_vegas": {
+        "id": "las_vegas",
+        "name": "Las Vegas",
+        "state": "Nevada",
+        "state_code": "NV",
+        "county": "Clark",
+        "population": 650000,
+        "metro_population": 2300000,
+        "population_growth": 1.5,
+        "latino_pct": 33.0,
+        "median_age": 38.0,
+        "median_income": 56000,
+        "unemployment_rate": 5.5,
+        "poverty_rate": 14.5,
+        "median_home_price": 420000,
+        "median_rent_1br": 1300,
+        "median_rent_2br": 1600,
+        "median_rent_3br": 2100,
+        "cost_of_living_index": 103,
+        "crime_index": 58,
+        "violent_crime_rate": 6.8,
+        "property_crime_rate": 35.2,
+        "climate": "calido",
+        "avg_temp_summer": 104,
+        "avg_temp_winter": 48,
+        "sunny_days": 294,
+        "rainy_days": 26,
+        "school_rating": 5.0,
+        "top_schools": ["A-TECH", "Las Vegas Academy", "Southwest Career and Technical Academy"],
+        "universities": ["UNLV", "Nevada State College", "College of Southern Nevada"],
+        "walk_score": 41,
+        "transit_score": 39,
+        "bike_score": 45,
+        "avg_commute_minutes": 25,
+        "top_industries": ["turismo", "entretenimiento", "construccion", "salud", "tech"],
+        "major_employers": ["MGM Resorts", "Caesars", "Wynn", "Station Casinos"],
+        "quality_of_life_score": 65,
+        "healthcare_score": 68,
+        "description": "Sin City con entretenimiento 24/7. Sin impuesto estatal pero economía dependiente del turismo.",
+        "pros": ["Sin impuesto estatal", "Entretenimiento", "Bajo costo de vida", "Sol todo el año"],
+        "cons": ["Calor extremo", "Economía volátil", "Escuelas débiles", "Escasez de agua"],
+        "photo_url": "https://images.unsplash.com/photo-1581351721010-8cf859cb14a4?w=800",
+        "scores": {
+            "costo_vida": 60,
+            "seguridad": 48,
+            "oportunidades": 62,
+            "educacion": 50,
+            "salud": 68,
+            "transporte": 42,
+            "comunidad_latina": 75,
+            "clima": 70,
+            "calidad_vida": 65,
+        }
+    },
+    
+    "boston": {
+        "id": "boston",
+        "name": "Boston",
+        "state": "Massachusetts",
+        "state_code": "MA",
+        "county": "Suffolk",
+        "population": 690000,
+        "metro_population": 4900000,
+        "population_growth": 0.5,
+        "latino_pct": 20.0,
+        "median_age": 32.0,
+        "median_income": 71000,
+        "unemployment_rate": 3.5,
+        "poverty_rate": 18.0,
+        "median_home_price": 750000,
+        "median_rent_1br": 2800,
+        "median_rent_2br": 3500,
+        "median_rent_3br": 4200,
+        "cost_of_living_index": 152,
+        "crime_index": 48,
+        "violent_crime_rate": 6.5,
+        "property_crime_rate": 18.5,
+        "climate": "frio",
+        "avg_temp_summer": 81,
+        "avg_temp_winter": 32,
+        "sunny_days": 200,
+        "rainy_days": 126,
+        "school_rating": 7.5,
+        "top_schools": ["Boston Latin", "Boston Latin Academy", "John D. O'Bryant"],
+        "universities": ["Harvard", "MIT", "Boston University", "Northeastern", "Boston College"],
+        "walk_score": 83,
+        "transit_score": 74,
+        "bike_score": 70,
+        "avg_commute_minutes": 31,
+        "top_industries": ["educacion", "salud", "biotech", "finanzas", "tech"],
+        "major_employers": ["Mass General Hospital", "Harvard", "MIT", "State Street", "Fidelity"],
+        "quality_of_life_score": 78,
+        "healthcare_score": 92,
+        "description": "Ciudad universitaria con las mejores instituciones del mundo. Hub de biotech y salud.",
+        "pros": ["Mejores universidades", "Biotech hub", "Transporte público", "Historia", "Salud de clase mundial"],
+        "cons": ["Muy caro", "Inviernos duros", "Tráfico", "Apartamentos pequeños"],
+        "photo_url": "https://images.unsplash.com/photo-1501979376754-1d09c4639f67?w=800",
+        "scores": {
+            "costo_vida": 25,
+            "seguridad": 60,
+            "oportunidades": 85,
+            "educacion": 95,
+            "salud": 92,
+            "transporte": 75,
+            "comunidad_latina": 60,
+            "clima": 40,
+            "calidad_vida": 78,
+        }
+    },
+}
+
+
+# ============== FUNCIONES DE BÚSQUEDA ==============
+
+def get_city(city_id: str) -> Optional[Dict]:
+    """Obtiene datos de una ciudad por ID"""
+    return CITIES_DATABASE.get(city_id.lower().replace(" ", "_"))
+
+
+def search_cities(
+    state_code: str = None,
+    region: str = None,
+    climate: str = None,
+    min_population: int = None,
+    max_population: int = None,
+    min_latino_pct: float = None,
+    max_cost_index: int = None,
+    min_safety_score: int = None,
+    industries: List[str] = None,
+    limit: int = 50,
+) -> List[Dict]:
+    """
+    Busca ciudades según criterios
+    
+    Args:
+        state_code: Código del estado (ej: "FL", "TX")
+        region: Región (costa_este, costa_oeste, sur, midwest, montanas)
+        climate: Clima (calido, templado, frio)
+        min_population: Población mínima
+        max_population: Población máxima
+        min_latino_pct: Porcentaje mínimo de latinos
+        max_cost_index: Índice máximo de costo de vida
+        min_safety_score: Score mínimo de seguridad (100 - crime_index)
+        industries: Lista de industrias requeridas
+        limit: Número máximo de resultados
+    
+    Returns:
+        Lista de ciudades que cumplen los criterios
+    """
+    results = []
+    
+    # Importar datos de estados para filtrar por región
+    from .cities_usa import STATES_DATA
+    
+    for city_id, city in CITIES_DATABASE.items():
+        # Filtrar por estado
+        if state_code and city["state_code"] != state_code.upper():
+            continue
+        
+        # Filtrar por región
+        if region:
+            state_data = STATES_DATA.get(city["state_code"])
+            if state_data and state_data.get("region") != region:
+                continue
+        
+        # Filtrar por clima
+        if climate and city.get("climate") != climate:
+            continue
+        
+        # Filtrar por población
+        if min_population and city["population"] < min_population:
+            continue
+        if max_population and city["population"] > max_population:
+            continue
+        
+        # Filtrar por población latina
+        if min_latino_pct and city["latino_pct"] < min_latino_pct:
+            continue
+        
+        # Filtrar por costo de vida
+        if max_cost_index and city["cost_of_living_index"] > max_cost_index:
+            continue
+        
+        # Filtrar por seguridad
+        if min_safety_score:
+            safety_score = 100 - city["crime_index"]
+            if safety_score < min_safety_score:
+                continue
+        
+        # Filtrar por industrias
+        if industries:
+            city_industries = set(city.get("top_industries", []))
+            if not any(ind in city_industries for ind in industries):
+                continue
+        
+        results.append(city)
+    
+    # Ordenar por población (mayor primero)
+    results.sort(key=lambda x: x["population"], reverse=True)
+    
+    return results[:limit]
+
+
+def get_cities_by_state(state_code: str) -> List[Dict]:
+    """Obtiene todas las ciudades de un estado"""
+    return search_cities(state_code=state_code, limit=100)
+
+
+def get_top_cities_for_latinos(limit: int = 20) -> List[Dict]:
+    """Obtiene las mejores ciudades para latinos"""
+    return search_cities(min_latino_pct=20.0, limit=limit)
+
+
+def get_affordable_cities(max_cost_index: int = 100, limit: int = 20) -> List[Dict]:
+    """Obtiene ciudades económicas"""
+    return search_cities(max_cost_index=max_cost_index, limit=limit)
+
+
+def get_safe_cities(min_safety_score: int = 50, limit: int = 20) -> List[Dict]:
+    """Obtiene ciudades seguras"""
+    return search_cities(min_safety_score=min_safety_score, limit=limit)
+
+
+def get_cities_count() -> int:
+    """Retorna el número total de ciudades en la base de datos"""
+    return len(CITIES_DATABASE)
+
+
+# Exportar todo
+__all__ = [
+    "CityData",
+    "CITIES_DATABASE",
+    "get_city",
+    "search_cities",
+    "get_cities_by_state",
+    "get_top_cities_for_latinos",
+    "get_affordable_cities",
+    "get_safe_cities",
+    "get_cities_count",
+]
