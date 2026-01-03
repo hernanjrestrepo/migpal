@@ -1,10 +1,10 @@
-# 🌍 MigPAL V2.0 - Global Migration Assistant
+# 🌍 MigPAL V2.1 - Global Migration Assistant
 
 > **Tu consultor personal de migración**
 > Bot de Telegram que elimina los "2 años de dolor" de los migrantes
 
 [![Bot](https://img.shields.io/badge/Telegram-@MigPAL__Bot-blue)](https://t.me/MigPAL_Bot)
-[![Version](https://img.shields.io/badge/Version-2.0-green)]()
+[![Version](https://img.shields.io/badge/Version-2.1-green)]()
 [![AI](https://img.shields.io/badge/AI-MigPAL_Llama3-purple)]()
 
 ---
@@ -102,11 +102,14 @@ Integración con APIs de empleo:
 | `/precios` | Ver precios MigPAL |
 | `/diagnostico` | Iniciar diagnóstico ($50) |
 
-### Exploración
+### 🆕 Exploración V2.1
 | Comando | Descripción |
 |---------|-------------|
+| `/flujo` | **NUEVO** Flujo guiado de migración |
+| `/explorar` | **NUEVO** Explorar ciudades con scoring |
+| `/viviendas` | **NUEVO** Buscar viviendas (Zillow) |
+| `/empleos` | Buscar trabajos con sponsor |
 | `/checklist` | Documentos requeridos |
-| `/empleos` | Buscar trabajos |
 | `/guia` | Guías por país |
 
 ### Soporte
@@ -278,6 +281,16 @@ tmux new-session -d -s migpal_bot 'source .venv/bin/activate && python run_teleg
 ## 📝 Changelog
 
 ### V2.1 (3 Enero 2026)
+- ✅ **Comando /explorar** - Exploración de ciudades con scoring personalizado
+- ✅ **Comando /viviendas** - Búsqueda de viviendas con Zillow API
+- ✅ **Comando /flujo** - Flujo conversacional guiado paso a paso
+- ✅ Navegación de ciudades uno por uno con scores
+- ✅ Sistema de favoritos para ciudades y viviendas
+- ✅ Integración activa de conversation_flow.py
+- ✅ Callbacks completos para exploración y flujo
+- ✅ Help actualizado con nuevos comandos V2.0
+
+### V2.0.1 (3 Enero 2026)
 - ✅ **AI Brain V8 CONSULTIVO** - Cambio de modelo
 - ✅ Modelo: qwen2.5:7b → migpal:latest (Llama 3)
 - ✅ Enfoque consultivo: "Yo guío, cliente confirma"
@@ -305,7 +318,7 @@ Proyecto privado - Todos los derechos reservados
 
 ## 📅 Última Actualización
 
-**3 de Enero 2026** - V2.1 (AI Brain V8 Consultivo)
+**3 de Enero 2026** - V2.1 (Exploración + Flujo Conversacional)
 
 ### Estado del Sistema
 - 🟢 Bot: **Funcionando** (tmux: migpal_bot)
@@ -315,4 +328,4 @@ Proyecto privado - Todos los derechos reservados
 
 ---
 
-*MigPAL V2.0 - Eliminando los "2 años de dolor" de los migrantes* 🌍✨
+*MigPAL V2.1 - Eliminando los "2 años de dolor" de los migrantes* 🌍✨
