@@ -1,15 +1,12 @@
 """
 MigPAL Job Search - Búsqueda de Trabajos Reales
-Integración con LinkedIn, Indeed y otras fuentes
+Integración con LinkedIn Jobs API (RapidAPI)
 
-FUENTES DE DATOS:
-1. LinkedIn Jobs API (via RapidAPI)
-2. Indeed API (via RapidAPI)
-3. Glassdoor (scraping)
-4. USAJobs.gov (API oficial)
+API: linkedin-job-search-api.p.rapidapi.com
+Endpoint: /active-jb-24h (trabajos activos últimas 24h)
 
 CARACTERÍSTICAS:
-- Búsqueda por industria, ubicación, salario
+- Búsqueda por título, ubicación
 - Filtro de visa sponsorship
 - Datos de salarios reales
 - URLs funcionales a las ofertas
@@ -24,6 +21,7 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 import re
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +29,11 @@ logger = logging.getLogger(__name__)
 
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
 
-# LinkedIn Jobs API (RapidAPI)
-LINKEDIN_API_HOST = "linkedin-jobs-search.p.rapidapi.com"
+# LinkedIn Job Search API (RapidAPI) - La que tienes configurada
+LINKEDIN_API_HOST = "linkedin-job-search-api.p.rapidapi.com"
+LINKEDIN_API_URL = f"https://{LINKEDIN_API_HOST}/active-jb-24h"
 
-# Indeed API (RapidAPI)  
-INDEED_API_HOST = "indeed12.p.rapidapi.com"
-
-# JSearch API (RapidAPI) - Agregador de múltiples fuentes
+# JSearch API (RapidAPI) - Agregador alternativo
 JSEARCH_API_HOST = "jsearch.p.rapidapi.com"
 
 
@@ -99,18 +95,22 @@ class JobListing:
         remote_badge = "🏠 Remoto" if self.is_remote else "🏢 Presencial"
         visa_badge = "✅ Patrocina Visa" if self.visa_sponsorship else ""
         
-        return f"""💼 *{self.title}*
+        msg = f"""💼 **{self.title}**
 🏢 {self.company}
 📍 {self.location} {remote_badge}
 💰 {self.format_salary()}
-{visa_badge}
-
-📋 *Requisitos principales:*
+"""
+        if visa_badge:
+            msg += f"{visa_badge}\n"
+        
+        msg += f"""
+📋 **Requisitos principales:**
 {self._format_requirements()}
 
 🔗 [Aplicar ahora]({self.apply_url})
 📅 Publicado: {self.posted_date}
 """
+        return msg
     
     def _format_requirements(self) -> str:
         """Formatea los requisitos"""
@@ -122,7 +122,7 @@ class JobListing:
 # ============== MOTOR DE BÚSQUEDA ==============
 
 class JobSearchEngine:
-    """Motor de búsqueda de trabajos"""
+    """Motor de búsqueda de trabajos usando LinkedIn API"""
     
     def __init__(self):
         self.http_client = None
@@ -142,170 +142,110 @@ class JobSearchEngine:
     async def search_jobs(
         self,
         query: str,
-        location: str,
+        location: str = "United States",
         salary_min: int = None,
         remote_only: bool = False,
         visa_sponsorship: bool = False,
         experience_level: str = None,
         job_type: str = None,
-        limit: int = 20
+        limit: int = 20,
+        offset: int = 0
     ) -> List[JobListing]:
         """
-        Busca trabajos en múltiples fuentes
+        Busca trabajos en LinkedIn API
         
         Args:
-            query: Título o keywords del trabajo
-            location: Ciudad, estado o "remote"
+            query: Título o keywords del trabajo (ej: "Data Engineer", "Software Developer")
+            location: Ubicación (ej: "United States", "Miami, FL", "California")
             salary_min: Salario mínimo anual
             remote_only: Solo trabajos remotos
             visa_sponsorship: Solo trabajos que patrocinan visa
             experience_level: entry, mid, senior, executive
             job_type: full-time, part-time, contract
             limit: Número máximo de resultados
+            offset: Offset para paginación
         
         Returns:
             Lista de JobListing ordenados por relevancia
         """
         jobs = []
         
-        # Intentar JSearch primero (agregador)
-        jsearch_jobs = await self._search_jsearch(
-            query, location, salary_min, remote_only, limit
+        # Buscar en LinkedIn API
+        linkedin_jobs = await self._search_linkedin_api(
+            query, location, limit, offset
         )
-        jobs.extend(jsearch_jobs)
+        jobs.extend(linkedin_jobs)
         
-        # Si no hay suficientes resultados, buscar en LinkedIn
-        if len(jobs) < limit:
-            linkedin_jobs = await self._search_linkedin(
-                query, location, limit - len(jobs)
-            )
-            jobs.extend(linkedin_jobs)
+        # Si no hay API key o no hay resultados, usar datos de ejemplo
+        if not jobs:
+            jobs = self._get_sample_jobs(query, location, limit)
         
         # Filtrar por visa sponsorship si es necesario
         if visa_sponsorship:
             jobs = [j for j in jobs if j.visa_sponsorship or self._check_visa_keywords(j)]
         
+        # Filtrar por remoto
+        if remote_only:
+            jobs = [j for j in jobs if j.is_remote]
+        
         # Filtrar por nivel de experiencia
         if experience_level:
             jobs = [j for j in jobs if j.experience_level == experience_level or not j.experience_level]
+        
+        # Filtrar por salario mínimo
+        if salary_min:
+            jobs = [j for j in jobs if (j.salary_min or 0) >= salary_min or j.salary_min == 0]
         
         # Ordenar por salario (mayor primero)
         jobs.sort(key=lambda x: x.salary_max or x.salary_min or 0, reverse=True)
         
         return jobs[:limit]
     
-    async def _search_jsearch(
+    async def _search_linkedin_api(
         self,
         query: str,
         location: str,
-        salary_min: int = None,
-        remote_only: bool = False,
-        limit: int = 20
+        limit: int = 10,
+        offset: int = 0
     ) -> List[JobListing]:
-        """Busca en JSearch API (agregador de LinkedIn, Indeed, etc.)"""
+        """
+        Busca en LinkedIn Job Search API (RapidAPI)
+        
+        Endpoint: https://linkedin-job-search-api.p.rapidapi.com/active-jb-24h
+        """
         
         if not RAPIDAPI_KEY:
             logger.warning("No RAPIDAPI_KEY configured, using sample data")
-            return self._get_sample_jobs(query, location, limit)
-        
-        try:
-            client = await self._get_client()
-            
-            params = {
-                "query": f"{query} in {location}",
-                "page": "1",
-                "num_pages": "1",
-            }
-            
-            if remote_only:
-                params["remote_jobs_only"] = "true"
-            
-            headers = {
-                "X-RapidAPI-Key": RAPIDAPI_KEY,
-                "X-RapidAPI-Host": JSEARCH_API_HOST
-            }
-            
-            response = await client.get(
-                f"https://{JSEARCH_API_HOST}/search",
-                params=params,
-                headers=headers
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                jobs = []
-                
-                for job in data.get("data", [])[:limit]:
-                    # Extraer salario
-                    salary_min_val = job.get("job_min_salary") or 0
-                    salary_max_val = job.get("job_max_salary") or 0
-                    
-                    # Detectar visa sponsorship
-                    description = job.get("job_description", "")
-                    visa_sponsor = self._detect_visa_sponsorship(description)
-                    
-                    jobs.append(JobListing(
-                        job_id=job.get("job_id", ""),
-                        title=job.get("job_title", ""),
-                        company=job.get("employer_name", ""),
-                        company_logo=job.get("employer_logo", ""),
-                        location=f"{job.get('job_city', '')}, {job.get('job_state', '')}",
-                        city=job.get("job_city", ""),
-                        state=job.get("job_state", ""),
-                        is_remote=job.get("job_is_remote", False),
-                        job_type=job.get("job_employment_type", "full-time"),
-                        salary_min=int(salary_min_val) if salary_min_val else 0,
-                        salary_max=int(salary_max_val) if salary_max_val else 0,
-                        salary_currency="USD",
-                        salary_period="yearly",
-                        description=description[:500],
-                        requirements=self._extract_requirements(description),
-                        benefits=self._extract_benefits(description),
-                        posted_date=job.get("job_posted_at_datetime_utc", "")[:10],
-                        apply_url=job.get("job_apply_link", ""),
-                        source="jsearch",
-                        visa_sponsorship=visa_sponsor,
-                        experience_level=self._detect_experience_level(job.get("job_title", "")),
-                        industry=job.get("job_publisher", ""),
-                    ))
-                
-                return jobs
-            else:
-                logger.error(f"JSearch API error: {response.status_code}")
-                return self._get_sample_jobs(query, location, limit)
-                
-        except Exception as e:
-            logger.error(f"Error searching JSearch: {e}")
-            return self._get_sample_jobs(query, location, limit)
-    
-    async def _search_linkedin(
-        self,
-        query: str,
-        location: str,
-        limit: int = 10
-    ) -> List[JobListing]:
-        """Busca en LinkedIn Jobs API"""
-        
-        if not RAPIDAPI_KEY:
             return []
         
         try:
             client = await self._get_client()
             
+            # Formatear el título para el filtro
+            # El API espera formato: "Data Engineer" (con comillas)
+            title_filter = f'"{query}"'
+            
+            # Formatear la ubicación
+            # El API espera formato: "United States" OR "California"
+            location_filter = f'"{location}"'
+            
             params = {
-                "keywords": query,
-                "locationId": location,
-                "datePosted": "anyTime",
-                "sort": "mostRelevant",
+                "limit": str(min(limit, 50)),  # Max 50 por request
+                "offset": str(offset),
+                "title_filter": title_filter,
+                "location_filter": location_filter,
+                "description_type": "text"  # Puede ser "text" o "html"
             }
             
             headers = {
-                "X-RapidAPI-Key": RAPIDAPI_KEY,
-                "X-RapidAPI-Host": LINKEDIN_API_HOST
+                "x-rapidapi-host": LINKEDIN_API_HOST,
+                "x-rapidapi-key": RAPIDAPI_KEY
             }
             
+            logger.info(f"Searching LinkedIn API: {query} in {location}")
+            
             response = await client.get(
-                f"https://{LINKEDIN_API_HOST}/",
+                LINKEDIN_API_URL,
                 params=params,
                 headers=headers
             )
@@ -314,43 +254,187 @@ class JobSearchEngine:
                 data = response.json()
                 jobs = []
                 
-                for job in data[:limit]:
+                # La respuesta puede ser una lista directa o un objeto con data
+                job_list = data if isinstance(data, list) else data.get("data", data.get("jobs", []))
+                
+                for job in job_list[:limit]:
+                    # Extraer datos del job
+                    title = job.get("title", job.get("job_title", ""))
+                    company = job.get("company", job.get("company_name", job.get("employer_name", "")))
+                    location_str = job.get("location", job.get("job_location", ""))
+                    description = job.get("description", job.get("job_description", ""))
+                    url = job.get("url", job.get("job_url", job.get("apply_url", "")))
+                    posted = job.get("posted_date", job.get("posted_at", job.get("date_posted", "")))
+                    
+                    # Extraer salario si está disponible
+                    salary_min = 0
+                    salary_max = 0
+                    salary_str = job.get("salary", job.get("salary_range", ""))
+                    if salary_str:
+                        salary_min, salary_max = self._parse_salary(salary_str)
+                    
+                    # Detectar si es remoto
+                    is_remote = (
+                        "remote" in location_str.lower() or 
+                        "remote" in title.lower() or
+                        job.get("is_remote", False) or
+                        job.get("remote", False)
+                    )
+                    
+                    # Detectar visa sponsorship
+                    visa_sponsor = self._detect_visa_sponsorship(description)
+                    
+                    # Detectar nivel de experiencia
+                    exp_level = self._detect_experience_level(title)
+                    
+                    # Parsear ubicación
+                    city, state = self._parse_location(location_str)
+                    
                     jobs.append(JobListing(
-                        job_id=str(job.get("id", "")),
-                        title=job.get("title", ""),
-                        company=job.get("company", {}).get("name", ""),
-                        company_logo=job.get("company", {}).get("logo", ""),
-                        location=job.get("location", ""),
-                        city="",
-                        state="",
-                        is_remote="remote" in job.get("location", "").lower(),
-                        job_type=job.get("type", "full-time"),
-                        salary_min=0,
-                        salary_max=0,
+                        job_id=job.get("id", job.get("job_id", str(hash(title + company)))),
+                        title=title,
+                        company=company,
+                        company_logo=job.get("company_logo", job.get("logo", "")),
+                        location=location_str,
+                        city=city,
+                        state=state,
+                        is_remote=is_remote,
+                        job_type=job.get("employment_type", job.get("job_type", "full-time")),
+                        salary_min=salary_min,
+                        salary_max=salary_max,
                         salary_currency="USD",
                         salary_period="yearly",
-                        description=job.get("description", "")[:500],
-                        requirements=[],
-                        benefits=[],
-                        posted_date=job.get("postDate", ""),
-                        apply_url=job.get("url", f"https://www.linkedin.com/jobs/view/{job.get('id', '')}"),
+                        description=description[:1000] if description else "",
+                        requirements=self._extract_requirements(description),
+                        benefits=self._extract_benefits(description),
+                        posted_date=posted[:10] if posted else datetime.now().strftime("%Y-%m-%d"),
+                        apply_url=url or f"https://www.linkedin.com/jobs/search/?keywords={quote(query)}",
                         source="linkedin",
-                        visa_sponsorship=False,
+                        visa_sponsorship=visa_sponsor,
+                        experience_level=exp_level,
+                        industry=job.get("industry", ""),
                     ))
                 
+                logger.info(f"Found {len(jobs)} jobs from LinkedIn API")
                 return jobs
-            
+            else:
+                logger.error(f"LinkedIn API error: {response.status_code} - {response.text[:200]}")
+                return []
+                
         except Exception as e:
-            logger.error(f"Error searching LinkedIn: {e}")
+            logger.error(f"Error searching LinkedIn API: {e}")
+            return []
+    
+    async def search_by_company(
+        self,
+        company: str,
+        location: str = "United States",
+        limit: int = 10
+    ) -> List[JobListing]:
+        """Busca trabajos de una empresa específica"""
+        return await self.search_jobs(
+            query=company,
+            location=location,
+            limit=limit
+        )
+    
+    async def search_visa_sponsorship_jobs(
+        self,
+        query: str,
+        location: str = "United States",
+        limit: int = 20
+    ) -> List[JobListing]:
+        """Busca específicamente trabajos que patrocinan visa"""
+        # Agregar keywords de visa al query
+        visa_query = f"{query} visa sponsorship"
         
-        return []
+        jobs = await self.search_jobs(
+            query=visa_query,
+            location=location,
+            visa_sponsorship=True,
+            limit=limit
+        )
+        
+        return jobs
+    
+    def _parse_salary(self, salary_str: str) -> tuple:
+        """Parsea string de salario a min/max"""
+        if not salary_str:
+            return 0, 0
+        
+        # Buscar números en el string
+        numbers = re.findall(r'[\d,]+', salary_str.replace(',', ''))
+        
+        if len(numbers) >= 2:
+            return int(numbers[0]), int(numbers[1])
+        elif len(numbers) == 1:
+            return int(numbers[0]), int(numbers[0])
+        
+        return 0, 0
+    
+    def _parse_location(self, location_str: str) -> tuple:
+        """Parsea ubicación a ciudad y estado"""
+        if not location_str:
+            return "", ""
+        
+        parts = location_str.split(",")
+        if len(parts) >= 2:
+            return parts[0].strip(), parts[1].strip()
+        return location_str.strip(), ""
     
     def _get_sample_jobs(self, query: str, location: str, limit: int) -> List[JobListing]:
         """Retorna trabajos de ejemplo basados en datos reales del mercado"""
         
-        # Datos de ejemplo basados en el mercado real
+        # Datos de ejemplo basados en el mercado real 2024
         sample_jobs = {
-            "tech": [
+            "data engineer": [
+                {
+                    "title": "Senior Data Engineer",
+                    "company": "Google",
+                    "salary_min": 150000,
+                    "salary_max": 220000,
+                    "remote": True,
+                    "visa": True,
+                    "url": "https://careers.google.com/jobs/results/?q=data%20engineer"
+                },
+                {
+                    "title": "Data Engineer",
+                    "company": "Meta",
+                    "salary_min": 140000,
+                    "salary_max": 200000,
+                    "remote": True,
+                    "visa": True,
+                    "url": "https://www.metacareers.com/jobs"
+                },
+                {
+                    "title": "Staff Data Engineer",
+                    "company": "Amazon",
+                    "salary_min": 160000,
+                    "salary_max": 250000,
+                    "remote": False,
+                    "visa": True,
+                    "url": "https://www.amazon.jobs/en/search?base_query=data+engineer"
+                },
+                {
+                    "title": "Data Engineer - Analytics",
+                    "company": "Microsoft",
+                    "salary_min": 130000,
+                    "salary_max": 190000,
+                    "remote": True,
+                    "visa": True,
+                    "url": "https://careers.microsoft.com/us/en/search-results?keywords=data%20engineer"
+                },
+                {
+                    "title": "Lead Data Engineer",
+                    "company": "Netflix",
+                    "salary_min": 180000,
+                    "salary_max": 300000,
+                    "remote": False,
+                    "visa": True,
+                    "url": "https://jobs.netflix.com/search?q=data%20engineer"
+                },
+            ],
+            "software": [
                 {
                     "title": "Senior Software Engineer",
                     "company": "Google",
@@ -358,6 +442,7 @@ class JobSearchEngine:
                     "salary_max": 220000,
                     "remote": True,
                     "visa": True,
+                    "url": "https://careers.google.com/jobs/results/?q=software%20engineer"
                 },
                 {
                     "title": "Full Stack Developer",
@@ -366,66 +451,34 @@ class JobSearchEngine:
                     "salary_max": 180000,
                     "remote": True,
                     "visa": True,
+                    "url": "https://www.metacareers.com/jobs"
                 },
                 {
-                    "title": "Data Scientist",
+                    "title": "Backend Engineer",
                     "company": "Amazon",
-                    "salary_min": 120000,
-                    "salary_max": 170000,
+                    "salary_min": 140000,
+                    "salary_max": 200000,
                     "remote": False,
                     "visa": True,
+                    "url": "https://www.amazon.jobs/en/search?base_query=software+engineer"
                 },
                 {
-                    "title": "DevOps Engineer",
+                    "title": "Software Engineer II",
                     "company": "Microsoft",
                     "salary_min": 125000,
                     "salary_max": 175000,
                     "remote": True,
                     "visa": True,
+                    "url": "https://careers.microsoft.com/us/en/search-results?keywords=software%20engineer"
                 },
                 {
-                    "title": "Product Manager",
+                    "title": "Senior Backend Engineer",
                     "company": "Apple",
-                    "salary_min": 140000,
-                    "salary_max": 200000,
+                    "salary_min": 160000,
+                    "salary_max": 230000,
                     "remote": False,
                     "visa": True,
-                },
-            ],
-            "finanzas": [
-                {
-                    "title": "Financial Analyst",
-                    "company": "JPMorgan Chase",
-                    "salary_min": 80000,
-                    "salary_max": 120000,
-                    "remote": False,
-                    "visa": True,
-                },
-                {
-                    "title": "Investment Banking Associate",
-                    "company": "Goldman Sachs",
-                    "salary_min": 150000,
-                    "salary_max": 200000,
-                    "remote": False,
-                    "visa": True,
-                },
-            ],
-            "salud": [
-                {
-                    "title": "Registered Nurse",
-                    "company": "HCA Healthcare",
-                    "salary_min": 65000,
-                    "salary_max": 95000,
-                    "remote": False,
-                    "visa": True,
-                },
-                {
-                    "title": "Medical Director",
-                    "company": "Kaiser Permanente",
-                    "salary_min": 200000,
-                    "salary_max": 350000,
-                    "remote": False,
-                    "visa": True,
+                    "url": "https://jobs.apple.com/en-us/search?search=software%20engineer"
                 },
             ],
             "default": [
@@ -436,6 +489,7 @@ class JobSearchEngine:
                     "salary_max": 130000,
                     "remote": True,
                     "visa": True,
+                    "url": "https://www.accenture.com/us-en/careers"
                 },
                 {
                     "title": "Business Analyst",
@@ -444,18 +498,26 @@ class JobSearchEngine:
                     "salary_max": 110000,
                     "remote": True,
                     "visa": True,
+                    "url": "https://www2.deloitte.com/us/en/careers.html"
+                },
+                {
+                    "title": "Product Manager",
+                    "company": "IBM",
+                    "salary_min": 100000,
+                    "salary_max": 150000,
+                    "remote": True,
+                    "visa": True,
+                    "url": "https://www.ibm.com/careers"
                 },
             ]
         }
         
         # Determinar categoría basada en query
         query_lower = query.lower()
-        if any(kw in query_lower for kw in ["software", "developer", "engineer", "tech", "data", "ai", "ml"]):
-            category = "tech"
-        elif any(kw in query_lower for kw in ["finance", "banking", "investment", "finanzas"]):
-            category = "finanzas"
-        elif any(kw in query_lower for kw in ["nurse", "doctor", "medical", "health", "salud"]):
-            category = "salud"
+        if "data engineer" in query_lower or "data" in query_lower:
+            category = "data engineer"
+        elif any(kw in query_lower for kw in ["software", "developer", "engineer", "backend", "frontend"]):
+            category = "software"
         else:
             category = "default"
         
@@ -463,23 +525,25 @@ class JobSearchEngine:
         
         jobs = []
         for i, job_data in enumerate(jobs_data[:limit]):
+            city, state = self._parse_location(location)
+            
             jobs.append(JobListing(
                 job_id=f"sample_{category}_{i}",
                 title=job_data["title"],
                 company=job_data["company"],
                 company_logo="",
                 location=location,
-                city=location.split(",")[0] if "," in location else location,
-                state=location.split(",")[1].strip() if "," in location else "",
+                city=city or location.split(",")[0] if "," in location else location,
+                state=state or "",
                 is_remote=job_data.get("remote", False),
                 job_type="full-time",
                 salary_min=job_data["salary_min"],
                 salary_max=job_data["salary_max"],
                 salary_currency="USD",
                 salary_period="yearly",
-                description=f"Exciting opportunity at {job_data['company']} for a {job_data['title']}.",
+                description=f"Exciting opportunity at {job_data['company']} for a {job_data['title']}. Join our team and work on cutting-edge projects.",
                 requirements=[
-                    "Bachelor's degree or equivalent experience",
+                    "Bachelor's degree in relevant field",
                     "3+ years of relevant experience",
                     "Strong communication skills",
                     "Team player with leadership potential",
@@ -489,12 +553,13 @@ class JobSearchEngine:
                     "401(k) matching",
                     "Paid time off",
                     "Professional development",
+                    "Visa sponsorship available"
                 ],
                 posted_date=datetime.now().strftime("%Y-%m-%d"),
-                apply_url=f"https://www.linkedin.com/jobs/search/?keywords={query.replace(' ', '%20')}&location={location.replace(' ', '%20')}",
+                apply_url=job_data.get("url", f"https://www.linkedin.com/jobs/search/?keywords={quote(query)}&location={quote(location)}"),
                 source="sample",
                 visa_sponsorship=job_data.get("visa", False),
-                experience_level="mid",
+                experience_level=self._detect_experience_level(job_data["title"]),
                 industry=category,
             ))
         
@@ -502,6 +567,9 @@ class JobSearchEngine:
     
     def _detect_visa_sponsorship(self, description: str) -> bool:
         """Detecta si el trabajo menciona patrocinio de visa"""
+        if not description:
+            return False
+            
         visa_keywords = [
             "visa sponsorship",
             "sponsor visa",
@@ -511,6 +579,10 @@ class JobSearchEngine:
             "immigration sponsorship",
             "will sponsor",
             "sponsorship available",
+            "sponsor h1b",
+            "h1-b",
+            "work permit",
+            "employment authorization"
         ]
         description_lower = description.lower()
         return any(kw in description_lower for kw in visa_keywords)
@@ -526,15 +598,18 @@ class JobSearchEngine:
         
         if any(kw in title_lower for kw in ["senior", "sr.", "lead", "principal", "staff"]):
             return "senior"
-        elif any(kw in title_lower for kw in ["junior", "jr.", "entry", "associate", "intern"]):
+        elif any(kw in title_lower for kw in ["junior", "jr.", "entry", "associate", "intern", "i ", " i"]):
             return "entry"
-        elif any(kw in title_lower for kw in ["director", "vp", "head", "chief", "executive"]):
+        elif any(kw in title_lower for kw in ["director", "vp", "head", "chief", "executive", "manager"]):
             return "executive"
         else:
             return "mid"
     
     def _extract_requirements(self, description: str) -> List[str]:
         """Extrae requisitos de la descripción"""
+        if not description:
+            return ["See full job description"]
+            
         requirements = []
         
         # Buscar patrones comunes
@@ -544,16 +619,20 @@ class JobSearchEngine:
             r"(master'?s?\s+degree)",
             r"(proficient\s+in\s+[\w\s,]+)",
             r"(experience\s+with\s+[\w\s,]+)",
+            r"(knowledge\s+of\s+[\w\s,]+)",
         ]
         
         for pattern in patterns:
             matches = re.findall(pattern, description.lower())
-            requirements.extend(matches[:2])
+            requirements.extend([m.strip().capitalize() for m in matches[:2]])
         
         return requirements[:5] if requirements else ["See full job description"]
     
     def _extract_benefits(self, description: str) -> List[str]:
         """Extrae beneficios de la descripción"""
+        if not description:
+            return []
+            
         benefits = []
         
         benefit_keywords = [
@@ -569,6 +648,8 @@ class JobSearchEngine:
             "bonus",
             "stock options",
             "equity",
+            "relocation",
+            "visa sponsorship"
         ]
         
         description_lower = description.lower()
@@ -587,46 +668,117 @@ job_search_engine = JobSearchEngine()
 
 async def search_jobs_for_user(
     user_id: int,
-    industry: str,
-    location: str,
+    job_title: str,
+    location: str = "United States",
     salary_expectation: int = None,
-    visa_required: bool = True
+    visa_required: bool = True,
+    remote_only: bool = False,
+    limit: int = 20
 ) -> List[JobListing]:
     """
     Busca trabajos personalizados para un usuario
     
     Args:
         user_id: ID del usuario
-        industry: Industria del usuario
-        location: Ciudad, Estado
+        job_title: Título del trabajo buscado
+        location: Ciudad, Estado o país
         salary_expectation: Salario esperado
         visa_required: Si necesita patrocinio de visa
+        remote_only: Solo trabajos remotos
+        limit: Número máximo de resultados
     
     Returns:
         Lista de trabajos ordenados por relevancia
     """
-    # Mapear industria a query
-    industry_queries = {
-        "tech": "software engineer developer",
-        "finanzas": "financial analyst banking",
-        "salud": "healthcare medical",
-        "educacion": "teacher education",
-        "construccion": "construction manager",
-        "comercio": "retail manager sales",
-        "restaurantes": "restaurant manager hospitality",
-        "transporte": "logistics transportation",
-        "legal": "paralegal legal assistant",
-        "marketing": "marketing manager digital",
-    }
-    
-    query = industry_queries.get(industry, industry)
-    
     jobs = await job_search_engine.search_jobs(
-        query=query,
+        query=job_title,
         location=location,
         salary_min=salary_expectation,
         visa_sponsorship=visa_required,
-        limit=20
+        remote_only=remote_only,
+        limit=limit
     )
     
     return jobs
+
+
+async def search_jobs_by_industry(
+    industry: str,
+    location: str = "United States",
+    visa_required: bool = True,
+    limit: int = 20
+) -> List[JobListing]:
+    """
+    Busca trabajos por industria
+    
+    Args:
+        industry: Industria (tech, finance, healthcare, etc.)
+        location: Ubicación
+        visa_required: Si necesita patrocinio de visa
+        limit: Número máximo de resultados
+    """
+    # Mapear industria a queries de búsqueda
+    industry_queries = {
+        "tech": "Software Engineer",
+        "data": "Data Engineer",
+        "finance": "Financial Analyst",
+        "healthcare": "Healthcare Professional",
+        "marketing": "Marketing Manager",
+        "sales": "Sales Representative",
+        "hr": "Human Resources",
+        "legal": "Legal Counsel",
+        "education": "Teacher Professor",
+        "engineering": "Mechanical Engineer",
+    }
+    
+    query = industry_queries.get(industry.lower(), industry)
+    
+    return await job_search_engine.search_jobs(
+        query=query,
+        location=location,
+        visa_sponsorship=visa_required,
+        limit=limit
+    )
+
+
+def format_jobs_for_telegram(jobs: List[JobListing], max_jobs: int = 5) -> str:
+    """Formatea lista de trabajos para Telegram"""
+    if not jobs:
+        return "❌ No se encontraron trabajos con los criterios especificados."
+    
+    msg = f"💼 **TRABAJOS ENCONTRADOS** ({len(jobs)} resultados)\n\n"
+    
+    for i, job in enumerate(jobs[:max_jobs], 1):
+        remote_badge = "🏠" if job.is_remote else "🏢"
+        visa_badge = "✅" if job.visa_sponsorship else ""
+        
+        msg += f"""**{i}. {job.title}**
+   🏢 {job.company}
+   📍 {job.location} {remote_badge}
+   💰 {job.format_salary()} {visa_badge}
+   🔗 [Aplicar]({job.apply_url})
+
+"""
+    
+    if len(jobs) > max_jobs:
+        msg += f"\n_...y {len(jobs) - max_jobs} trabajos más_"
+    
+    return msg
+
+
+# Configurar API key desde variable de entorno
+def set_rapidapi_key(key: str):
+    """Configura la API key de RapidAPI"""
+    global RAPIDAPI_KEY
+    RAPIDAPI_KEY = key
+    os.environ["RAPIDAPI_KEY"] = key
+    logger.info("RapidAPI key configured")
+
+
+def get_api_status() -> Dict[str, Any]:
+    """Obtiene el estado de la configuración de API"""
+    return {
+        "rapidapi_configured": bool(RAPIDAPI_KEY),
+        "linkedin_api_host": LINKEDIN_API_HOST,
+        "linkedin_api_url": LINKEDIN_API_URL,
+    }
