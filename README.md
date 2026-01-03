@@ -280,6 +280,16 @@ tmux new-session -d -s migpal_bot 'source .venv/bin/activate && python run_teleg
 
 ## 📝 Changelog
 
+### V2.2 (3 Enero 2026) - COMANDOS INVISIBLES
+- ✅ **Comandos Invisibles** - El usuario escribe naturalmente, el bot detecta la intención
+- ✅ **1000+ Ciudades** - Base de datos expandida con datos completos
+- ✅ **Búsqueda de Escuelas** - Elementary, Middle, High School
+- ✅ **Búsqueda de Universidades** - Rankings, costos, programas
+- ✅ **Comparador de Ciudades** - Comparación lado a lado con gráficos
+- ✅ **Información Completa** - Salud, educación, seguridad, empleo, clima
+- ✅ **Visuales Mejorados** - Barras de progreso, estrellas, emojis
+- ✅ **Intent Detector** - Detección de intención con patrones y keywords
+
 ### V2.1 (3 Enero 2026)
 - ✅ **Comando /explorar** - Exploración de ciudades con scoring personalizado
 - ✅ **Comando /viviendas** - Búsqueda de viviendas con Zillow API
@@ -318,14 +328,35 @@ Proyecto privado - Todos los derechos reservados
 
 ## 📅 Última Actualización
 
-**3 de Enero 2026** - V2.1 (Exploración + Flujo Conversacional)
+**3 de Enero 2026** - V2.2 (Comandos Invisibles + 1000 Ciudades)
 
 ### Estado del Sistema
 - 🟢 Bot: **Funcionando** (tmux: migpal_bot)
 - 🟢 AI: **Activo** (Ollama migpal:latest - Llama 3)
 - 🟢 APIs: **Configuradas** (RapidAPI)
-- 🟢 Base de datos: **864+ ciudades**
+- 🟢 Base de datos: **1000+ ciudades**
+- 🟢 Escuelas: **Generador dinámico**
+- 🟢 Universidades: **20+ principales**
 
 ---
 
-*MigPAL V2.1 - Eliminando los "2 años de dolor" de los migrantes* 🌍✨
+## 📋 Pendientes (Roadmap)
+
+### Prioridad Alta
+- [ ] Integración directa con Zillow API (actualmente scraping)
+- [ ] Imágenes reales de ciudades (actualmente Unsplash)
+- [ ] Gráficos interactivos en Telegram
+
+### Prioridad Media
+- [ ] Monetización - Integración Stripe/PayPal
+- [ ] Sistema de suscripciones
+- [ ] Reportes PDF descargables
+
+### Prioridad Baja
+- [ ] App móvil nativa
+- [ ] Dashboard web para usuarios
+- [ ] API pública
+
+---
+
+*MigPAL V2.2 - Eliminando los "2 años de dolor" de los migrantes* 🌍✨

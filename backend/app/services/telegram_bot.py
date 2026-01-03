@@ -165,6 +165,32 @@ from app.services.job_search import (
     format_jobs_for_telegram, get_api_status
 )
 
+# V2.1 - Import intent detector for invisible commands
+from app.services.intent_detector import (
+    intent_detector, detect_intent, get_action_from_message,
+    Intent, DetectedIntent
+)
+
+# V2.1 - Import expanded cities database (1000+ cities)
+from app.services.knowledge_base.cities_top_1000 import (
+    CITIES_TOP_1000, get_city, get_cities_by_state,
+    search_cities, get_top_cities as get_top_1000_cities
+)
+
+# V2.1 - Import education search
+from app.services.education_search import (
+    education_engine, search_schools, search_universities,
+    get_university, SchoolType, SchoolCategory
+)
+
+# V2.1 - Import city comparator and visual helpers
+from app.services.city_comparator import (
+    city_comparator, city_formatter, compare_cities,
+    format_city_full, format_city_card,
+    progress_bar, score_bar, star_rating, format_money, format_population,
+    get_city_image_url
+)
+
 # In-memory cache (loaded from disk)
 user_data: Dict[int, Dict[str, Any]] = {}
 
@@ -3760,16 +3786,301 @@ class MigPALBot:
             ])
         )
     
+    # ============== V2.1 INTENT ACTION EXECUTOR ==============
+    
+    async def _execute_intent_action(self, update, context, detected: DetectedIntent, user: dict) -> bool:
+        """
+        Ejecuta una acción basada en la intención detectada.
+        Retorna True si se ejecutó una acción, False si debe continuar con IA.
+        """
+        user_id = update.effective_user.id
+        intent = detected.intent
+        entities = detected.entities
+        
+        try:
+            # EXPLORACIÓN DE CIUDADES
+            if intent == Intent.EXPLORE_CITIES:
+                await self._cmd_explore(update, context)
+                return True
+            
+            elif intent == Intent.EXPLORE_STATE:
+                state_code = entities.get("state")
+                if state_code:
+                    user["selected_route"] = user.get("selected_route", {})
+                    user["selected_route"]["state"] = state_code
+                    save_user_data(user_id, encrypt_user_data(user))
+                    await self._show_cities_for_state(update, user_id, state_code)
+                    return True
+            
+            # BÚSQUEDA DE VIVIENDAS
+            elif intent == Intent.SEARCH_HOUSING:
+                city = entities.get("city")
+                if city:
+                    user["selected_route"] = user.get("selected_route", {})
+                    user["selected_route"]["city"] = city
+                    # Intentar detectar estado
+                    for c in CITIES_TOP_1000.values():
+                        if c["name"].lower() == city.lower():
+                            user["selected_route"]["state"] = c["state_code"]
+                            break
+                    save_user_data(user_id, encrypt_user_data(user))
+                await self._cmd_housing(update, context)
+                return True
+            
+            # BÚSQUEDA DE EMPLEOS
+            elif intent == Intent.SEARCH_JOBS:
+                await self._cmd_jobs(update, context)
+                return True
+            
+            # BÚSQUEDA DE ESCUELAS
+            elif intent == Intent.SEARCH_SCHOOLS:
+                await self._cmd_schools(update, context)
+                return True
+            
+            # BÚSQUEDA DE UNIVERSIDADES
+            elif intent == Intent.SEARCH_UNIVERSITIES:
+                await self._cmd_universities(update, context)
+                return True
+            
+            # COMPARAR CIUDADES
+            elif intent == Intent.COMPARE_CITIES:
+                city1 = entities.get("city1")
+                city2 = entities.get("city2")
+                if city1 and city2:
+                    await self._compare_cities_action(update, city1, city2)
+                    return True
+            
+            # INFORMACIÓN DE CIUDAD
+            elif intent == Intent.INFO_CITY:
+                city_name = entities.get("city")
+                if city_name:
+                    await self._show_city_info(update, city_name)
+                    return True
+            
+            # INFORMACIÓN DE VISA
+            elif intent == Intent.INFO_VISA:
+                await self._cmd_score(update, context)
+                return True
+            
+            # COSTOS
+            elif intent == Intent.INFO_COSTS:
+                await self._cmd_costs(update, context)
+                return True
+            
+            # INICIAR FLUJO
+            elif intent == Intent.START_FLOW:
+                await self._cmd_flow(update, context)
+                return True
+            
+            # VER PROGRESO
+            elif intent == Intent.CHECK_PROGRESS:
+                await self._cmd_status(update, context)
+                return True
+            
+            # VER PERFIL
+            elif intent == Intent.VIEW_PROFILE:
+                await self._cmd_profile(update, context)
+                return True
+            
+            # PRECIOS
+            elif intent == Intent.VIEW_PRICES:
+                await self._cmd_prices(update, context)
+                return True
+            
+            # AYUDA
+            elif intent == Intent.HELP:
+                await self._cmd_help(update, context)
+                return True
+            
+            # SOS
+            elif intent == Intent.SOS:
+                await self._cmd_sos(update, context)
+                return True
+            
+            # SALUDOS - Responder rápido sin IA
+            elif intent == Intent.GREETING:
+                name = user.get("profile", {}).get("personal", {}).get("name", "")
+                greeting = f"¡Hola{' ' + name if name else ''}! 👋" if name else "¡Hola! 👋"
+                await update.message.reply_text(
+                    f"{greeting}\n\n"
+                    "Soy MigPAL, tu consultor de migración. ¿En qué puedo ayudarte hoy?\n\n"
+                    "💡 *Puedes decirme cosas como:*\n"
+                    "• \"Quiero ver ciudades en Florida\"\n"
+                    "• \"Busco casa en Miami\"\n"
+                    "• \"Compara Austin con Dallas\"\n"
+                    "• \"Busco trabajo en tecnología\"\n"
+                    "• \"Escuelas para mis hijos\"",
+                    parse_mode='Markdown'
+                )
+                return True
+            
+            # AGRADECIMIENTOS
+            elif intent == Intent.THANKS:
+                await update.message.reply_text(
+                    "¡De nada! 😊 Estoy aquí para ayudarte.\n\n"
+                    "¿Hay algo más en lo que pueda asistirte?"
+                )
+                return True
+        
+        except Exception as e:
+            logger.error(f"Error executing intent action: {e}")
+        
+        # No se ejecutó ninguna acción, continuar con IA
+        return False
+    
+    async def _cmd_schools(self, update, context):
+        """Buscar escuelas"""
+        user_id = update.effective_user.id
+        user = get_user_data(user_id)
+        route = user.get("selected_route", {})
+        
+        city = route.get("city", "")
+        state = route.get("state", "")
+        
+        if not city:
+            await update.message.reply_text(
+                "🏫 *BÚSQUEDA DE ESCUELAS*\n\n"
+                "Primero necesitas seleccionar una ciudad.\n\n"
+                "Usa /explorar para elegir tu ciudad destino.",
+                parse_mode='Markdown'
+            )
+            return
+        
+        # Buscar escuelas
+        schools = search_schools(city, state, limit=10)
+        
+        if not schools:
+            await update.message.reply_text(
+                f"⚠️ No encontramos escuelas en {city}.\n"
+                "Intenta con otra ciudad."
+            )
+            return
+        
+        msg = f"🏫 *ESCUELAS EN {city.upper()}*\n\n"
+        
+        for i, school in enumerate(schools[:5], 1):
+            stars = star_rating(school.overall_rating * 10)
+            category = "🏢" if school.category.value == "public" else "🏛️"
+            
+            msg += f"{i}. {category} *{school.name}*\n"
+            msg += f"   {stars} {school.overall_rating}/10\n"
+            msg += f"   📚 Grados: {school.grades}\n"
+            msg += f"   👥 {school.students} estudiantes\n"
+            
+            programs = []
+            if school.has_esl:
+                programs.append("🌐 ESL")
+            if school.has_gifted:
+                programs.append("🧠 Gifted")
+            if school.has_stem:
+                programs.append("🔬 STEM")
+            if programs:
+                msg += f"   {' '.join(programs)}\n"
+            msg += "\n"
+        
+        await update.message.reply_text(msg, parse_mode='Markdown')
+    
+    async def _cmd_universities(self, update, context):
+        """Buscar universidades"""
+        user_id = update.effective_user.id
+        user = get_user_data(user_id)
+        route = user.get("selected_route", {})
+        
+        state = route.get("state", "")
+        
+        # Buscar universidades
+        if state:
+            universities = search_universities(state=state, limit=10)
+        else:
+            universities = search_universities(limit=10)
+        
+        if not universities:
+            await update.message.reply_text(
+                "⚠️ No encontramos universidades.\n"
+                "Intenta seleccionar un estado primero con /explorar."
+            )
+            return
+        
+        msg = "🎓 *UNIVERSIDADES*\n\n"
+        if state:
+            msg = f"🎓 *UNIVERSIDADES EN {state}*\n\n"
+        
+        for i, uni in enumerate(universities[:5], 1):
+            public_str = "🏢 Pública" if uni.is_public else "🏛️ Privada"
+            
+            msg += f"{i}. *{uni.name}*\n"
+            msg += f"   🏆 Ranking: #{uni.national_rank}\n"
+            msg += f"   {public_str}\n"
+            msg += f"   💰 Tuition: ${uni.tuition_out_state:,}/año\n"
+            msg += f"   🎯 Aceptación: {uni.acceptance_rate}%\n"
+            msg += f"   💼 Salario egresados: ${uni.avg_starting_salary:,}\n\n"
+        
+        await update.message.reply_text(msg, parse_mode='Markdown')
+    
+    async def _compare_cities_action(self, update, city1_name: str, city2_name: str):
+        """Compara dos ciudades"""
+        # Buscar ciudades
+        city1_results = search_cities(city1_name)
+        city2_results = search_cities(city2_name)
+        
+        if not city1_results:
+            await update.message.reply_text(f"⚠️ No encontré la ciudad '{city1_name}'")
+            return
+        
+        if not city2_results:
+            await update.message.reply_text(f"⚠️ No encontré la ciudad '{city2_name}'")
+            return
+        
+        city1 = city1_results[0]
+        city2 = city2_results[0]
+        
+        # Comparar
+        result = compare_cities(city1, city2)
+        
+        await update.message.reply_text(
+            result.formatted_message,
+            parse_mode='Markdown'
+        )
+    
+    async def _show_city_info(self, update, city_name: str):
+        """Muestra información completa de una ciudad"""
+        # Buscar ciudad
+        results = search_cities(city_name)
+        
+        if not results:
+            await update.message.reply_text(f"⚠️ No encontré la ciudad '{city_name}'")
+            return
+        
+        city = results[0]
+        
+        # Formatear información completa
+        messages = format_city_full(city)
+        
+        # Enviar cada mensaje
+        for msg in messages:
+            await update.message.reply_text(msg, parse_mode='Markdown')
+            await asyncio.sleep(0.3)  # Pequeña pausa entre mensajes
+    
     # ============== MESSAGE HANDLER ==============
     
     async def _handle_message(self, update, context):
-        """Handler principal de mensajes - LA IA ES EL CEREBRO"""
+        """Handler principal de mensajes - COMANDOS INVISIBLES + IA"""
         user_id = update.effective_user.id
         text = update.message.text.strip()
         state = get_state(user_id)
         user = get_user_data(user_id)
         
         logger.info(f"MSG: {user_id} | {state} | {text[:50]}")
+        
+        # V2.1 - DETECTAR INTENCIÓN DEL MENSAJE (Comandos Invisibles)
+        detected = detect_intent(text)
+        logger.info(f"Intent: {detected.intent.value} | Confidence: {detected.confidence:.2f}")
+        
+        # Si la confianza es alta, ejecutar acción directamente
+        if detected.confidence >= 0.5 and detected.intent != Intent.UNKNOWN:
+            action_executed = await self._execute_intent_action(update, context, detected, user)
+            if action_executed:
+                return  # Acción ejecutada, no continuar con IA
         
         # Mostrar indicador de "pensando" con banner de avión
         # Obtener país de origen del usuario
