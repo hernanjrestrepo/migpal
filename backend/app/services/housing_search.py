@@ -30,14 +30,14 @@ logger = logging.getLogger(__name__)
 
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
 
-# US Real Estate API (Realtor.com data)
+# Realtor16 API (Realtor.com data) - PRINCIPAL
+REALTOR16_API_HOST = "realtor16.p.rapidapi.com"
+
+# US Real Estate API (backup)
 US_REAL_ESTATE_HOST = "us-real-estate.p.rapidapi.com"
 
-# Zillow API
+# Zillow API (backup)
 ZILLOW_API_HOST = "zillow-com1.p.rapidapi.com"
-
-# Redfin API
-REDFIN_API_HOST = "redfin-com-data.p.rapidapi.com"
 
 
 # ============== ESTRUCTURAS DE DATOS ==============
@@ -190,8 +190,8 @@ class HousingSearchEngine:
         """
         properties = []
         
-        # Intentar US Real Estate API primero
-        api_properties = await self._search_us_real_estate(
+        # Intentar Realtor16 API primero (la mejor)
+        api_properties = await self._search_realtor16(
             city, state, listing_type, property_type,
             min_price, max_price, min_beds, limit
         )
@@ -220,6 +220,165 @@ class HousingSearchEngine:
         properties.sort(key=lambda x: x.price)
         
         return properties[:limit]
+    
+    async def _search_realtor16(
+        self,
+        city: str,
+        state: str,
+        listing_type: str,
+        property_type: str,
+        min_price: int,
+        max_price: int,
+        min_beds: int,
+        limit: int
+    ) -> List[PropertyListing]:
+        """Busca en Realtor16 API (Realtor.com data)"""
+        
+        if not RAPIDAPI_KEY:
+            logger.warning("No RAPIDAPI_KEY configured for Realtor16 API")
+            return []
+        
+        try:
+            client = await self._get_client()
+            
+            # Determinar endpoint
+            if listing_type == "for_rent":
+                endpoint = f"https://{REALTOR16_API_HOST}/search/forrent"
+            else:
+                endpoint = f"https://{REALTOR16_API_HOST}/search/forsale"
+            
+            # Construir location
+            location = f"{city}, {state}"
+            
+            params = {
+                "location": location,
+            }
+            
+            # Agregar filtros opcionales
+            if min_price:
+                params["price_min"] = str(min_price)
+            if max_price:
+                params["price_max"] = str(max_price)
+            if min_beds:
+                params["beds_min"] = str(min_beds)
+            if property_type:
+                # Mapear tipos
+                type_map = {
+                    "house": "single_family",
+                    "apartment": "apartment",
+                    "condo": "condo",
+                    "townhouse": "townhomes"
+                }
+                params["type"] = type_map.get(property_type, property_type)
+            
+            headers = {
+                "x-rapidapi-host": REALTOR16_API_HOST,
+                "x-rapidapi-key": RAPIDAPI_KEY
+            }
+            
+            logger.info(f"Searching Realtor16 API: {location} ({listing_type})")
+            
+            response = await client.get(endpoint, params=params, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                properties = []
+                
+                prop_list = data.get("properties", [])
+                
+                for prop in prop_list[:limit]:
+                    desc = prop.get("description", {})
+                    location_data = prop.get("location", {})
+                    address = location_data.get("address", {})
+                    
+                    # Extraer fotos
+                    photos = []
+                    primary_photo = prop.get("primary_photo", {})
+                    if primary_photo and primary_photo.get("href"):
+                        photos.append(primary_photo["href"])
+                    for photo in prop.get("photos", [])[:4]:
+                        if photo.get("href"):
+                            photos.append(photo["href"])
+                    
+                    # Determinar tipo de propiedad
+                    prop_type = desc.get("type", "house")
+                    type_map_reverse = {
+                        "single_family": "house",
+                        "apartment": "apartment",
+                        "condo": "condo",
+                        "townhomes": "townhouse",
+                        "multi_family": "apartment"
+                    }
+                    prop_type = type_map_reverse.get(prop_type, prop_type)
+                    
+                    # Calcular precio por sqft
+                    price = prop.get("list_price", 0) or 0
+                    sqft = desc.get("sqft", 0) or 0
+                    price_per_sqft = int(price / sqft) if sqft and price else 0
+                    
+                    # Calcular días en mercado
+                    list_date = prop.get("list_date", "")
+                    days_on_market = 0
+                    if list_date:
+                        try:
+                            from datetime import datetime
+                            list_dt = datetime.fromisoformat(list_date.replace("Z", "+00:00"))
+                            days_on_market = (datetime.now(list_dt.tzinfo) - list_dt).days
+                        except:
+                            pass
+                    
+                    # Construir URL de Realtor.com
+                    permalink = prop.get("permalink", "")
+                    listing_url = f"https://www.realtor.com/realestateandhomes-detail/{permalink}" if permalink else f"https://www.realtor.com/realestateandhomes-search/{city.replace(' ', '-')}_{state}"
+                    
+                    # Extraer características
+                    features = []
+                    flags = prop.get("flags", {})
+                    if flags.get("is_new_construction"):
+                        features.append("New Construction")
+                    if flags.get("is_price_reduced"):
+                        features.append("Price Reduced")
+                    if prop.get("virtual_tours"):
+                        features.append("Virtual Tour Available")
+                    if desc.get("lot_sqft"):
+                        features.append(f"Lot: {desc['lot_sqft']:,} sqft")
+                    
+                    properties.append(PropertyListing(
+                        property_id=prop.get("property_id", prop.get("listing_id", "")),
+                        listing_type=listing_type,
+                        property_type=prop_type,
+                        address=address.get("line", ""),
+                        city=address.get("city", city),
+                        state=address.get("state_code", state),
+                        zip_code=address.get("postal_code", ""),
+                        neighborhood=location_data.get("county", {}).get("name", ""),
+                        latitude=address.get("coordinate", {}).get("lat", 0) or 0,
+                        longitude=address.get("coordinate", {}).get("lon", 0) or 0,
+                        price=price,
+                        price_per_sqft=price_per_sqft,
+                        bedrooms=desc.get("beds", 0) or 0,
+                        bathrooms=float(desc.get("baths_consolidated", 0) or 0),
+                        sqft=sqft,
+                        lot_size=desc.get("lot_sqft", 0) or 0,
+                        year_built=0,  # No disponible en este endpoint
+                        description=f"{desc.get('beds', 0)} bed, {desc.get('baths_consolidated', 0)} bath {prop_type} in {address.get('city', city)}",
+                        features=features,
+                        photos=photos,
+                        days_on_market=days_on_market,
+                        listing_date=list_date[:10] if list_date else "",
+                        listing_url=listing_url,
+                        source="realtor.com",
+                    ))
+                
+                logger.info(f"Found {len(properties)} properties from Realtor16 API")
+                return properties
+            else:
+                logger.error(f"Realtor16 API error: {response.status_code}")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error searching Realtor16 API: {e}")
+            return []
     
     async def _search_us_real_estate(
         self,

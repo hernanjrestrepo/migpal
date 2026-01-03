@@ -94,6 +94,77 @@ from app.services.security import (
     mask_sensitive_data
 )
 
+# Import notification scheduler
+from app.services.notification_scheduler import (
+    get_scheduler, set_scheduler_callback, start_scheduler, stop_scheduler,
+    get_notification_types, get_default_notification_prefs,
+    NOTIFICATION_TYPES
+)
+
+# Import UI helpers
+from app.services.ui_helpers import (
+    should_process_click, reset_click_tracking,
+    init_multi_select, toggle_selection, get_selections, clear_multi_select,
+    get_multi_select_field, build_multi_select_keyboard,
+    get_form_header, show_thinking, ThinkingIndicator,
+    create_progress_bar, create_step_indicator, FORM_HEADERS
+)
+
+# Import gamification system
+from app.services.gamification import (
+    get_game_engine, Level, LEVEL_INFO, PRICES as GAME_PRICES,
+    DELIVERABLES, NON_REFUNDABLE_REASONS, get_prices_summary
+)
+
+# Import payment system
+from app.services.payments import (
+    get_payment_manager, PaymentType, PaymentMethod, PaymentStatus,
+    PRICES as PAY_PRICES, get_payment_options_keyboard, get_payment_summary
+)
+
+# Import migration planner
+from app.services.migration_planner import (
+    PREFERENCE_OPTIONS, CITIES_DATABASE, DEFAULT_WEIGHTS,
+    calculate_city_score, get_top_cities, get_city_comparison,
+    generate_migration_plan, get_next_plan_question, get_question_keyboard,
+    MIGRATION_PLAN_QUESTIONS, MAX_CITIES_TO_SHOW,
+    filter_cities_by_size, get_city_details
+)
+
+# Import deep consulting engine
+from app.services.deep_consulting import (
+    get_consulting_engine, ConsultingPhase, ConsultingState,
+    CONSULTING_PRICES, DEEP_PROFILING_QUESTIONS,
+    format_property_list, format_job_list, format_school_list, format_business_list
+)
+
+# Import research engine
+from app.services.research_engine import (
+    get_research_engine, ClientProfile,
+    PropertyListing, JobListing, SchoolInfo, BusinessListing, CommunityInfo,
+    get_deep_profiling_question, get_next_deep_question
+)
+
+# Import conversation flow engine
+from app.services.conversation_flow import (
+    flow_engine, ConversationState, ConversationContext,
+    STATE_QUESTIONS, ScoringWeights
+)
+
+# Import scoring engine
+from app.services.scoring_engine import (
+    scoring_engine, ScoringEngine, ScoredItem,
+    LOCATION_PARAMETERS, HOUSING_PARAMETERS, JOB_PARAMETERS,
+    get_parameters_for_category, format_score_explanation
+)
+
+# Import job search
+from app.services.job_search import (
+    JobSearchEngine, JobListing,
+    search_jobs_for_user, search_jobs_by_industry,
+    format_jobs_for_telegram, get_api_status
+)
+
 # In-memory cache (loaded from disk)
 user_data: Dict[int, Dict[str, Any]] = {}
 
@@ -252,6 +323,15 @@ class MigPALBot:
         self.application.add_handler(CommandHandler("motivacion", self._cmd_motivation))
         self.application.add_handler(CommandHandler("reporte", self._cmd_report))
         self.application.add_handler(CommandHandler("idioma", self._cmd_language))
+        self.application.add_handler(CommandHandler("notificaciones", self._cmd_notifications))
+        # Gamification & Payment commands
+        self.application.add_handler(CommandHandler("nivel", self._cmd_level))
+        self.application.add_handler(CommandHandler("diagnostico", self._cmd_diagnostic))
+        self.application.add_handler(CommandHandler("precios", self._cmd_prices))
+        self.application.add_handler(CommandHandler("pagar", self._cmd_pay))
+        self.application.add_handler(CommandHandler("pagos", self._cmd_payments))
+        self.application.add_handler(CommandHandler("entregables", self._cmd_deliverables))
+        self.application.add_handler(CommandHandler("devolucion", self._cmd_refund))
         self.application.add_handler(CallbackQueryHandler(self._handle_callback))
         self.application.add_handler(MessageHandler(filters.Document.ALL, self._handle_document))
         self.application.add_handler(MessageHandler(filters.PHOTO, self._handle_photo))
@@ -264,9 +344,24 @@ class MigPALBot:
         await self.application.updater.start_polling(drop_pending_updates=True)
         logger.info("✅ MigPAL Bot GLOBAL is running!")
         
+        # Start notification scheduler
+        try:
+            set_scheduler_callback(self._send_notification_message)
+            await start_scheduler()
+            logger.info("✅ Notification scheduler started!")
+        except Exception as e:
+            logger.error(f"Failed to start notification scheduler: {e}")
+        
     async def stop(self):
         if self.application and self._running:
             self._running = False
+            # Stop notification scheduler
+            try:
+                await stop_scheduler()
+                logger.info("Notification scheduler stopped")
+            except Exception as e:
+                logger.error(f"Error stopping scheduler: {e}")
+            
             await self.application.updater.stop()
             await self.application.stop()
             await self.application.shutdown()
@@ -342,29 +437,32 @@ class MigPALBot:
         
         await update.message.reply_text(
             "🆘 *MigPAL Help - Global Migration Assistant*\n\n"
-            "*📝 Process / Proceso:*\n"
-            "/start - Start / Iniciar\n"
-            "/nuevo - Restart / Reiniciar\n"
-            "/perfil - Profile / Perfil\n"
-            "/estado - Progress / Progreso\n\n"
-            "*📊 Analysis / Análisis:*\n"
-            "/score - Success probability\n"
-            "/costos - Cost calculator\n"
-            "/checklist - Required documents\n"
-            "/tracking - Application tracking\n\n"
-            "*👥 Support / Apoyo:*\n"
-            "/mentores - Connect with mentors\n"
-            "/abogados - Lawyer directory\n"
-            "/comunidad - Support groups\n"
-            "/motivacion - Motivational message\n\n"
-            "*💼 Resources / Recursos:*\n"
-            "/empleos - Job board\n"
-            "/guia - Settlement guide\n"
-            "/reporte - Generate report\n\n"
-            "*🆘 Emergency / Emergencia:*\n"
-            "/sos - Urgent help\n\n"
-            "*⚙️ Settings / Configuración:*\n"
-            "/idioma - Change language (25+ languages)\n"
+            "*🎮 Tu Proceso (Gamificado):*\n"
+            "/nivel - Ver tu nivel y progreso\n"
+            "/diagnostico - Iniciar diagnóstico ($50)\n"
+            "/entregables - Ver tus entregables\n"
+            "/precios - Ver precios y garantías\n\n"
+            "*💳 Pagos:*\n"
+            "/pagar - Realizar un pago\n"
+            "/pagos - Historial de pagos\n"
+            "/devolucion - Solicitar devolución\n\n"
+            "*📝 Proceso:*\n"
+            "/start - Iniciar\n"
+            "/perfil - Ver perfil\n"
+            "/estado - Ver progreso\n\n"
+            "*📊 Análisis:*\n"
+            "/score - Probabilidad de éxito\n"
+            "/costos - Calculadora de costos\n"
+            "/checklist - Documentos requeridos\n\n"
+            "*👥 Apoyo:*\n"
+            "/mentores - Conectar con mentores\n"
+            "/abogados - Directorio de abogados\n"
+            "/comunidad - Grupos de apoyo\n\n"
+            "*🆘 Emergencia:*\n"
+            "/sos - Ayuda urgente\n\n"
+            "*⚙️ Configuración:*\n"
+            "/idioma - Cambiar idioma\n"
+            "/notificaciones - Configurar alertas\n"
             "/listo - Finish document upload\n\n"
             "_🌍 MigPAL helps migrants from ALL OVER THE WORLD_",
             parse_mode='Markdown'
@@ -1048,6 +1146,204 @@ class MigPALBot:
             reply_markup=self._kb(buttons)
         )
     
+    async def _cmd_notifications(self, update, context):
+        """Configure notification preferences"""
+        user_id = update.effective_user.id
+        user = get_user_data(user_id)
+        
+        # Get current preferences
+        prefs = user.get("notification_prefs", get_default_notification_prefs())
+        
+        msg = "🔔 *CONFIGURACIÓN DE NOTIFICACIONES*\n\n"
+        msg += "Personaliza qué notificaciones quieres recibir:\n\n"
+        
+        buttons = []
+        for ntype, info in NOTIFICATION_TYPES.items():
+            enabled = prefs.get(ntype, info["default_enabled"])
+            status = "✅" if enabled else "❌"
+            msg += f"{status} *{info['name']}*\n"
+            msg += f"   _{info['description']}_\n"
+            msg += f"   📅 {info['frequency']}\n\n"
+            
+            # Toggle button
+            action = "off" if enabled else "on"
+            btn_text = f"{status} {info['name']}"
+            buttons.append((btn_text, f"notif_{ntype}_{action}"))
+        
+        # Add buttons in pairs
+        button_rows = []
+        for i in range(0, len(buttons), 2):
+            row = buttons[i:i+2]
+            button_rows.append(row)
+        
+        button_rows.append([("✅ Activar todas", "notif_all_on"), ("❌ Desactivar todas", "notif_all_off")])
+        button_rows.append([("📊 Ver próximas notificaciones", "notif_schedule")])
+        
+        await update.message.reply_text(
+            msg,
+            parse_mode='Markdown',
+            reply_markup=self._kb(button_rows)
+        )
+    
+    # ============== GAMIFICATION COMMANDS ==============
+    
+    async def _cmd_level(self, update, context):
+        """Muestra el nivel actual y progreso"""
+        user_id = update.effective_user.id
+        engine = get_game_engine()
+        
+        progress = engine.get_progress_display(user_id)
+        
+        await update.message.reply_text(
+            progress,
+            parse_mode='Markdown',
+            reply_markup=self._kb([
+                ("💳 Ver precios", "game_prices"),
+                ("📄 Ver entregables", "game_deliverables"),
+            ])
+        )
+    
+    async def _cmd_diagnostic(self, update, context):
+        """Inicia el proceso de diagnóstico"""
+        user_id = update.effective_user.id
+        engine = get_game_engine()
+        
+        can_start, msg = engine.can_start_diagnostic(user_id)
+        
+        if can_start:
+            await update.message.reply_text(
+                "🔍 *DIAGNÓSTICO DE VIABILIDAD*\n\n"
+                "Evaluaremos tu perfil completo para determinar:\n\n"
+                "• Si eres viable para migrar\n"
+                "• Tu probabilidad de éxito\n"
+                "• Las mejores opciones de visa\n"
+                "• Plan de acción personalizado\n\n"
+                f"💰 *Costo:* $50 USD\n\n"
+                "¿Listo para comenzar?",
+                parse_mode='Markdown',
+                reply_markup=self._kb([
+                    ("✅ Sí, pagar $50", "pay_diagnostic"),
+                    ("❓ Más información", "game_info_diagnostic"),
+                ])
+            )
+        else:
+            await update.message.reply_text(f"⚠️ {msg}")
+    
+    async def _cmd_prices(self, update, context):
+        """Muestra los precios de MigPAL"""
+        await update.message.reply_text(
+            get_prices_summary(),
+            parse_mode='Markdown',
+            reply_markup=self._kb([
+                ("🔍 Iniciar diagnóstico", "pay_diagnostic"),
+                ("🎮 Ver mi nivel", "game_level"),
+            ])
+        )
+    
+    async def _cmd_pay(self, update, context):
+        """Muestra opciones de pago"""
+        user_id = update.effective_user.id
+        engine = get_game_engine()
+        state = engine.get_state(user_id)
+        
+        # Determinar qué debe pagar
+        current_level = Level(state.current_level)
+        
+        if current_level == Level.CONSULTAS:
+            payment_type = "diagnostic"
+            amount = 50
+            next_level = "Diagnóstico"
+        elif current_level == Level.DIAGNOSTICO and state.is_viable:
+            payment_type = "approval"
+            amount = 50
+            next_level = "Aprobación"
+        elif current_level == Level.APROBACION:
+            payment_type = "plan"
+            amount = 900
+            next_level = "Plan Completo"
+        else:
+            await update.message.reply_text(
+                "✅ No tienes pagos pendientes.\n\n"
+                "Usa /nivel para ver tu progreso."
+            )
+            return
+        
+        await update.message.reply_text(
+            f"💳 *PAGAR: {next_level}*\n\n"
+            f"Monto: *${amount} USD*\n\n"
+            "Selecciona tu método de pago:",
+            parse_mode='Markdown',
+            reply_markup=self._kb([
+                [("💳 Tarjeta", f"pay_stripe_{payment_type}"), ("🅿️ PayPal", f"pay_paypal_{payment_type}")],
+                [("📱 Zelle", f"pay_zelle_{payment_type}"), ("🏦 Transferencia", f"pay_bank_{payment_type}")],
+            ])
+        )
+    
+    async def _cmd_payments(self, update, context):
+        """Muestra historial de pagos"""
+        user_id = update.effective_user.id
+        pm = get_payment_manager()
+        
+        status = pm.get_payment_status_display(user_id)
+        
+        await update.message.reply_text(
+            status,
+            parse_mode='Markdown'
+        )
+    
+    async def _cmd_deliverables(self, update, context):
+        """Muestra estado de entregables"""
+        user_id = update.effective_user.id
+        engine = get_game_engine()
+        
+        status = engine.get_deliverables_status(user_id)
+        
+        await update.message.reply_text(
+            status,
+            parse_mode='Markdown'
+        )
+    
+    async def _cmd_refund(self, update, context):
+        """Solicita devolución"""
+        user_id = update.effective_user.id
+        engine = get_game_engine()
+        
+        can_refund, msg, amount = engine.can_request_refund(user_id)
+        
+        if can_refund:
+            await update.message.reply_text(
+                f"💸 *SOLICITAR DEVOLUCIÓN*\n\n"
+                f"Monto a devolver: *${amount} USD*\n\n"
+                "⚠️ *No aplica devolución si:*\n"
+                "• Ocultaste antecedentes penales\n"
+                "• Proporcionaste información falsa\n"
+                "• Falsificaste documentos\n\n"
+                "¿Confirmas que quieres solicitar la devolución?",
+                parse_mode='Markdown',
+                reply_markup=self._kb([
+                    ("✅ Sí, solicitar devolución", "refund_confirm"),
+                    ("❌ No, continuar proceso", "refund_cancel"),
+                ])
+            )
+        else:
+            await update.message.reply_text(f"⚠️ {msg}")
+    
+    async def _send_notification_message(self, user_id: int, message: str, parse_mode: str = None):
+        """Send a notification message to a user via Telegram"""
+        if not self.application:
+            logger.warning("Application not initialized")
+            return
+        
+        try:
+            await self.application.bot.send_message(
+                chat_id=user_id,
+                text=message,
+                parse_mode=parse_mode or 'Markdown'
+            )
+            logger.debug(f"Notification sent to {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to send notification to {user_id}: {e}")
+    
     # ============== CALLBACK HANDLER ==============
     
     async def _handle_callback(self, update, context):
@@ -1059,7 +1355,42 @@ class MigPALBot:
         state = get_state(user_id)
         user = get_user_data(user_id)
         
+        # Anti-spam: solo procesar si pasó suficiente tiempo desde el último click
+        if not should_process_click(user_id):
+            logger.debug(f"Ignoring spam click from {user_id}")
+            return
+        
         logger.info(f"CB: {user_id} | {state} | {data}")
+        
+        # ===== MULTI-SELECT HANDLERS =====
+        if data.startswith("ms_"):
+            await self._handle_multi_select(query, user_id, data, user)
+            return
+        
+        # ===== EXPERTISE MULTI-SELECT =====
+        if data.startswith("exp_"):
+            await self._handle_expertise_select(query, user_id, data, user)
+            return
+        
+        # ===== LOGROS MULTI-SELECT =====
+        if data.startswith("logro_"):
+            await self._handle_logros_select(query, user_id, data, user)
+            return
+        
+        # ===== PLAN DE MIGRACIÓN =====
+        if data.startswith("plan_"):
+            await self._handle_migration_plan(query, user_id, data, user)
+            return
+        
+        # ===== CIUDAD SELECCIONADA =====
+        if data.startswith("city_"):
+            await self._handle_city_selection(query, user_id, data, user)
+            return
+        
+        # ===== INVESTIGACIÓN (VIVIENDAS, EMPLEOS, COLEGIOS, NEGOCIOS) =====
+        if data.startswith("research_"):
+            await self._handle_research(query, user_id, data, user)
+            return
         
         # ===== START =====
         if data == "begin":
@@ -1626,6 +1957,1175 @@ class MigPALBot:
                     f"{ask_name}",
                     parse_mode='Markdown'
                 )
+        
+        # Notification callbacks
+        elif data.startswith("notif_"):
+            parts = data.split("_")
+            
+            if len(parts) >= 3:
+                ntype = parts[1]
+                action = parts[2]
+                
+                # Initialize notification prefs if not exists
+                if "notification_prefs" not in user:
+                    user["notification_prefs"] = get_default_notification_prefs()
+                
+                if ntype == "all":
+                    # Toggle all notifications
+                    new_value = (action == "on")
+                    for nt in NOTIFICATION_TYPES.keys():
+                        user["notification_prefs"][nt] = new_value
+                    
+                    status = "✅ Activadas" if new_value else "❌ Desactivadas"
+                    await query.edit_message_text(
+                        f"🔔 *Notificaciones {status}*\n\n"
+                        f"Todas las notificaciones han sido {status.lower()}.\n\n"
+                        "Usa /notificaciones para ver la configuración.",
+                        parse_mode='Markdown'
+                    )
+                
+                elif ntype == "schedule":
+                    # Show scheduled notifications
+                    scheduler = get_scheduler()
+                    jobs = scheduler.get_scheduled_jobs()
+                    
+                    msg = "📅 *PRÓXIMAS NOTIFICACIONES PROGRAMADAS*\n\n"
+                    
+                    if jobs:
+                        for job in jobs[:10]:
+                            msg += f"• *{job['name']}*\n"
+                            msg += f"  Próxima: {job['next_run'] or 'N/A'}\n\n"
+                    else:
+                        msg += "No hay notificaciones programadas.\n"
+                    
+                    msg += "\n_Las notificaciones se envían automáticamente según tu configuración._"
+                    
+                    await query.edit_message_text(msg, parse_mode='Markdown')
+                
+                else:
+                    # Toggle specific notification type
+                    if ntype in NOTIFICATION_TYPES:
+                        new_value = (action == "on")
+                        user["notification_prefs"][ntype] = new_value
+                        
+                        info = NOTIFICATION_TYPES[ntype]
+                        status = "✅ Activada" if new_value else "❌ Desactivada"
+                        
+                        await query.edit_message_text(
+                            f"🔔 *{info['name']}*\n\n"
+                            f"Estado: {status}\n\n"
+                            f"_{info['description']}_\n\n"
+                            "Usa /notificaciones para ver todas las opciones.",
+                            parse_mode='Markdown'
+                        )
+                
+                # Save user preferences
+                encrypted_data = encrypt_user_data(user)
+                save_user_data(user_id, encrypted_data)
+        
+        # ===== GAMIFICATION CALLBACKS =====
+        elif data.startswith("game_"):
+            action = data.replace("game_", "")
+            engine = get_game_engine()
+            
+            if action == "prices":
+                await query.edit_message_text(
+                    get_prices_summary(),
+                    parse_mode='Markdown'
+                )
+            
+            elif action == "level":
+                progress = engine.get_progress_display(user_id)
+                await query.edit_message_text(progress, parse_mode='Markdown')
+            
+            elif action == "deliverables":
+                status = engine.get_deliverables_status(user_id)
+                await query.edit_message_text(status, parse_mode='Markdown')
+            
+            elif action == "info_diagnostic":
+                await query.edit_message_text(
+                    "🔍 *¿QUÉ INCLUYE EL DIAGNÓSTICO?*\n\n"
+                    "• Evaluación completa de tu perfil\n"
+                    "• Análisis de viabilidad migratoria\n"
+                    "• Score de probabilidad de éxito\n"
+                    "• Opciones de visa recomendadas\n"
+                    "• Plan de mejora (si no eres viable)\n\n"
+                    "💰 *Costo:* $50 USD\n"
+                    "⏰ *Duración:* 24-48 horas\n\n"
+                    "🔒 *Garantía:* Si no eres viable, te ayudamos a mejorar sin costo adicional.",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        ("✅ Pagar $50 y comenzar", "pay_diagnostic"),
+                    ])
+                )
+        
+        # ===== PAYMENT CALLBACKS =====
+        elif data.startswith("pay_"):
+            parts = data.split("_")
+            method = parts[1] if len(parts) > 1 else ""
+            payment_type = parts[2] if len(parts) > 2 else "diagnostic"
+            
+            pm = get_payment_manager()
+            engine = get_game_engine()
+            
+            # Determinar monto
+            amounts = {"diagnostic": 50, "approval": 50, "plan": 900}
+            amount = amounts.get(payment_type, 50)
+            
+            if method == "diagnostic":
+                # Mostrar opciones de pago
+                await query.edit_message_text(
+                    f"💳 *PAGAR DIAGNÓSTICO*\n\n"
+                    f"Monto: *$50 USD*\n\n"
+                    "Selecciona tu método de pago:",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("💳 Tarjeta", "pay_stripe_diagnostic"), ("🅿️ PayPal", "pay_paypal_diagnostic")],
+                        [("📱 Zelle", "pay_zelle_diagnostic"), ("🏦 Transferencia", "pay_bank_diagnostic")],
+                    ])
+                )
+            
+            elif method == "zelle":
+                payment_id, instructions = pm.get_payment_link(
+                    user_id, 
+                    PaymentType.DIAGNOSTICO if payment_type == "diagnostic" else PaymentType.APROBACION,
+                    PaymentMethod.ZELLE
+                )
+                await query.edit_message_text(
+                    instructions + f"\n\nID de pago: `{payment_id}`",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        ("✅ Ya pagué", f"pay_confirm_{payment_id}"),
+                    ])
+                )
+            
+            elif method == "bank":
+                payment_id, instructions = pm.get_payment_link(
+                    user_id,
+                    PaymentType.DIAGNOSTICO if payment_type == "diagnostic" else PaymentType.APROBACION,
+                    PaymentMethod.BANK_TRANSFER
+                )
+                await query.edit_message_text(
+                    instructions + f"\n\nID de pago: `{payment_id}`",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        ("✅ Ya pagué", f"pay_confirm_{payment_id}"),
+                    ])
+                )
+            
+            elif method == "stripe" or method == "paypal":
+                await query.edit_message_text(
+                    f"💳 *PAGO CON {method.upper()}*\n\n"
+                    f"Monto: ${amount} USD\n\n"
+                    "⚠️ Integración en desarrollo.\n\n"
+                    "Por ahora usa Zelle o Transferencia.",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        ("📱 Pagar con Zelle", f"pay_zelle_{payment_type}"),
+                    ])
+                )
+            
+            elif method == "confirm":
+                payment_id = "_".join(parts[2:]) if len(parts) > 2 else ""
+                success, msg = pm.confirm_payment(payment_id)
+                
+                if success:
+                    # Actualizar nivel en gamificación
+                    engine.start_diagnostic(user_id, payment_confirmed=True)
+                    
+                    await query.edit_message_text(
+                        f"✅ *¡PAGO CONFIRMADO!*\n\n"
+                        f"Gracias por tu pago.\n\n"
+                        f"🔍 Iniciando diagnóstico...\n\n"
+                        f"Te enviaremos los resultados en 24-48 horas.",
+                        parse_mode='Markdown'
+                    )
+                else:
+                    await query.edit_message_text(f"⚠️ {msg}")
+        
+        # ===== REFUND CALLBACKS =====
+        elif data.startswith("refund_"):
+            action = data.replace("refund_", "")
+            engine = get_game_engine()
+            
+            if action == "confirm":
+                success, msg = engine.request_refund(user_id, "Solicitud del usuario")
+                await query.edit_message_text(
+                    f"💸 *DEVOLUCIÓN SOLICITADA*\n\n{msg}\n\n"
+                    "Te contactaremos para procesar la devolución.",
+                    parse_mode='Markdown'
+                )
+            
+            elif action == "cancel":
+                await query.edit_message_text(
+                    "✅ Devolución cancelada.\n\n"
+                    "Continuamos con tu proceso. Usa /nivel para ver tu progreso."
+                )
+    
+    async def _handle_multi_select(self, query, user_id: int, data: str, user: dict):
+        """Maneja selección múltiple con botón enviar"""
+        parts = data.split("_")
+        action = parts[1] if len(parts) > 1 else ""
+        value = "_".join(parts[2:]) if len(parts) > 2 else ""
+        
+        field = get_multi_select_field(user_id)
+        
+        if action == "toggle":
+            # Toggle selección
+            selected = toggle_selection(user_id, value)
+            
+            # Actualizar teclado con nuevas selecciones
+            # Obtener opciones del campo actual
+            options = self._get_multi_select_options(field)
+            keyboard = build_multi_select_keyboard(options, selected, "ms")
+            
+            # Mostrar selecciones actuales
+            sel_text = ", ".join(selected) if selected else "Ninguna"
+            
+            await query.edit_message_text(
+                f"{get_form_header(field)}\n"
+                f"Selecciona las opciones que apliquen:\n\n"
+                f"📝 *Seleccionados:* {sel_text}",
+                parse_mode='Markdown',
+                reply_markup=keyboard
+            )
+        
+        elif action == "clear":
+            # Limpiar selecciones
+            init_multi_select(user_id, field, [])
+            options = self._get_multi_select_options(field)
+            keyboard = build_multi_select_keyboard(options, [], "ms")
+            
+            await query.edit_message_text(
+                f"{get_form_header(field)}\n"
+                f"Selecciona las opciones que apliquen:\n\n"
+                f"📝 *Seleccionados:* Ninguna",
+                parse_mode='Markdown',
+                reply_markup=keyboard
+            )
+        
+        elif action == "submit":
+            # Enviar selecciones
+            selections = clear_multi_select(user_id)
+            
+            if not selections:
+                await query.answer("⚠️ Selecciona al menos una opción", show_alert=True)
+                return
+            
+            # Guardar en el perfil según el campo
+            await self._save_multi_select(user_id, user, field, selections)
+            
+            # Confirmar y continuar
+            sel_text = ", ".join(selections)
+            await query.edit_message_text(
+                f"✅ *Guardado:* {sel_text}\n\n"
+                f"¿Te quedó claro o quieres cambiar algo?",
+                parse_mode='Markdown'
+            )
+    
+    def _get_multi_select_options(self, field: str) -> list:
+        """Obtiene opciones para selección múltiple según el campo"""
+        options_map = {
+            "education_field": [
+                ("💻", "Tecnología", "tech"),
+                ("🏥", "Salud", "health"),
+                ("📊", "Negocios", "business"),
+                ("⚖️", "Derecho", "law"),
+                ("🔧", "Ingeniería", "engineering"),
+                ("🎨", "Artes", "arts"),
+                ("📚", "Educación", "education"),
+                ("🌿", "Ciencias", "science"),
+            ],
+            "languages": [
+                ("🇬🇧", "Inglés", "english"),
+                ("🇪🇸", "Español", "spanish"),
+                ("🇫🇷", "Francés", "french"),
+                ("🇩🇪", "Alemán", "german"),
+                ("🇵🇹", "Portugués", "portuguese"),
+                ("🇮🇹", "Italiano", "italian"),
+                ("🇨🇳", "Chino", "chinese"),
+            ],
+            "interests": [
+                ("💼", "Trabajo", "work"),
+                ("📚", "Estudios", "study"),
+                ("🏠", "Calidad de vida", "quality"),
+                ("👨‍👩‍👧", "Familia", "family"),
+                ("🔒", "Seguridad", "security"),
+                ("🌍", "Aventura", "adventure"),
+            ],
+            "skills": [
+                ("💻", "Programación", "programming"),
+                ("📊", "Análisis de datos", "data"),
+                ("🎨", "Diseño", "design"),
+                ("📝", "Escritura", "writing"),
+                ("🗣️", "Comunicación", "communication"),
+                ("👥", "Liderazgo", "leadership"),
+            ],
+        }
+        return options_map.get(field, [])
+    
+    async def _save_multi_select(self, user_id: int, user: dict, field: str, selections: list):
+        """Guarda las selecciones múltiples en el perfil"""
+        profile = user.get("profile", {})
+        
+        if field == "education_field":
+            profile.setdefault("education", {})["fields"] = selections
+        elif field == "languages":
+            profile.setdefault("languages", {})["spoken"] = selections
+        elif field == "interests":
+            user.setdefault("preferences", {})["interests"] = selections
+        elif field == "skills":
+            profile.setdefault("work", {})["skills"] = selections
+        
+        # Guardar
+        encrypted_data = encrypt_user_data(user)
+        save_user_data(user_id, encrypted_data)
+    
+    # ============== EXPERTISE MULTI-SELECT ==============
+    
+    # Estado temporal para selecciones de expertise
+    _expertise_selections: Dict[int, List[str]] = {}
+    
+    async def _handle_expertise_select(self, query, user_id: int, data: str, user: dict):
+        """Maneja selección múltiple de áreas de expertise"""
+        action = data.replace("exp_", "")
+        
+        # Inicializar si no existe
+        if user_id not in self._expertise_selections:
+            self._expertise_selections[user_id] = []
+        
+        selected = self._expertise_selections[user_id]
+        
+        options = [
+            ("tech", "🤖 Tecnología / IA"),
+            ("business", "💼 Negocios / Emprendimiento"),
+            ("finance", "💹 Finanzas / Trading"),
+            ("art", "🎨 Arte / Creatividad"),
+        ]
+        
+        if action in ["tech", "business", "finance", "art"]:
+            # Toggle selección
+            if action in selected:
+                selected.remove(action)
+            else:
+                selected.append(action)
+            
+            # Construir teclado actualizado
+            keyboard = []
+            for value, label in options:
+                check = "✅" if value in selected else "⬜"
+                keyboard.append([{"text": f"{check} {label}", "callback_data": f"exp_{value}"}])
+            
+            keyboard.append([
+                {"text": "🗑️ Limpiar", "callback_data": "exp_clear"},
+                {"text": "✅ Confirmar", "callback_data": "exp_submit"}
+            ])
+            
+            # Mostrar selecciones actuales
+            sel_labels = [label for value, label in options if value in selected]
+            sel_text = ", ".join(sel_labels) if sel_labels else "Ninguna"
+            
+            from telegram import InlineKeyboardMarkup
+            await query.edit_message_text(
+                f"👋 Hernan, necesito completar tu perfil.\n\n"
+                f"📋 *¿Cuál es tu área de expertise?*\n"
+                f"(Puedes seleccionar varias)\n\n"
+                f"📝 *Seleccionado:* {sel_text}",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        
+        elif action == "clear":
+            self._expertise_selections[user_id] = []
+            
+            keyboard = []
+            for value, label in options:
+                keyboard.append([{"text": f"⬜ {label}", "callback_data": f"exp_{value}"}])
+            keyboard.append([
+                {"text": "🗑️ Limpiar", "callback_data": "exp_clear"},
+                {"text": "✅ Confirmar", "callback_data": "exp_submit"}
+            ])
+            
+            from telegram import InlineKeyboardMarkup
+            await query.edit_message_text(
+                f"👋 Hernan, necesito completar tu perfil.\n\n"
+                f"📋 *¿Cuál es tu área de expertise?*\n"
+                f"(Puedes seleccionar varias)\n\n"
+                f"📝 *Seleccionado:* Ninguna",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        
+        elif action == "submit":
+            if not selected:
+                await query.answer("⚠️ Selecciona al menos una opción", show_alert=True)
+                return
+            
+            # Guardar en el perfil
+            labels_map = {"tech": "Tecnología/IA", "business": "Negocios/Emprendimiento", 
+                         "finance": "Finanzas/Trading", "art": "Arte/Creatividad"}
+            expertise_labels = [labels_map[s] for s in selected]
+            
+            user.setdefault("profile", {}).setdefault("work", {})["expertise"] = expertise_labels
+            encrypted_data = encrypt_user_data(user)
+            save_user_data(user_id, encrypted_data)
+            
+            # Limpiar estado
+            del self._expertise_selections[user_id]
+            
+            sel_text = ", ".join(expertise_labels)
+            
+            # Siguiente pregunta: Logros
+            await query.edit_message_text(
+                f"✅ *Guardado:* {sel_text}\n\n"
+                f"🏆 *Ahora, ¿qué logros destacados tienes?*\n"
+                f"(Selecciona todos los que apliquen)",
+                parse_mode='Markdown',
+                reply_markup=self._build_logros_keyboard([])
+            )
+    
+    def _build_logros_keyboard(self, selected: list):
+        """Construye teclado de selección de logros"""
+        from telegram import InlineKeyboardMarkup
+        
+        options = [
+            ("premios", "🏆 Premios o reconocimientos"),
+            ("publicaciones", "📝 Artículos o publicaciones"),
+            ("membresias", "🌟 Membresías en asociaciones"),
+            ("liderazgo", "👑 Roles de liderazgo"),
+            ("patentes", "💡 Patentes o invenciones"),
+            ("medios", "📺 Apariciones en medios"),
+        ]
+        
+        keyboard = []
+        for value, label in options:
+            check = "✅" if value in selected else "⬜"
+            keyboard.append([{"text": f"{check} {label}", "callback_data": f"logro_{value}"}])
+        
+        keyboard.append([
+            {"text": "🗑️ Limpiar", "callback_data": "logro_clear"},
+            {"text": "✅ Confirmar", "callback_data": "logro_submit"}
+        ])
+        
+        return InlineKeyboardMarkup(keyboard)
+    
+    # Estado temporal para selecciones de logros
+    _logros_selections: Dict[int, List[str]] = {}
+    
+    async def _handle_logros_select(self, query, user_id: int, data: str, user: dict):
+        """Maneja selección múltiple de logros"""
+        action = data.replace("logro_", "")
+        
+        # Inicializar si no existe
+        if user_id not in self._logros_selections:
+            self._logros_selections[user_id] = []
+        
+        selected = self._logros_selections[user_id]
+        
+        logro_options = ["premios", "publicaciones", "membresias", "liderazgo", "patentes", "medios"]
+        
+        if action in logro_options:
+            # Toggle selección
+            if action in selected:
+                selected.remove(action)
+            else:
+                selected.append(action)
+            
+            await query.edit_message_text(
+                f"🏆 *¿Qué logros destacados tienes?*\n"
+                f"(Selecciona todos los que apliquen)\n\n"
+                f"📝 *Seleccionado:* {len(selected)} logro(s)",
+                parse_mode='Markdown',
+                reply_markup=self._build_logros_keyboard(selected)
+            )
+        
+        elif action == "clear":
+            self._logros_selections[user_id] = []
+            
+            await query.edit_message_text(
+                f"🏆 *¿Qué logros destacados tienes?*\n"
+                f"(Selecciona todos los que apliquen)\n\n"
+                f"📝 *Seleccionado:* Ninguno",
+                parse_mode='Markdown',
+                reply_markup=self._build_logros_keyboard([])
+            )
+        
+        elif action == "submit":
+            if not selected:
+                await query.answer("⚠️ Selecciona al menos una opción", show_alert=True)
+                return
+            
+            # Guardar en el perfil
+            labels_map = {
+                "premios": "Premios/Reconocimientos",
+                "publicaciones": "Artículos/Publicaciones",
+                "membresias": "Membresías en asociaciones",
+                "liderazgo": "Roles de liderazgo",
+                "patentes": "Patentes/Invenciones",
+                "medios": "Apariciones en medios"
+            }
+            logros_labels = [labels_map[s] for s in selected]
+            
+            user.setdefault("profile", {}).setdefault("work", {})["logros"] = logros_labels
+            encrypted_data = encrypt_user_data(user)
+            save_user_data(user_id, encrypted_data)
+            
+            # Limpiar estado
+            del self._logros_selections[user_id]
+            
+            sel_text = ", ".join(logros_labels)
+            
+            # Resumen y siguiente paso
+            await query.edit_message_text(
+                f"✅ *Perfil actualizado!*\n\n"
+                f"🎯 *Expertise:* {', '.join(user.get('profile', {}).get('work', {}).get('expertise', []))}\n"
+                f"🏆 *Logros:* {sel_text}\n\n"
+                f"Con esta información puedo darte una mejor asesoría.\n\n"
+                f"¿Qué te gustaría hacer ahora?",
+                parse_mode='Markdown',
+                reply_markup=self._kb([
+                    ("🎯 Ver mi recomendación de visa", "show_recommendation"),
+                    ("💰 Ver costos del proceso", "show_costs"),
+                    ("▶️ Continuar con el diagnóstico", "start_diagnostic")
+                ])
+            )
+    
+    # ============== PLAN DE MIGRACIÓN INTEGRAL ==============
+    
+    async def _handle_migration_plan(self, query, user_id: int, data: str, user: dict):
+        """Maneja las preguntas del plan de migración integral"""
+        from telegram import InlineKeyboardMarkup
+        
+        # Manejar restart
+        if data == "plan_restart":
+            await self.start_migration_plan(query, user_id, user)
+            return
+        
+        # Parsear: plan_questionid_value
+        # El formato es: plan_<question_id>_<value>
+        # question_id puede tener guiones bajos, así que buscamos en MIGRATION_PLAN_QUESTIONS
+        
+        data_without_prefix = data[5:]  # Quitar "plan_"
+        
+        # Encontrar qué question_id coincide
+        question_id = None
+        value = None
+        
+        for q_id in MIGRATION_PLAN_QUESTIONS:
+            if data_without_prefix.startswith(q_id + "_"):
+                question_id = q_id
+                value = data_without_prefix[len(q_id) + 1:]  # +1 para el guion bajo
+                break
+        
+        if not question_id or not value:
+            logger.error(f"Could not parse migration plan callback: {data}")
+            await query.answer("⚠️ Error procesando selección", show_alert=True)
+            return
+        
+        # Guardar preferencia
+        if "migration_preferences" not in user:
+            user["migration_preferences"] = {}
+        
+        user["migration_preferences"][question_id] = value
+        
+        # Guardar en disco
+        encrypted_data = encrypt_user_data(user)
+        save_user_data(user_id, encrypted_data)
+        
+        # Obtener siguiente pregunta
+        next_q = get_next_plan_question(user["migration_preferences"])
+        
+        if next_q:
+            # Hay más preguntas
+            q_text, keyboard = get_question_keyboard(next_q)
+            
+            # Calcular progreso
+            answered = len(user["migration_preferences"])
+            total = len(MIGRATION_PLAN_QUESTIONS)
+            progress = create_progress_bar(answered, total)
+            
+            await query.edit_message_text(
+                f"📍 *PLAN DE MIGRACIÓN* ({answered}/{total})\n"
+                f"{progress}\n\n"
+                f"{q_text}",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        else:
+            # Todas las preguntas respondidas - mostrar resultados
+            await self._show_city_recommendations(query, user_id, user)
+    
+    async def _show_city_recommendations(self, query, user_id: int, user: dict):
+        """Muestra las ciudades recomendadas basadas en preferencias"""
+        from telegram import InlineKeyboardMarkup
+        
+        preferences = user.get("migration_preferences", {})
+        
+        # Obtener top 5 ciudades
+        top_cities = get_top_cities(preferences, top_n=5)
+        
+        # Construir mensaje
+        msg = "🏆 *TUS MEJORES CIUDADES PARA VIVIR*\n\n"
+        msg += "Basado en tus preferencias, estas son mis recomendaciones:\n\n"
+        
+        keyboard = []
+        medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+        
+        for i, (city_id, city_data, score) in enumerate(top_cities):
+            medal = medals[i] if i < len(medals) else f"{i+1}."
+            msg += f"{medal} *{city_data['nombre']}* - {score}% match\n"
+            msg += f"   └ 💰 ${city_data['costo_vida_mensual']['total_estimado']:,}/mes | "
+            msg += f"🛡️ {city_data['scores']['seguridad']}/100 | "
+            msg += f"☀️ {city_data['clima'].capitalize()}\n\n"
+            
+            keyboard.append([{
+                "text": f"{medal} Ver plan para {city_data['nombre'].split(',')[0]}",
+                "callback_data": f"city_select_{city_id}"
+            }])
+        
+        keyboard.append([{"text": "🔄 Cambiar preferencias", "callback_data": "plan_restart"}])
+        keyboard.append([{"text": "📊 Comparar ciudades", "callback_data": "city_compare"}])
+        
+        await query.edit_message_text(
+            msg,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    
+    async def _handle_city_selection(self, query, user_id: int, data: str, user: dict):
+        """Maneja la selección de una ciudad para ver el plan detallado"""
+        from telegram import InlineKeyboardMarkup
+        
+        action = data.replace("city_", "")
+        
+        if action == "compare":
+            # Mostrar comparación de top 3
+            preferences = user.get("migration_preferences", {})
+            top_cities = get_top_cities(preferences, top_n=3)
+            city_ids = [c[0] for c in top_cities]
+            
+            comparison = get_city_comparison(city_ids)
+            
+            keyboard = []
+            for city_id, city_data, score in top_cities:
+                keyboard.append([{
+                    "text": f"📍 Ver plan para {city_data['nombre'].split(',')[0]}",
+                    "callback_data": f"city_select_{city_id}"
+                }])
+            keyboard.append([{"text": "⬅️ Volver", "callback_data": "city_back"}])
+            
+            await query.edit_message_text(
+                comparison,
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        
+        elif action == "back":
+            # Volver a recomendaciones
+            await self._show_city_recommendations(query, user_id, user)
+        
+        elif action.startswith("select_"):
+            city_id = action.replace("select_", "")
+            await self._show_city_plan(query, user_id, user, city_id)
+        
+        elif action.startswith("plan_"):
+            # Ver sección específica del plan
+            parts = action.split("_")
+            city_id = parts[1]
+            section = parts[2] if len(parts) > 2 else "resumen"
+            await self._show_plan_section(query, user_id, user, city_id, section)
+        
+        elif action.startswith("confirm_"):
+            # Confirmar selección de ciudad
+            city_id = action.replace("confirm_", "")
+            await self._confirm_city_selection(query, user_id, user, city_id)
+    
+    async def _confirm_city_selection(self, query, user_id: int, user: dict, city_id: str):
+        """Confirma la selección de ciudad y muestra opciones de vivienda, trabajo, etc."""
+        from telegram import InlineKeyboardMarkup
+        
+        city = CITIES_DATABASE.get(city_id)
+        if not city:
+            await query.answer("Ciudad no encontrada", show_alert=True)
+            return
+        
+        # Guardar ciudad seleccionada
+        if "migration_preferences" not in user:
+            user["migration_preferences"] = {}
+        user["migration_preferences"]["selected_city"] = city_id
+        user["migration_preferences"]["selected_city_name"] = city["nombre"]
+        save_user_data(user_id, user)
+        
+        # Mensaje de confirmación con foto
+        msg = f"✅ *¡EXCELENTE ELECCIÓN!*\n\n"
+        msg += f"🏙️ Has seleccionado *{city['nombre']}*\n\n"
+        msg += f"📸 *Foto de la ciudad:*\n"
+        msg += f"{city.get('foto_url', 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800')}\n\n"
+        msg += f"📝 *{city.get('descripcion', 'Ciudad ideal para tu migración.')}*\n\n"
+        msg += f"Ahora puedo mostrarte información REAL de:\n"
+        msg += f"• 🏠 Viviendas disponibles (Zillow)\n"
+        msg += f"• 💼 Ofertas de empleo para tu perfil\n"
+        msg += f"• 🎓 Colegios con ratings\n"
+        msg += f"• 🏪 Negocios en venta\n\n"
+        msg += f"¿Qué te gustaría ver primero?"
+        
+        keyboard = [
+            [{"text": "🏠 Ver Viviendas Reales", "callback_data": f"research_housing_{city_id}"}],
+            [{"text": "💼 Ver Empleos para Mi Perfil", "callback_data": f"research_jobs_{city_id}"}],
+            [{"text": "🎓 Ver Colegios", "callback_data": f"research_schools_{city_id}"}],
+            [{"text": "🏪 Ver Negocios en Venta", "callback_data": f"research_business_{city_id}"}],
+            [{"text": "📊 Ver Todo (Investigación Completa)", "callback_data": f"research_full_{city_id}"}],
+            [{"text": "⬅️ Volver", "callback_data": f"city_select_{city_id}"}],
+        ]
+        
+        await query.edit_message_text(
+            msg,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=False
+        )
+    
+    async def _show_city_plan(self, query, user_id: int, user: dict, city_id: str):
+        """Muestra el plan detallado para una ciudad"""
+        from telegram import InlineKeyboardMarkup
+        
+        preferences = user.get("migration_preferences", {})
+        profile = user.get("profile", {})
+        
+        plan = generate_migration_plan(city_id, preferences, user)
+        
+        if "error" in plan:
+            await query.answer("Ciudad no encontrada", show_alert=True)
+            return
+        
+        # Mensaje principal
+        msg = f"🏙️ *PLAN DE MIGRACIÓN: {plan['ciudad']}*\n\n"
+        
+        msg += f"📍 *Resumen*\n"
+        msg += f"└ Población: {plan['resumen']['poblacion']:,}\n"
+        msg += f"└ Clima: {plan['resumen']['clima'].capitalize()}\n"
+        msg += f"└ Costo mensual: ${plan['resumen']['costo_mensual_estimado']:,}\n\n"
+        
+        msg += f"🏠 *Vivienda Recomendada*\n"
+        msg += f"└ Tipo: {plan['vivienda']['tipo_recomendado'].capitalize()}\n"
+        msg += f"└ Alquiler: ${plan['vivienda']['alquiler_estimado']:,}/mes\n"
+        msg += f"└ Mejores barrios: {', '.join(plan['vivienda']['mejores_barrios'])}\n\n"
+        
+        msg += f"💰 *Presupuesto de Mudanza*\n"
+        msg += f"└ Total estimado: *${plan['presupuesto_mudanza']['total_estimado']:,}*\n\n"
+        
+        msg += f"✅ *Pros:* {', '.join(plan['pros'][:3])}\n"
+        msg += f"⚠️ *Contras:* {', '.join(plan['contras'][:3])}\n"
+        
+        keyboard = [
+            [{"text": "🏠 Ver Barrios", "callback_data": f"city_plan_{city_id}_barrios"},
+             {"text": "💰 Presupuesto", "callback_data": f"city_plan_{city_id}_presupuesto"}],
+            [{"text": "🎓 Educación", "callback_data": f"city_plan_{city_id}_educacion"},
+             {"text": "💼 Trabajo", "callback_data": f"city_plan_{city_id}_trabajo"}],
+            [{"text": "📋 Primeros Pasos", "callback_data": f"city_plan_{city_id}_pasos"}],
+            [{"text": "⬅️ Volver a ciudades", "callback_data": "city_back"}],
+            [{"text": "✅ Elegir esta ciudad", "callback_data": f"city_confirm_{city_id}"}]
+        ]
+        
+        await query.edit_message_text(
+            msg,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    
+    async def _show_plan_section(self, query, user_id: int, user: dict, city_id: str, section: str):
+        """Muestra una sección específica del plan"""
+        from telegram import InlineKeyboardMarkup
+        
+        city = CITIES_DATABASE.get(city_id)
+        if not city:
+            return
+        
+        preferences = user.get("migration_preferences", {})
+        plan = generate_migration_plan(city_id, preferences, user)
+        
+        if section == "barrios":
+            msg = f"🏠 *MEJORES BARRIOS EN {city['nombre'].upper()}*\n\n"
+            for i, barrio in enumerate(city['mejores_barrios'], 1):
+                msg += f"{i}. *{barrio}*\n"
+            msg += f"\n💡 *Consejo:* {plan['vivienda']['consejo']}"
+        
+        elif section == "presupuesto":
+            p = plan['presupuesto_mensual']
+            pm = plan['presupuesto_mudanza']
+            msg = f"💰 *PRESUPUESTO PARA {city['nombre'].upper()}*\n\n"
+            msg += f"*Presupuesto Mensual:*\n"
+            msg += f"└ 🏠 Alquiler: ${p['alquiler']:,}\n"
+            msg += f"└ 💡 Utilities: ${p['utilities']:,}\n"
+            msg += f"└ 🛒 Groceries: ${p['groceries']:,}\n"
+            msg += f"└ 🚗 Transporte: ${p['transporte']:,}\n"
+            msg += f"└ 🏥 Salud: ${p['salud']:,}\n"
+            msg += f"└ 📝 Otros: ${p['otros']:,}\n"
+            msg += f"*TOTAL: ${p['total']:,}/mes*\n\n"
+            msg += f"*Presupuesto de Mudanza:*\n"
+            msg += f"└ ✈️ Vuelos: ${pm['vuelos_familia']:,}\n"
+            msg += f"└ 💵 Depósito: ${pm['deposito_apartamento']:,}\n"
+            msg += f"└ 🛋️ Muebles: ${pm['muebles_basicos']:,}\n"
+            msg += f"└ 🚗 Carro: ${pm['carro_usado']:,}\n"
+            msg += f"└ 💰 Emergencia: ${pm['emergencia_3_meses']:,}\n"
+            msg += f"*TOTAL MUDANZA: ${pm['total_estimado']:,}*"
+        
+        elif section == "educacion":
+            msg = f"🎓 *EDUCACIÓN EN {city['nombre'].upper()}*\n\n"
+            msg += f"*Mejores Escuelas:*\n"
+            for esc in plan['educacion']['mejores_escuelas']:
+                msg += f"• {esc}\n"
+            msg += f"\n*Universidades:*\n"
+            for uni in plan['educacion']['universidades']:
+                msg += f"• {uni}\n"
+        
+        elif section == "trabajo":
+            msg = f"💼 *TRABAJO EN {city['nombre'].upper()}*\n\n"
+            msg += f"*Industrias Fuertes:*\n"
+            for ind in plan['trabajo']['industrias_fuertes']:
+                msg += f"• {ind.capitalize()}\n"
+            msg += f"\n💡 *Consejo:* {plan['trabajo']['consejo']}"
+        
+        elif section == "pasos":
+            msg = f"📋 *PRIMEROS PASOS EN {city['nombre'].upper()}*\n\n"
+            for paso in plan['primeros_pasos']:
+                msg += f"{paso}\n"
+        
+        else:
+            msg = "Sección no encontrada"
+        
+        keyboard = [
+            [{"text": "⬅️ Volver al plan", "callback_data": f"city_select_{city_id}"}]
+        ]
+        
+        await query.edit_message_text(
+            msg,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    
+    async def _handle_research(self, query, user_id: int, data: str, user: dict):
+        """Maneja la investigación de viviendas, empleos, colegios y negocios"""
+        from telegram import InlineKeyboardMarkup
+        
+        # Parsear el callback: research_TYPE_CITYID
+        parts = data.replace("research_", "").split("_")
+        research_type = parts[0]
+        city_id = parts[1] if len(parts) > 1 else ""
+        
+        city = CITIES_DATABASE.get(city_id)
+        if not city:
+            await query.answer("Ciudad no encontrada", show_alert=True)
+            return
+        
+        city_name = city["nombre"].split(",")[0]
+        state_code = city["estado"]
+        
+        # Obtener el motor de investigación
+        research = get_research_engine()
+        
+        if research_type == "housing":
+            await self._show_housing_research(query, user_id, user, city_id, city, research)
+        elif research_type == "jobs":
+            await self._show_jobs_research(query, user_id, user, city_id, city, research)
+        elif research_type == "schools":
+            await self._show_schools_research(query, user_id, user, city_id, city, research)
+        elif research_type == "business":
+            await self._show_business_research(query, user_id, user, city_id, city, research)
+        elif research_type == "full":
+            await self._show_full_research(query, user_id, user, city_id, city, research)
+    
+    async def _show_housing_research(self, query, user_id: int, user: dict, city_id: str, city: dict, research):
+        """Muestra viviendas reales de la ciudad"""
+        from telegram import InlineKeyboardMarkup
+        
+        city_name = city["nombre"].split(",")[0]
+        state_code = city["estado"]
+        
+        # Obtener preferencias del usuario
+        prefs = user.get("migration_preferences", {})
+        max_rent = prefs.get("max_rent", 2500)
+        bedrooms = prefs.get("bedrooms", 2)
+        
+        # Buscar propiedades
+        properties = await research.search_properties(
+            city=city_name,
+            state=state_code,
+            listing_type="rent",
+            max_price=max_rent,
+            bedrooms=bedrooms,
+            limit=5
+        )
+        
+        msg = f"🏠 *VIVIENDAS EN {city['nombre'].upper()}*\n\n"
+        msg += f"📍 Mostrando opciones de alquiler\n"
+        msg += f"💰 Presupuesto: hasta ${max_rent:,}/mes\n"
+        msg += f"🛏️ Habitaciones: {bedrooms}+\n\n"
+        
+        if properties:
+            for i, prop in enumerate(properties, 1):
+                msg += f"*{i}. {prop.address}*\n"
+                msg += f"   💰 ${prop.price:,}/mes\n"
+                msg += f"   🛏️ {prop.bedrooms} hab | 🚿 {prop.bathrooms} baños | 📐 {prop.sqft:,} sqft\n"
+                msg += f"   🚶 Walk: {prop.walk_score} | 🚇 Transit: {prop.transit_score}\n"
+                msg += f"   🔗 [Ver en Zillow]({prop.zillow_url})\n\n"
+        else:
+            msg += "⚠️ No se encontraron propiedades con esos criterios.\n\n"
+        
+        msg += f"\n💡 *Tip:* Los mejores barrios son: {', '.join(city['mejores_barrios'][:3])}"
+        
+        keyboard = [
+            [{"text": "💼 Ver Empleos", "callback_data": f"research_jobs_{city_id}"}],
+            [{"text": "🎓 Ver Colegios", "callback_data": f"research_schools_{city_id}"}],
+            [{"text": "🏪 Ver Negocios", "callback_data": f"research_business_{city_id}"}],
+            [{"text": "⬅️ Volver", "callback_data": f"city_confirm_{city_id}"}],
+        ]
+        
+        await query.edit_message_text(
+            msg,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
+        )
+    
+    async def _show_jobs_research(self, query, user_id: int, user: dict, city_id: str, city: dict, research):
+        """Muestra empleos reales para el perfil del usuario"""
+        from telegram import InlineKeyboardMarkup
+        
+        city_name = city["nombre"].split(",")[0]
+        state_code = city["estado"]
+        
+        # Obtener profesión del usuario
+        profile = user.get("profile", {})
+        work = profile.get("work", {})
+        profession = work.get("profession", "software engineer")
+        
+        # Buscar empleos
+        jobs = await research.search_jobs(
+            query=profession,
+            location=f"{city_name}, {state_code}",
+            limit=5
+        )
+        
+        msg = f"💼 *EMPLEOS EN {city['nombre'].upper()}*\n\n"
+        msg += f"🔍 Búsqueda: {profession}\n\n"
+        
+        if jobs:
+            for i, job in enumerate(jobs, 1):
+                salary_str = f"${job.salary_min:,} - ${job.salary_max:,}/año" if job.salary_min else "Salario no especificado"
+                remote_str = "🏠 Remoto" if job.remote else "🏢 Presencial"
+                visa_str = "✅ Patrocina visa" if job.visa_sponsorship else ""
+                
+                msg += f"*{i}. {job.title}*\n"
+                msg += f"   🏢 {job.company}\n"
+                msg += f"   💰 {salary_str}\n"
+                msg += f"   {remote_str} {visa_str}\n"
+                msg += f"   🔗 [Aplicar]({job.apply_url})\n\n"
+        else:
+            msg += "⚠️ No se encontraron empleos para tu perfil.\n\n"
+        
+        msg += f"\n💡 *Industrias fuertes:* {', '.join(city['industrias_fuertes'][:4])}"
+        
+        keyboard = [
+            [{"text": "🏠 Ver Viviendas", "callback_data": f"research_housing_{city_id}"}],
+            [{"text": "🎓 Ver Colegios", "callback_data": f"research_schools_{city_id}"}],
+            [{"text": "🏪 Ver Negocios", "callback_data": f"research_business_{city_id}"}],
+            [{"text": "⬅️ Volver", "callback_data": f"city_confirm_{city_id}"}],
+        ]
+        
+        await query.edit_message_text(
+            msg,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
+        )
+    
+    async def _show_schools_research(self, query, user_id: int, user: dict, city_id: str, city: dict, research):
+        """Muestra colegios de la ciudad"""
+        from telegram import InlineKeyboardMarkup
+        
+        city_name = city["nombre"].split(",")[0]
+        state_code = city["estado"]
+        
+        # Buscar colegios
+        schools = await research.search_schools(
+            city=city_name,
+            state=state_code,
+            limit=5
+        )
+        
+        msg = f"🎓 *COLEGIOS EN {city['nombre'].upper()}*\n\n"
+        
+        if schools:
+            for i, school in enumerate(schools, 1):
+                stars = "⭐" * int(school.rating / 2)
+                type_emoji = {"🏫": "public", "🎒": "private", "📚": "charter"}.get(school.school_type, "🏫")
+                
+                msg += f"*{i}. {school.name}*\n"
+                msg += f"   📊 Rating: {school.rating}/10 {stars}\n"
+                msg += f"   📚 Grados: {school.grade_range}\n"
+                msg += f"   👨‍🎓 {school.student_count:,} estudiantes\n"
+                msg += f"   🌟 Programas: {', '.join(school.programs[:3])}\n"
+                msg += f"   🔗 [Sitio web]({school.website})\n\n"
+        else:
+            msg += "⚠️ No se encontraron colegios.\n\n"
+        
+        msg += f"\n💡 *Mejores escuelas de la zona:* {', '.join(city['mejores_escuelas'][:3])}"
+        
+        keyboard = [
+            [{"text": "🏠 Ver Viviendas", "callback_data": f"research_housing_{city_id}"}],
+            [{"text": "💼 Ver Empleos", "callback_data": f"research_jobs_{city_id}"}],
+            [{"text": "🏪 Ver Negocios", "callback_data": f"research_business_{city_id}"}],
+            [{"text": "⬅️ Volver", "callback_data": f"city_confirm_{city_id}"}],
+        ]
+        
+        await query.edit_message_text(
+            msg,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
+        )
+    
+    async def _show_business_research(self, query, user_id: int, user: dict, city_id: str, city: dict, research):
+        """Muestra negocios en venta"""
+        from telegram import InlineKeyboardMarkup
+        
+        city_name = city["nombre"].split(",")[0]
+        state_code = city["estado"]
+        
+        # Buscar negocios
+        businesses = await research.search_businesses(
+            location=f"{city_name}, {state_code}",
+            max_price=300000,
+            limit=5
+        )
+        
+        msg = f"🏪 *NEGOCIOS EN VENTA EN {city['nombre'].upper()}*\n\n"
+        msg += f"💰 Due Diligence disponible por $100 USD\n\n"
+        
+        if businesses:
+            for i, biz in enumerate(businesses, 1):
+                roi = (biz.annual_profit / biz.asking_price * 100) if biz.asking_price > 0 else 0
+                
+                msg += f"*{i}. {biz.name}*\n"
+                msg += f"   💰 Precio: ${biz.asking_price:,}\n"
+                msg += f"   📈 Ingresos: ${biz.annual_revenue:,}/año\n"
+                msg += f"   💵 Ganancia: ${biz.annual_profit:,}/año\n"
+                msg += f"   📊 ROI: {roi:.1f}%\n"
+                msg += f"   👥 {biz.employees} empleados | 📅 {biz.years_established} años\n"
+                msg += f"   🔗 [Ver detalles]({biz.listing_url})\n\n"
+        else:
+            msg += "⚠️ No se encontraron negocios en venta.\n\n"
+        
+        msg += f"\n💡 *Tip:* Con visa E-2 puedes invertir y manejar tu propio negocio."
+        
+        keyboard = [
+            [{"text": "🏠 Ver Viviendas", "callback_data": f"research_housing_{city_id}"}],
+            [{"text": "💼 Ver Empleos", "callback_data": f"research_jobs_{city_id}"}],
+            [{"text": "🎓 Ver Colegios", "callback_data": f"research_schools_{city_id}"}],
+            [{"text": "⬅️ Volver", "callback_data": f"city_confirm_{city_id}"}],
+        ]
+        
+        await query.edit_message_text(
+            msg,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=True
+        )
+    
+    async def _show_full_research(self, query, user_id: int, user: dict, city_id: str, city: dict, research):
+        """Muestra investigación completa de la ciudad"""
+        from telegram import InlineKeyboardMarkup
+        
+        city_name = city["nombre"].split(",")[0]
+        state_code = city["estado"]
+        
+        # Obtener información de comunidad
+        community = await research.get_community_info(city_name, state_code)
+        
+        msg = f"📊 *INVESTIGACIÓN COMPLETA: {city['nombre'].upper()}*\n\n"
+        
+        # Foto de la ciudad
+        msg += f"📸 *Foto:* {city.get('foto_url', '')}\n\n"
+        
+        # Descripción
+        msg += f"📝 *{city.get('descripcion', '')}*\n\n"
+        
+        # Comunidad
+        msg += f"👥 *COMUNIDAD:*\n"
+        msg += f"• Población latina: {community.latino_population_pct:.1f}%\n"
+        msg += f"• Ingreso medio: ${community.median_income:,}/año\n"
+        msg += f"• Alquiler medio: ${community.median_rent:,}/mes\n"
+        msg += f"• Seguridad: {100 - community.crime_index}/100\n"
+        msg += f"• Restaurantes latinos: {community.restaurants_latino}\n"
+        msg += f"• Iglesias en español: {community.churches_spanish}\n\n"
+        
+        # Scores
+        msg += f"📊 *SCORES:*\n"
+        msg += f"• 🚶 Walk Score: {community.walk_score}\n"
+        msg += f"• 🚇 Transit Score: {community.transit_score}\n"
+        msg += f"• 🚴 Bike Score: {community.bike_score}\n\n"
+        
+        # Costos
+        costs = city["costo_vida_mensual"]
+        msg += f"💰 *COSTOS MENSUALES:*\n"
+        msg += f"• Alquiler 2BR: ${costs['alquiler_2br']:,}\n"
+        msg += f"• Utilities: ${costs['utilities']:,}\n"
+        msg += f"• Comida: ${costs['groceries']:,}\n"
+        msg += f"• Transporte: ${costs['transporte']:,}\n"
+        msg += f"• *TOTAL: ${costs['total_estimado']:,}/mes*\n\n"
+        
+        # Pros y Contras
+        msg += f"✅ *PROS:* {', '.join(city['pros'][:3])}\n"
+        msg += f"⚠️ *CONTRAS:* {', '.join(city['contras'][:3])}"
+        
+        keyboard = [
+            [{"text": "🏠 Ver Viviendas", "callback_data": f"research_housing_{city_id}"}],
+            [{"text": "💼 Ver Empleos", "callback_data": f"research_jobs_{city_id}"}],
+            [{"text": "🎓 Ver Colegios", "callback_data": f"research_schools_{city_id}"}],
+            [{"text": "🏪 Ver Negocios", "callback_data": f"research_business_{city_id}"}],
+            [{"text": "⬅️ Volver", "callback_data": f"city_confirm_{city_id}"}],
+        ]
+        
+        await query.edit_message_text(
+            msg,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            disable_web_page_preview=False
+        )
+    
+    async def start_migration_plan(self, query_or_update, user_id: int, user: dict):
+        """Inicia el flujo del plan de migración integral"""
+        from telegram import InlineKeyboardMarkup
+        
+        # Resetear preferencias anteriores
+        user["migration_preferences"] = {}
+        encrypted_data = encrypt_user_data(user)
+        save_user_data(user_id, encrypted_data)
+        
+        # Primera pregunta
+        first_q = MIGRATION_PLAN_QUESTIONS[0]
+        q_text, keyboard = get_question_keyboard(first_q)
+        
+        msg = (
+            "🌎 *PLAN INTEGRAL DE MIGRACIÓN*\n\n"
+            "Vamos a encontrar la ciudad perfecta para ti.\n"
+            "Te haré algunas preguntas sobre tus preferencias.\n\n"
+            f"{q_text}"
+        )
+        
+        if hasattr(query_or_update, 'edit_message_text'):
+            await query_or_update.edit_message_text(
+                msg,
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        else:
+            await query_or_update.message.reply_text(
+                msg,
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
     
     async def _ask_migration_reason(self, query):
         await query.edit_message_text(
@@ -1652,15 +3152,76 @@ class MigPALBot:
         
         logger.info(f"MSG: {user_id} | {state} | {text[:50]}")
         
-        # Mostrar que estamos procesando
-        await update.message.chat.send_action("typing")
+        # Mostrar indicador de "pensando" con banner de avión
+        # Obtener país de origen del usuario
+        origin = user.get("profile", {}).get("personal", {}).get("current_country", "🌎")
+        dest = user.get("preferences", {}).get("destination", "USA")
         
-        # SIEMPRE procesar con IA primero
-        ai_response = await self._process_with_ai_brain(text, user, state)
+        # Banderas
+        flags = {
+            "Colombia": "🇨🇴", "Venezuela": "🇻🇪", "Mexico": "🇲🇽", "México": "🇲🇽",
+            "Argentina": "🇦🇷", "Peru": "🇵🇪", "Perú": "🇵🇪", "Chile": "🇨🇱",
+            "Ecuador": "🇪🇨", "Brasil": "🇧🇷", "USA": "🇺🇸", "Canada": "🇨🇦",
+            "España": "🇪🇸", "Alemania": "🇩🇪"
+        }
+        origin_flag = flags.get(origin, "🌎")
+        dest_flag = flags.get(dest, "🇺🇸")
         
-        # Enviar respuesta de la IA
-        if ai_response:
-            await update.message.reply_text(ai_response, parse_mode='Markdown')
+        thinking_msg = await update.message.reply_text(f"{origin_flag} ✈️ · · · · · · · · {dest_flag}")
+        
+        try:
+            # Animar el avión viajando
+            async def animate_thinking():
+                frames = [
+                    f"{origin_flag} ✈️ · · · · · · · · {dest_flag}",
+                    f"{origin_flag} · ✈️ · · · · · · · {dest_flag}",
+                    f"{origin_flag} · · ✈️ · · · · · · {dest_flag}",
+                    f"{origin_flag} · · · ✈️ · · · · · {dest_flag}",
+                    f"{origin_flag} · · · · ✈️ · · · · {dest_flag}",
+                    f"{origin_flag} · · · · · ✈️ · · · {dest_flag}",
+                    f"{origin_flag} · · · · · · ✈️ · · {dest_flag}",
+                    f"{origin_flag} · · · · · · · ✈️ · {dest_flag}",
+                    f"{origin_flag} · · · · · · · · ✈️ {dest_flag}",
+                ]
+                i = 0
+                while True:
+                    try:
+                        await thinking_msg.edit_text(frames[i % len(frames)])
+                        i += 1
+                        await asyncio.sleep(0.5)
+                    except:
+                        break
+            
+            # Iniciar animación en background
+            animation_task = asyncio.create_task(animate_thinking())
+            
+            # Procesar con IA
+            ai_response = await self._process_with_ai_brain(text, user, state)
+            
+            # Detener animación
+            animation_task.cancel()
+            try:
+                await animation_task
+            except asyncio.CancelledError:
+                pass
+            
+            # Eliminar mensaje de "pensando"
+            try:
+                await thinking_msg.delete()
+            except:
+                pass
+            
+            # Enviar respuesta de la IA
+            if ai_response:
+                await update.message.reply_text(ai_response, parse_mode='Markdown')
+        
+        except Exception as e:
+            logger.error(f"Error processing message: {e}")
+            try:
+                await thinking_msg.delete()
+            except:
+                pass
+            await update.message.reply_text("⚠️ Hubo un error. Inténtalo de nuevo.")
         
         # Si estamos en un estado de formulario Y la IA extrajo datos, guardarlos
         # Pero la IA ya respondió al usuario de forma natural
@@ -2232,12 +3793,21 @@ Basado en tu perfil ({profession}, {education}):
         Procesa TODOS los mensajes con IA.
         La IA SIEMPRE continúa el proceso - nunca lo deja tirado.
         Responde la pregunta Y luego continúa con el proceso.
+        AHORA incluye el historial de conversación para contexto.
         """
         try:
             from app.services.ai_brain import process_with_ai, extract_data_from_message
             
-            # Procesar con IA
-            result = await process_with_ai(message, user)
+            user_id = user.get("user_id", 0)
+            
+            # CARGAR HISTORIAL DE CONVERSACIÓN para contexto
+            conversation_history = []
+            if user_id:
+                conversation_history = load_conversations(user_id, limit=10)
+                logger.info(f"Loaded {len(conversation_history)} previous messages for context")
+            
+            # Procesar con IA - AHORA CON HISTORIAL
+            result = await process_with_ai(message, user, conversation_history)
             
             if result.get("success"):
                 response = result.get("response", "")
@@ -2250,15 +3820,14 @@ Basado en tu perfil ({profession}, {education}):
                 if extracted:
                     self._update_profile_from_extracted(user, extracted)
                     # Guardar cambios
-                    user_id = user.get("user_id", 0)
                     if user_id:
                         encrypted_data = encrypt_user_data(user)
                         save_user_data(user_id, encrypted_data)
                     logger.info(f"Extracted and saved: {extracted}")
                 
-                # Guardar conversación
+                # Guardar conversación DESPUÉS de procesar
                 save_conversation(
-                    user.get("user_id", 0),
+                    user_id,
                     message,
                     response,
                     role="user"

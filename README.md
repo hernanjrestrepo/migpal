@@ -1,201 +1,268 @@
-# 🌍 MigPAL - Global Migration Assistant
+# 🌍 MigPAL V2.0 - Global Migration Assistant
 
-> **Tu asistente de migración GLOBAL**
-> Bot de Telegram que ayuda a migrantes de TODO EL MUNDO
+> **Tu consultor personal de migración**
+> Bot de Telegram que elimina los "2 años de dolor" de los migrantes
 
 [![Bot](https://img.shields.io/badge/Telegram-@MigPAL__Bot-blue)](https://t.me/MigPAL_Bot)
+[![Version](https://img.shields.io/badge/Version-2.0-green)]()
+[![AI](https://img.shields.io/badge/AI-Qwen2.5:7b-purple)]()
 
 ---
 
-## 🚀 Características
+## 🎯 Filosofía
 
-### 🌐 Cobertura Global
-- **25+ idiomas** soportados
-- **100+ nacionalidades**
-- **25+ países destino** (USA, Canadá, España, Alemania, UK, Australia, etc.)
+> **"La visa es el VEHÍCULO, no el DESTINO. Primero define el destino (plan de vida), luego el vehículo (visa)."**
 
-### 📋 Funcionalidades Principales
+MigPAL no es un chatbot genérico. Es un **consultor profesional** que:
+- Entiende tu situación personal
+- Te guía paso a paso
+- Te da información REAL sobre ciudades, viviendas, trabajos
+- Te acompaña hasta lograr tu visa
 
+---
+
+## 💰 Estructura de Precios
+
+| Nivel | Servicio | Precio | Descripción |
+|-------|----------|--------|-------------|
+| 0 | Consultas | **GRATIS** | Preguntas generales, exploración |
+| 1 | Diagnóstico | **$50 USD** | Evaluación de viabilidad, score de probabilidad |
+| 2 | Perfilamiento | **$50 USD** | Definición de visa, assessment profesional |
+| 3 | Revisión Documental | **$200 USD** | Formularios listos para aplicar |
+| 4 | Plan de Migración | **$100 USD** | Ciudad, barrio, vivienda, trabajo (OPCIONAL) |
+
+**Total Básico: $300 USD** | **Total Completo: $400 USD**
+
+⚠️ **Los pagos NO son retornables.** Acompañamiento hasta lograr la visa.
+
+---
+
+## 🚀 Características V2.0
+
+### 🧠 AI Brain V7 - Empático
+- Respuestas cortas (3-5 líneas)
+- UNA pregunta a la vez
+- Nunca dice "¿Te quedó claro?"
+- Información real y específica
+
+### 🗺️ Flujo de Conversación Guiado
+33 estados definidos para una experiencia estructurada:
+
+```
+DESCUBRIMIENTO → PLAN DE VIDA → UBICACIÓN → VISA → EJECUCIÓN
+```
+
+1. **Descubrimiento**: ¿Por qué migrar? ¿Familia? ¿Conexiones en USA?
+2. **Plan de Vida**: ¿Trabajo o negocio? ¿Industria? ¿Expectativas?
+3. **Ubicación**: Estado → Ciudad → Barrio (de lo general a lo particular)
+4. **Visa**: Recomendación basada en el plan de vida
+5. **Ejecución**: Diagnóstico, documentos, aplicación
+
+### 🏙️ Base de Datos de Ciudades
+- **864+ ciudades** con datos reales
+- Costo de vida, seguridad, oportunidades
+- Comunidad latina, clima, transporte
+- Escuelas, hospitales, empleos
+
+### 🎯 Sistema de Scoring Personalizado
+El cliente define sus prioridades:
+- 💰 Costo de vida
+- 🛡️ Seguridad
+- 💼 Oportunidades laborales
+- 🎓 Educación
+- 🤝 Comunidad latina
+- ☀️ Clima
+
+### 💼 Búsqueda de Empleos Real
+Integración con APIs de empleo:
+- LinkedIn Jobs API
+- JSearch API
+- Filtro de visa sponsorship
+- Salarios reales
+
+---
+
+## 📋 Comandos del Bot
+
+### Comandos Principales
 | Comando | Descripción |
 |---------|-------------|
-| `/start` | Iniciar - Selección de idioma |
-| `/nuevo` | Reiniciar perfil completo |
-| `/perfil` | Ver tu perfil actual |
-| `/estado` | Ver progreso del proceso |
-| `/score` | Calcular probabilidad de éxito |
+| `/start` | Iniciar conversación |
+| `/nuevo` | Reiniciar perfil |
+| `/perfil` | Ver tu perfil |
+| `/estado` | Ver progreso |
+
+### Consultoría
+| Comando | Descripción |
+|---------|-------------|
+| `/score` | Probabilidad de éxito |
 | `/costos` | Calculadora de costos |
-| `/checklist` | Lista de documentos requeridos |
-| `/tracking` | Seguimiento de aplicación |
-| `/mentores` | Conectar con mentores verificados |
-| `/abogados` | Directorio de abogados |
-| `/empleos` | Bolsa de trabajo con visa sponsorship |
-| `/guia` | Guías de establecimiento por país |
+| `/precios` | Ver precios MigPAL |
+| `/diagnostico` | Iniciar diagnóstico ($50) |
+
+### Exploración
+| Comando | Descripción |
+|---------|-------------|
+| `/checklist` | Documentos requeridos |
+| `/empleos` | Buscar trabajos |
+| `/guia` | Guías por país |
+
+### Soporte
+| Comando | Descripción |
+|---------|-------------|
+| `/sos` | Emergencia 24/7 |
 | `/motivacion` | Mensaje motivacional |
-| `/reporte` | Generar reporte PDF |
 | `/comunidad` | Grupos de apoyo |
-| `/sos` | Ayuda de emergencia 24/7 |
-| `/idioma` | Cambiar idioma |
 | `/help` | Ayuda completa |
-
-### 🔒 Seguridad
-- Encriptación de datos sensibles
-- Rate limiting (protección contra abuso)
-- Validación de inputs
-- Audit logging
-
-### 🛠️ Desarrollo
-- Hot-reload automático
-- Backup programado
-- Sistema de notificaciones
 
 ---
 
-## 📁 Estructura del Proyecto
+## 🏗️ Arquitectura del Proyecto
 
 ```
 migpal/
 ├── backend/
 │   ├── app/
 │   │   ├── services/
-│   │   │   ├── telegram_bot.py      # Bot principal
-│   │   │   ├── migpal_features.py   # Funcionalidades avanzadas
-│   │   │   ├── translations.py      # 25+ idiomas
-│   │   │   ├── case_storage.py      # Persistencia JSON
-│   │   │   ├── database.py          # SQLite
-│   │   │   ├── pdf_generator.py     # Reportes PDF
-│   │   │   ├── security.py          # Seguridad
-│   │   │   ├── notifications.py     # Notificaciones
-│   │   │   └── config.py            # Configuración
-│   │   ├── models/                  # Modelos de datos
-│   │   ├── routes/                  # API REST
-│   │   └── utils/                   # Utilidades
+│   │   │   ├── telegram_bot.py       # Bot principal (~4000 líneas)
+│   │   │   ├── ai_brain.py           # AI V7 Empático
+│   │   │   ├── conversation_flow.py  # Máquina de estados (33 estados)
+│   │   │   ├── scoring_engine.py     # Sistema de scoring personalizado
+│   │   │   ├── job_search.py         # Búsqueda de empleos (LinkedIn/JSearch)
+│   │   │   ├── research_engine.py    # Motor de investigación
+│   │   │   ├── deep_consulting.py    # Consultoría profunda
+│   │   │   ├── gamification.py       # Sistema de niveles y precios
+│   │   │   ├── migration_planner.py  # Planificador de migración
+│   │   │   ├── case_storage.py       # Persistencia JSON encriptada
+│   │   │   ├── knowledge_base/       # Base de datos de ciudades
+│   │   │   │   ├── cities_usa.py     # 50 estados + DC
+│   │   │   │   ├── cities_database.py # 20+ ciudades principales
+│   │   │   │   ├── cities_expanded.py # Generador de ciudades
+│   │   │   │   └── cities_additional.py # Ciudades adicionales
+│   │   │   ├── translations.py       # 25+ idiomas
+│   │   │   ├── security.py           # Encriptación, rate limiting
+│   │   │   ├── notification_scheduler.py # Notificaciones
+│   │   │   ├── payments.py           # Sistema de pagos
+│   │   │   └── ui_helpers.py         # Helpers de UI
+│   │   └── utils/
+│   │       └── ai_assistant.py       # Utilidades de AI
 │   ├── data/
-│   │   ├── cases/                   # Datos de usuarios
-│   │   └── reports/                 # PDFs generados
-│   ├── scripts/
-│   │   └── backup.py                # Sistema de backup
-│   ├── run_telegram_bot.py          # Runner producción
-│   └── run_telegram_bot_dev.py      # Runner desarrollo (hot-reload)
-├── frontend/                        # Web UI (opcional)
-└── docs/                            # Documentación
+│   │   └── cases/                    # Datos de usuarios (encriptados)
+│   ├── .env                          # Variables de entorno
+│   ├── run_telegram_bot.py           # Runner producción
+│   └── run_telegram_bot_dev.py       # Runner desarrollo
+└── README.md
 ```
+
+---
+
+## ⚙️ Configuración
+
+### Variables de Entorno (.env)
+
+```bash
+# Base de datos
+DATABASE_URL=sqlite:///./migpal.db
+
+# AI - Ollama
+AI_PROVIDER=ollama
+AI_MODEL=qwen2.5:7b
+OLLAMA_URL=http://127.0.0.1:11434
+AI_TEMPERATURE=0.5
+
+# RapidAPI - Búsqueda de empleos
+RAPIDAPI_KEY=tu_key_aqui
+
+# Telegram
+TELEGRAM_BOT_TOKEN=tu_token_aqui
+
+# Seguridad
+AUTH_SECRET_KEY=tu_secret_key
+```
+
+### APIs Integradas
+
+| API | Uso | Host |
+|-----|-----|------|
+| LinkedIn Jobs | Búsqueda de empleos | linkedin-job-search-api.p.rapidapi.com |
+| JSearch | Agregador de empleos | jsearch.p.rapidapi.com |
+| Active Jobs DB | Empleos activos | active-jobs-db.p.rapidapi.com |
+| Ollama | AI local | localhost:11434 |
 
 ---
 
 ## 🚀 Inicio Rápido
 
-### 1. Clonar y configurar
+### 1. Configurar entorno
 ```bash
 cd /workspace/hjrm/migpal/backend
-python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
 ```
 
-### 2. Configurar variables de entorno
+### 2. Ejecutar el bot
 ```bash
-# Crear archivo .env
-cat > .env << EOF
-TELEGRAM_BOT_TOKEN=tu_token_aqui
-AI_PROVIDER=ollama
-AI_MODEL=qwen2.5:7b
-OLLAMA_URL=http://127.0.0.1:11434
-EOF
-```
+# Producción con tmux
+tmux new-session -d -s migpal_bot 'source .venv/bin/activate && python run_telegram_bot.py'
 
-### 3. Ejecutar el bot
-
-**Modo Desarrollo (con hot-reload):**
-```bash
-python run_telegram_bot_dev.py
-```
-
-**Modo Producción:**
-```bash
-python run_telegram_bot.py
-```
-
-**Con tmux (recomendado):**
-```bash
-tmux new-session -d -s migpal_bot -c /workspace/hjrm/migpal/backend \
-  'source .venv/bin/activate && python run_telegram_bot_dev.py'
-```
-
----
-
-## 📊 Comandos de Administración
-
-### Ver logs del bot
-```bash
+# Ver logs
 tmux attach -t migpal_bot
 ```
 
-### Reiniciar bot
+### 3. Reiniciar bot
 ```bash
 tmux kill-session -t migpal_bot
-tmux new-session -d -s migpal_bot -c /workspace/hjrm/migpal/backend \
-  'source .venv/bin/activate && python run_telegram_bot_dev.py'
-```
-
-### Backup manual
-```bash
-cd /workspace/hjrm/migpal/backend
-source .venv/bin/activate
-python scripts/backup.py
-```
-
-### Listar backups
-```bash
-python scripts/backup.py --list
-```
-
-### Restaurar backup
-```bash
-python scripts/backup.py --restore nombre_backup.tar.gz
+tmux new-session -d -s migpal_bot 'source .venv/bin/activate && python run_telegram_bot.py'
 ```
 
 ---
 
-## 🔧 Configuración
+## 📊 Tipos de Visa Soportados
 
-### Variables de Entorno
+| Visa | Descripción | Probabilidad |
+|------|-------------|--------------|
+| **O-1** | Habilidades extraordinarias | 70-85% |
+| **E-2** | Inversionista ($100K+) | 80-90% |
+| **H-1B** | Trabajo especializado | 50-65% |
+| **L-1** | Transferencia intracompañía | 75-85% |
+| **EB-1/EB-2 NIW** | Green Card por mérito | 60-75% |
 
-| Variable | Descripción | Default |
-|----------|-------------|---------|
-| `TELEGRAM_BOT_TOKEN` | Token del bot | Requerido |
-| `AI_PROVIDER` | Proveedor de IA | `ollama` |
-| `AI_MODEL` | Modelo de IA | `qwen2.5:7b` |
-| `OLLAMA_URL` | URL de Ollama | `http://127.0.0.1:11434` |
-| `MIGPAL_ENCRYPTION_KEY` | Clave de encriptación | Default (cambiar en prod) |
-| `RATE_LIMIT_PER_MINUTE` | Límite por minuto | `30` |
-| `RATE_LIMIT_PER_HOUR` | Límite por hora | `200` |
-| `ENABLE_OCR` | Habilitar OCR | `true` |
-| `ENABLE_PDF_REPORTS` | Habilitar PDFs | `true` |
-| `BACKUP_ENABLED` | Habilitar backup | `true` |
-| `BACKUP_INTERVAL_HOURS` | Intervalo de backup | `6` |
+---
+
+## 🏙️ Ciudades Populares
+
+| Ciudad | % Latinos | Alquiler 2BR | Características |
+|--------|-----------|--------------|-----------------|
+| Miami, FL | 72% | $2,800/mes | Todo en español |
+| Houston, TX | 45% | $1,700/mes | Sin impuesto estatal |
+| Orlando, FL | 35% | $2,000/mes | Familiar, parques |
+| Austin, TX | 35% | $2,100/mes | Tech hub |
+| San Antonio, TX | 65% | $1,400/mes | Muy económico |
+
+---
+
+## 🔒 Seguridad
+
+- ✅ Encriptación de datos sensibles (Fernet)
+- ✅ Rate limiting (30/min, 200/hora)
+- ✅ Validación de inputs
+- ✅ Audit logging
+- ✅ Persistencia segura en JSON
 
 ---
 
 ## 🌍 Idiomas Soportados
 
-| Código | Idioma | Código | Idioma |
-|--------|--------|--------|--------|
-| es | Español | en | English |
-| pt | Português | fr | Français |
-| de | Deutsch | it | Italiano |
-| zh | 中文 | ja | 日本語 |
-| ko | 한국어 | ar | العربية |
-| hi | हिन्दी | ru | Русский |
-| tr | Türkçe | vi | Tiếng Việt |
-| th | ไทย | id | Bahasa Indonesia |
-| pl | Polski | uk | Українська |
-| nl | Nederlands | fa | فارسی |
-| tl | Tagalog | bn | বাংলা |
-| sw | Kiswahili | ro | Română |
-| el | Ελληνικά | he | עברית |
-| cs | Čeština | hu | Magyar |
-| sv | Svenska | da | Dansk |
-| fi | Suomi | no | Norsk |
+25+ idiomas incluyendo:
+- 🇪🇸 Español
+- 🇺🇸 English
+- 🇧🇷 Português
+- 🇫🇷 Français
+- 🇩🇪 Deutsch
+- 🇨🇳 中文
+- 🇯🇵 日本語
+- 🇰🇷 한국어
+- 🇸🇦 العربية
+- Y más...
 
 ---
 
@@ -206,10 +273,29 @@ python scripts/backup.py --restore nombre_backup.tar.gz
 
 ---
 
+## 📝 Changelog V2.0
+
+### Nuevas Características
+- ✅ AI Brain V7 con enfoque empático
+- ✅ Flujo de conversación guiado (33 estados)
+- ✅ Sistema de scoring personalizado
+- ✅ Base de datos de 864+ ciudades
+- ✅ Integración con LinkedIn Jobs API
+- ✅ Nueva estructura de precios ($300-$400)
+- ✅ Política de no devolución
+
+### Mejoras
+- ✅ Respuestas más cortas y directas
+- ✅ Eliminación de frases repetitivas
+- ✅ Mejor manejo de contexto
+- ✅ Exploración uno por uno (no listas)
+
+---
+
 ## 📄 Licencia
 
 Proyecto privado - Todos los derechos reservados
 
 ---
 
-*MigPAL - Helping migrants from ALL OVER THE WORLD* 🌍✨
+*MigPAL V2.0 - Eliminando los "2 años de dolor" de los migrantes* 🌍✨
