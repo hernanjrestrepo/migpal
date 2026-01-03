@@ -332,6 +332,10 @@ class MigPALBot:
         self.application.add_handler(CommandHandler("pagos", self._cmd_payments))
         self.application.add_handler(CommandHandler("entregables", self._cmd_deliverables))
         self.application.add_handler(CommandHandler("devolucion", self._cmd_refund))
+        # New V2.0 commands - City exploration and housing
+        self.application.add_handler(CommandHandler("explorar", self._cmd_explore))
+        self.application.add_handler(CommandHandler("viviendas", self._cmd_housing))
+        self.application.add_handler(CommandHandler("flujo", self._cmd_flow))
         self.application.add_handler(CallbackQueryHandler(self._handle_callback))
         self.application.add_handler(MessageHandler(filters.Document.ALL, self._handle_document))
         self.application.add_handler(MessageHandler(filters.PHOTO, self._handle_photo))
@@ -436,7 +440,11 @@ class MigPALBot:
         lang = get_user_data(user_id).get("language", "en")
         
         await update.message.reply_text(
-            "🆘 *MigPAL Help - Global Migration Assistant*\n\n"
+            "🆘 *MigPAL V2.0 - Tu Consultor de Migración*\n\n"
+            "*🗺️ NUEVO - Exploración V2.0:*\n"
+            "/flujo - Flujo guiado de migración\n"
+            "/explorar - Explorar ciudades con scoring\n"
+            "/viviendas - Buscar viviendas (Zillow)\n\n"
             "*🎮 Tu Proceso (Gamificado):*\n"
             "/nivel - Ver tu nivel y progreso\n"
             "/diagnostico - Iniciar diagnóstico ($50)\n"
@@ -453,18 +461,17 @@ class MigPALBot:
             "*📊 Análisis:*\n"
             "/score - Probabilidad de éxito\n"
             "/costos - Calculadora de costos\n"
-            "/checklist - Documentos requeridos\n\n"
+            "/checklist - Documentos requeridos\n"
+            "/empleos - Buscar empleos con sponsor\n\n"
             "*👥 Apoyo:*\n"
             "/mentores - Conectar con mentores\n"
-            "/abogados - Directorio de abogados\n"
             "/comunidad - Grupos de apoyo\n\n"
             "*🆘 Emergencia:*\n"
             "/sos - Ayuda urgente\n\n"
             "*⚙️ Configuración:*\n"
             "/idioma - Cambiar idioma\n"
-            "/notificaciones - Configurar alertas\n"
-            "/listo - Finish document upload\n\n"
-            "_🌍 MigPAL helps migrants from ALL OVER THE WORLD_",
+            "/notificaciones - Configurar alertas\n\n"
+            "_🌍 MigPAL - La visa es el VEHÍCULO, no el DESTINO_",
             parse_mode='Markdown'
         )
     
@@ -1328,6 +1335,370 @@ class MigPALBot:
         else:
             await update.message.reply_text(f"⚠️ {msg}")
     
+    # ============== V2.0 COMMANDS - EXPLORATION & FLOW ==============
+    
+    @safe_async_handler
+    async def _cmd_explore(self, update, context):
+        """Explorar ciudades con scoring personalizado"""
+        user_id = update.effective_user.id
+        user = get_user_data(user_id)
+        route = user.get("selected_route", {})
+        
+        # Obtener estado seleccionado o mostrar opciones
+        selected_state = route.get("state", "")
+        
+        if not selected_state:
+            # Mostrar estados populares para explorar
+            await update.message.reply_text(
+                "🗺️ *EXPLORAR CIUDADES*\n\n"
+                "Selecciona un estado para explorar sus ciudades:\n\n"
+                "🌴 *Costa Este:*",
+                parse_mode='Markdown',
+                reply_markup=self._kb([
+                    [("🌴 Florida", "explore_FL"), ("🗽 New York", "explore_NY")],
+                    [("🏛️ New Jersey", "explore_NJ"), ("🦀 Maryland", "explore_MD")],
+                ])
+            )
+            await update.message.reply_text(
+                "🌵 *Costa Oeste y Sur:*",
+                parse_mode='Markdown',
+                reply_markup=self._kb([
+                    [("☀️ California", "explore_CA"), ("🤠 Texas", "explore_TX")],
+                    [("🌵 Arizona", "explore_AZ"), ("🎰 Nevada", "explore_NV")],
+                ])
+            )
+            await update.message.reply_text(
+                "🏔️ *Centro y Norte:*",
+                parse_mode='Markdown',
+                reply_markup=self._kb([
+                    [("🌽 Illinois", "explore_IL"), ("🏈 Georgia", "explore_GA")],
+                    [("🎸 Tennessee", "explore_TN"), ("🌲 Washington", "explore_WA")],
+                    [("🔍 Buscar por nombre", "explore_search")],
+                ])
+            )
+            return
+        
+        # Si ya tiene estado, mostrar ciudades de ese estado
+        await self._show_cities_for_state(update, user_id, selected_state)
+    
+    async def _show_cities_for_state(self, update, user_id: int, state_code: str):
+        """Muestra ciudades de un estado con scoring"""
+        from app.services.knowledge_base.cities_database import CITIES_DATABASE
+        
+        # Filtrar ciudades del estado
+        state_cities = [
+            city for city_id, city in CITIES_DATABASE.items()
+            if city.get("state_code") == state_code
+        ]
+        
+        if not state_cities:
+            await update.message.reply_text(
+                f"⚠️ No tenemos ciudades registradas para {state_code}.\n"
+                "Usa /explorar para ver otros estados."
+            )
+            return
+        
+        # Calcular scores para cada ciudad
+        scored_cities = []
+        for city in state_cities:
+            # Crear scores basados en datos de la ciudad
+            city_scores = {
+                "costo_vida": 100 - min(100, (city.get("cost_of_living_index", 100) - 70)),
+                "seguridad": 100 - city.get("crime_index", 50),
+                "oportunidades": min(100, city.get("median_income", 50000) / 1000),
+                "educacion": city.get("school_rating", 5) * 10,
+                "salud": city.get("healthcare_score", 70),
+                "transporte": city.get("transit_score", 30),
+                "comunidad_latina": min(100, city.get("latino_pct", 10) * 2),
+                "clima": 70,  # Default
+                "calidad_vida": city.get("quality_of_life_score", 70),
+            }
+            
+            total, breakdown = scoring_engine.calculate_score(user_id, "location", city_scores)
+            scored_cities.append({
+                "city": city,
+                "score": total,
+                "breakdown": breakdown
+            })
+        
+        # Ordenar por score
+        scored_cities.sort(key=lambda x: x["score"], reverse=True)
+        
+        # Guardar en contexto del usuario para navegación
+        user = get_user_data(user_id)
+        user["exploration"] = {
+            "type": "cities",
+            "state": state_code,
+            "items": scored_cities,
+            "current_index": 0
+        }
+        save_user_data(user_id, encrypt_user_data(user))
+        
+        # Mostrar primera ciudad
+        await self._show_exploration_item(update, user_id, 0)
+    
+    async def _show_exploration_item(self, update_or_query, user_id: int, index: int):
+        """Muestra un item de exploración (ciudad, vivienda, etc.)"""
+        user = get_user_data(user_id)
+        exploration = user.get("exploration", {})
+        items = exploration.get("items", [])
+        
+        if not items or index >= len(items):
+            msg = "✅ Has visto todas las opciones.\n\n¿Qué quieres hacer?"
+            kb = self._kb([
+                ("🔄 Ver de nuevo", "explore_restart"),
+                ("✅ Elegir favorita", "explore_select"),
+            ])
+            if hasattr(update_or_query, 'message'):
+                await update_or_query.message.reply_text(msg, reply_markup=kb)
+            else:
+                await update_or_query.edit_message_text(msg, reply_markup=kb)
+            return
+        
+        item = items[index]
+        exploration["current_index"] = index
+        user["exploration"] = exploration
+        save_user_data(user_id, encrypt_user_data(user))
+        
+        if exploration.get("type") == "cities":
+            city = item["city"]
+            score = item["score"]
+            
+            # Generar estrellas
+            stars = "⭐" * min(5, int(score / 20))
+            
+            msg = f"🏙️ *{city.get('name')}, {city.get('state_code')}*\n"
+            msg += f"{stars} Score: {score:.1f}/100\n\n"
+            msg += f"👥 Población: {city.get('population', 0):,}\n"
+            msg += f"💰 Ingreso medio: ${city.get('median_income', 0):,}/año\n"
+            msg += f"🏠 Renta 2BR: ${city.get('median_rent_2br', 0):,}/mes\n"
+            msg += f"🛡️ Seguridad: {100 - city.get('crime_index', 50)}/100\n"
+            msg += f"🤝 Comunidad latina: {city.get('latino_pct', 0):.1f}%\n"
+            msg += f"🎓 Escuelas: {city.get('school_rating', 0)}/10\n\n"
+            
+            if city.get("description"):
+                msg += f"📝 {city.get('description')[:200]}...\n\n"
+            
+            msg += f"📍 {index + 1} de {len(items)} ciudades"
+            
+            kb = self._kb([
+                [("⬅️ Anterior", f"explore_prev_{index}"), ("➡️ Siguiente", f"explore_next_{index}")],
+                [("❤️ Me gusta", f"explore_like_{city.get('id')}"), ("ℹ️ Más info", f"explore_info_{city.get('id')}")],
+                [("✅ Elegir esta ciudad", f"explore_select_{city.get('id')}")],
+            ])
+        else:
+            # Para viviendas u otros tipos
+            msg = f"🏠 Item {index + 1} de {len(items)}"
+            kb = self._kb([
+                [("⬅️ Anterior", f"explore_prev_{index}"), ("➡️ Siguiente", f"explore_next_{index}")],
+            ])
+        
+        if hasattr(update_or_query, 'message'):
+            await update_or_query.message.reply_text(msg, parse_mode='Markdown', reply_markup=kb)
+        else:
+            await update_or_query.edit_message_text(msg, parse_mode='Markdown', reply_markup=kb)
+    
+    @safe_async_handler
+    async def _cmd_housing(self, update, context):
+        """Buscar viviendas con Zillow"""
+        user_id = update.effective_user.id
+        user = get_user_data(user_id)
+        route = user.get("selected_route", {})
+        
+        city = route.get("city", "")
+        state = route.get("state", "")
+        
+        if not city or not state:
+            await update.message.reply_text(
+                "🏠 *BÚSQUEDA DE VIVIENDAS*\n\n"
+                "Primero necesitas seleccionar una ciudad.\n\n"
+                "Usa /explorar para elegir tu ciudad destino,\n"
+                "o escríbeme el nombre de la ciudad que te interesa.",
+                parse_mode='Markdown',
+                reply_markup=self._kb([
+                    ("🗺️ Explorar ciudades", "cmd_explore"),
+                    ("🔍 Buscar ciudad", "housing_search_city"),
+                ])
+            )
+            return
+        
+        await update.message.reply_text(
+            f"🏠 *VIVIENDAS EN {city.upper()}, {state}*\n\n"
+            "🔍 Buscando opciones de renta...\n\n"
+            "_Esto puede tomar unos segundos..._",
+            parse_mode='Markdown'
+        )
+        
+        try:
+            from app.services.zillow import fetch_city_listings
+            
+            listings = fetch_city_listings(city, state)
+            
+            if not listings:
+                await update.message.reply_text(
+                    f"⚠️ No encontramos listados activos en {city}, {state}.\n\n"
+                    "Esto puede ser porque:\n"
+                    "• La ciudad tiene pocos listados\n"
+                    "• Zillow bloqueó temporalmente las consultas\n\n"
+                    "💡 *Alternativas:*\n"
+                    "• Visita zillow.com directamente\n"
+                    "• Prueba con una ciudad cercana",
+                    parse_mode='Markdown'
+                )
+                return
+            
+            # Calcular scores para cada vivienda
+            scored_listings = []
+            for listing in listings[:10]:  # Limitar a 10
+                housing_scores = {
+                    "precio": self._price_score(listing.get("price", 0), user),
+                    "ubicacion": 70,  # Default
+                    "tamano": self._size_score(listing.get("area", 0), listing.get("beds", 0)),
+                    "amenidades": 60,  # Default
+                    "seguridad_barrio": 70,  # Default
+                    "cercania_trabajo": 50,  # Default
+                    "cercania_escuelas": 50,  # Default
+                }
+                
+                total, breakdown = scoring_engine.calculate_score(user_id, "housing", housing_scores)
+                scored_listings.append({
+                    "listing": listing,
+                    "score": total,
+                    "breakdown": breakdown
+                })
+            
+            # Ordenar por score
+            scored_listings.sort(key=lambda x: x["score"], reverse=True)
+            
+            # Mostrar resultados
+            msg = f"🏠 *{len(scored_listings)} VIVIENDAS EN {city.upper()}*\n\n"
+            
+            for i, item in enumerate(scored_listings[:5], 1):
+                listing = item["listing"]
+                score = item["score"]
+                stars = "⭐" * min(5, int(score / 20))
+                
+                price = listing.get("price", 0)
+                beds = listing.get("beds", "?")
+                baths = listing.get("baths", "?")
+                address = listing.get("address", "Dirección no disponible")
+                
+                msg += f"{i}. {stars} *${price:,}/mes*\n"
+                msg += f"   🛏️ {beds} hab | 🚿 {baths} baños\n"
+                msg += f"   📍 {address[:40]}...\n"
+                if listing.get("detail_url"):
+                    msg += f"   🔗 [Ver en Zillow]({listing.get('detail_url')})\n"
+                msg += "\n"
+            
+            msg += "\n💡 _Usa los botones para ver más detalles_"
+            
+            # Guardar para navegación
+            user["exploration"] = {
+                "type": "housing",
+                "city": city,
+                "state": state,
+                "items": scored_listings,
+                "current_index": 0
+            }
+            save_user_data(user_id, encrypt_user_data(user))
+            
+            await update.message.reply_text(
+                msg,
+                parse_mode='Markdown',
+                disable_web_page_preview=True,
+                reply_markup=self._kb([
+                    [("🔄 Actualizar", "housing_refresh"), ("📊 Ajustar filtros", "housing_filters")],
+                    [("❤️ Ver favoritos", "housing_favorites")],
+                ])
+            )
+            
+        except Exception as e:
+            logger.error(f"Error fetching Zillow listings: {e}")
+            await update.message.reply_text(
+                "⚠️ Error al buscar viviendas.\n\n"
+                f"Detalles: {str(e)[:100]}\n\n"
+                "Por favor intenta de nuevo más tarde."
+            )
+    
+    def _price_score(self, price: int, user: dict) -> int:
+        """Calcula score de precio basado en presupuesto del usuario"""
+        budget = user.get("preferences", {}).get("housing_budget", 2500)
+        if price <= budget * 0.7:
+            return 100
+        elif price <= budget:
+            return 80
+        elif price <= budget * 1.2:
+            return 60
+        elif price <= budget * 1.5:
+            return 40
+        else:
+            return 20
+    
+    def _size_score(self, sqft: int, beds: int) -> int:
+        """Calcula score de tamaño"""
+        if sqft >= 1500 or beds >= 3:
+            return 90
+        elif sqft >= 1000 or beds >= 2:
+            return 70
+        elif sqft >= 700 or beds >= 1:
+            return 50
+        else:
+            return 30
+    
+    @safe_async_handler
+    async def _cmd_flow(self, update, context):
+        """Inicia o continúa el flujo conversacional guiado"""
+        user_id = update.effective_user.id
+        user = get_user_data(user_id)
+        
+        # Obtener contexto del flujo
+        ctx = flow_engine.get_context(user_id)
+        current_state = ctx.current_state
+        
+        # Obtener pregunta del estado actual
+        question_data = STATE_QUESTIONS.get(current_state, {})
+        
+        if not question_data:
+            await update.message.reply_text(
+                "🎯 *FLUJO DE MIGRACIÓN*\n\n"
+                "¡Vamos a construir tu plan de migración paso a paso!\n\n"
+                "Este proceso te guiará para:\n"
+                "1️⃣ Entender tu motivación\n"
+                "2️⃣ Definir tu plan de vida\n"
+                "3️⃣ Elegir la mejor ubicación\n"
+                "4️⃣ Encontrar la visa adecuada\n\n"
+                "¿Listo para empezar?",
+                parse_mode='Markdown',
+                reply_markup=self._kb([
+                    ("✅ ¡Sí, empecemos!", "flow_start"),
+                    ("ℹ️ Más información", "flow_info"),
+                ])
+            )
+            return
+        
+        # Formatear mensaje con datos del usuario
+        name = user.get("profile", {}).get("personal", {}).get("name", "")
+        message = question_data.get("message", "").format(
+            name=name or "amigo",
+            why_migrate_text=ctx.why_migrate or "tu motivación"
+        )
+        
+        # Crear botones de opciones
+        options = question_data.get("options", [])
+        if options:
+            buttons = [(opt[1], f"flow_{opt[0]}") for opt in options]
+            kb = self._kb(buttons)
+        else:
+            kb = None
+        
+        progress = flow_engine.get_progress_percentage(user_id)
+        
+        await update.message.reply_text(
+            f"📊 Progreso: {progress}%\n\n{message}",
+            parse_mode='Markdown',
+            reply_markup=kb
+        )
+    
     async def _send_notification_message(self, user_id: int, message: str, parse_mode: str = None):
         """Send a notification message to a user via Telegram"""
         if not self.application:
@@ -1842,6 +2213,254 @@ class MigPALBot:
         
         elif data == "ask_question":
             await query.edit_message_text("💬 Escribe tu pregunta:")
+        
+        # ===== V2.0 EXPLORATION & FLOW CALLBACKS =====
+        
+        # Explore state callbacks
+        elif data.startswith("explore_"):
+            parts = data.split("_")
+            action = parts[1] if len(parts) > 1 else ""
+            
+            # State selection (explore_FL, explore_CA, etc.)
+            if len(action) == 2 and action.isupper():
+                state_code = action
+                user["selected_route"] = user.get("selected_route", {})
+                user["selected_route"]["state"] = state_code
+                save_user_data(user_id, encrypt_user_data(user))
+                
+                await query.edit_message_text(
+                    f"🗺️ Cargando ciudades de {state_code}..."
+                )
+                await self._show_cities_for_state(query, user_id, state_code)
+            
+            # Navigation
+            elif action == "prev":
+                index = int(parts[2]) if len(parts) > 2 else 0
+                new_index = max(0, index - 1)
+                await self._show_exploration_item(query, user_id, new_index)
+            
+            elif action == "next":
+                index = int(parts[2]) if len(parts) > 2 else 0
+                new_index = index + 1
+                await self._show_exploration_item(query, user_id, new_index)
+            
+            elif action == "restart":
+                await self._show_exploration_item(query, user_id, 0)
+            
+            elif action == "like":
+                city_id = parts[2] if len(parts) > 2 else ""
+                if "favorites" not in user:
+                    user["favorites"] = {"cities": [], "housing": [], "jobs": []}
+                if city_id not in user["favorites"]["cities"]:
+                    user["favorites"]["cities"].append(city_id)
+                    save_user_data(user_id, encrypt_user_data(user))
+                await query.answer("❤️ ¡Agregado a favoritos!")
+            
+            elif action == "select":
+                city_id = parts[2] if len(parts) > 2 else ""
+                from app.services.knowledge_base.cities_database import CITIES_DATABASE
+                city = CITIES_DATABASE.get(city_id, {})
+                if city:
+                    user["selected_route"] = user.get("selected_route", {})
+                    user["selected_route"]["city"] = city.get("name", "")
+                    user["selected_route"]["state"] = city.get("state_code", "")
+                    save_user_data(user_id, encrypt_user_data(user))
+                    
+                    await query.edit_message_text(
+                        f"✅ *¡Excelente elección!*\n\n"
+                        f"Has seleccionado *{city.get('name')}, {city.get('state_code')}*\n\n"
+                        f"🏠 Ahora puedes buscar viviendas con /viviendas\n"
+                        f"💼 O buscar empleos con /empleos\n\n"
+                        f"¿Qué quieres hacer?",
+                        parse_mode='Markdown',
+                        reply_markup=self._kb([
+                            [("🏠 Buscar viviendas", "cmd_housing"), ("💼 Buscar empleos", "cmd_jobs")],
+                            [("🗺️ Explorar más ciudades", "cmd_explore")],
+                        ])
+                    )
+            
+            elif action == "info":
+                city_id = parts[2] if len(parts) > 2 else ""
+                from app.services.knowledge_base.cities_database import CITIES_DATABASE
+                city = CITIES_DATABASE.get(city_id, {})
+                if city:
+                    pros = city.get("pros", [])
+                    cons = city.get("cons", [])
+                    industries = city.get("top_industries", [])
+                    employers = city.get("major_employers", [])
+                    
+                    msg = f"ℹ️ *MÁS INFO: {city.get('name')}*\n\n"
+                    
+                    if pros:
+                        msg += "✅ *Ventajas:*\n"
+                        for p in pros[:3]:
+                            msg += f"• {p}\n"
+                        msg += "\n"
+                    
+                    if cons:
+                        msg += "⚠️ *Desventajas:*\n"
+                        for c in cons[:3]:
+                            msg += f"• {c}\n"
+                        msg += "\n"
+                    
+                    if industries:
+                        msg += "🏭 *Industrias principales:*\n"
+                        msg += ", ".join(industries[:5]) + "\n\n"
+                    
+                    if employers:
+                        msg += "🏢 *Empleadores principales:*\n"
+                        msg += ", ".join(employers[:5]) + "\n"
+                    
+                    await query.edit_message_text(
+                        msg,
+                        parse_mode='Markdown',
+                        reply_markup=self._kb([
+                            [("⬅️ Volver", f"explore_back_{city_id}")],
+                        ])
+                    )
+            
+            elif action == "search":
+                set_state(user_id, "explore_search")
+                await query.edit_message_text(
+                    "🔍 *BUSCAR CIUDAD*\n\n"
+                    "Escribe el nombre de la ciudad que buscas:\n\n"
+                    "_Ejemplo: Miami, Austin, Seattle_"
+                )
+        
+        # Housing callbacks
+        elif data.startswith("housing_"):
+            action = data.split("_")[1]
+            
+            if action == "refresh":
+                route = user.get("selected_route", {})
+                city = route.get("city", "")
+                state = route.get("state", "")
+                if city and state:
+                    await query.edit_message_text("🔄 Actualizando listados...")
+                    # Re-run housing search
+                    # This would need to call the housing function again
+            
+            elif action == "filters":
+                await query.edit_message_text(
+                    "📊 *AJUSTAR FILTROS*\n\n"
+                    "Selecciona qué es más importante para ti:",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("💰 Precio bajo", "filter_price"), ("🛏️ Más habitaciones", "filter_size")],
+                        [("🛡️ Seguridad", "filter_safety"), ("📍 Ubicación", "filter_location")],
+                        [("✅ Aplicar filtros", "housing_apply_filters")],
+                    ])
+                )
+            
+            elif action == "favorites":
+                favorites = user.get("favorites", {}).get("housing", [])
+                if not favorites:
+                    await query.edit_message_text(
+                        "❤️ *TUS FAVORITOS*\n\n"
+                        "Aún no tienes viviendas favoritas.\n"
+                        "Usa el botón ❤️ para guardar las que te gusten.",
+                        parse_mode='Markdown'
+                    )
+                else:
+                    msg = f"❤️ *TUS {len(favorites)} FAVORITOS*\n\n"
+                    # Show favorites
+                    await query.edit_message_text(msg, parse_mode='Markdown')
+        
+        # Flow callbacks
+        elif data.startswith("flow_"):
+            action = data.split("_")[1]
+            
+            if action == "start":
+                # Iniciar flujo desde DISCOVERY_WHY
+                ctx = flow_engine.get_context(user_id)
+                ctx.current_state = ConversationState.DISCOVERY_WHY
+                flow_engine.contexts[user_id] = ctx
+                
+                question_data = STATE_QUESTIONS.get(ConversationState.DISCOVERY_WHY, {})
+                name = user.get("profile", {}).get("personal", {}).get("name", "amigo")
+                message = question_data.get("message", "").format(name=name)
+                
+                options = question_data.get("options", [])
+                buttons = [(opt[1], f"flow_{opt[0]}") for opt in options]
+                
+                await query.edit_message_text(
+                    f"📊 Progreso: 5%\n\n{message}",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb(buttons)
+                )
+            
+            elif action == "info":
+                await query.edit_message_text(
+                    "ℹ️ *SOBRE EL FLUJO DE MIGRACIÓN*\n\n"
+                    "Este proceso te ayuda a:\n\n"
+                    "🎯 *Definir tu destino* - No solo la visa, sino tu plan de vida\n"
+                    "🗺️ *Elegir ubicación* - Estado, ciudad y barrio ideal\n"
+                    "🏠 *Encontrar vivienda* - Opciones reales con precios\n"
+                    "💼 *Buscar trabajo* - Empleos que patrocinen visa\n"
+                    "📄 *Preparar documentos* - Checklist personalizado\n\n"
+                    "*Filosofía:* La visa es el VEHÍCULO, no el DESTINO.\n"
+                    "Primero define tu plan de vida, luego la visa adecuada.",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        ("✅ Entendido, empecemos", "flow_start"),
+                    ])
+                )
+            
+            else:
+                # Procesar respuesta del flujo
+                ctx = flow_engine.get_context(user_id)
+                next_state, error_msg = flow_engine.process_response(
+                    user_id, action, options=[action]
+                )
+                
+                if error_msg:
+                    await query.answer(error_msg)
+                    return
+                
+                # Obtener siguiente pregunta
+                question_data = STATE_QUESTIONS.get(next_state, {})
+                if question_data:
+                    name = user.get("profile", {}).get("personal", {}).get("name", "amigo")
+                    ctx = flow_engine.get_context(user_id)
+                    message = question_data.get("message", "").format(
+                        name=name,
+                        why_migrate_text=ctx.why_migrate or "tu motivación"
+                    )
+                    
+                    options = question_data.get("options", [])
+                    if options:
+                        buttons = [(opt[1], f"flow_{opt[0]}") for opt in options]
+                        kb = self._kb(buttons)
+                    else:
+                        kb = None
+                    
+                    progress = flow_engine.get_progress_percentage(user_id)
+                    
+                    await query.edit_message_text(
+                        f"📊 Progreso: {progress}%\n\n{message}",
+                        parse_mode='Markdown',
+                        reply_markup=kb
+                    )
+                else:
+                    # Estado sin pregunta definida - mostrar resumen
+                    summary = flow_engine.get_summary(user_id)
+                    await query.edit_message_text(
+                        "✅ *¡Excelente progreso!*\n\n"
+                        f"Estado actual: {summary.get('estado_actual')}\n"
+                        f"Progreso: {summary.get('progreso')}\n\n"
+                        "Usa /flujo para continuar.",
+                        parse_mode='Markdown'
+                    )
+        
+        # Command shortcuts from buttons
+        elif data == "cmd_explore":
+            await query.edit_message_text("🗺️ Usa /explorar para ver ciudades")
+        
+        elif data == "cmd_housing":
+            await query.edit_message_text("🏠 Usa /viviendas para buscar viviendas")
+        
+        elif data == "cmd_jobs":
+            await query.edit_message_text("💼 Usa /empleos para buscar trabajos")
         
         # ===== V5 CALLBACKS =====
         
