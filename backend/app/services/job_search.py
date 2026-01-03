@@ -29,7 +29,11 @@ logger = logging.getLogger(__name__)
 
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
 
-# LinkedIn Job Search API (RapidAPI) - La que tienes configurada
+# Active Jobs DB API (RapidAPI) - Trabajos activos de múltiples fuentes
+ACTIVE_JOBS_API_HOST = "active-jobs-db.p.rapidapi.com"
+ACTIVE_JOBS_API_URL = f"https://{ACTIVE_JOBS_API_HOST}/active-ats-7d"  # Trabajos últimos 7 días
+
+# LinkedIn Job Search API (RapidAPI) - Alternativa
 LINKEDIN_API_HOST = "linkedin-job-search-api.p.rapidapi.com"
 LINKEDIN_API_URL = f"https://{LINKEDIN_API_HOST}/active-jb-24h"
 
@@ -170,11 +174,18 @@ class JobSearchEngine:
         """
         jobs = []
         
-        # Buscar en LinkedIn API
-        linkedin_jobs = await self._search_linkedin_api(
+        # Buscar primero en Active Jobs DB API (más completa)
+        active_jobs = await self._search_active_jobs_api(
             query, location, limit, offset
         )
-        jobs.extend(linkedin_jobs)
+        jobs.extend(active_jobs)
+        
+        # Si no hay suficientes resultados, buscar en LinkedIn API
+        if len(jobs) < limit:
+            linkedin_jobs = await self._search_linkedin_api(
+                query, location, limit - len(jobs), offset
+            )
+            jobs.extend(linkedin_jobs)
         
         # Si no hay API key o no hay resultados, usar datos de ejemplo
         if not jobs:
@@ -200,6 +211,138 @@ class JobSearchEngine:
         jobs.sort(key=lambda x: x.salary_max or x.salary_min or 0, reverse=True)
         
         return jobs[:limit]
+    
+    async def _search_active_jobs_api(
+        self,
+        query: str,
+        location: str,
+        limit: int = 10,
+        offset: int = 0
+    ) -> List[JobListing]:
+        """
+        Busca en Active Jobs DB API (RapidAPI)
+        
+        Endpoint: https://active-jobs-db.p.rapidapi.com/active-ats-7d
+        Trabajos activos de los últimos 7 días de múltiples fuentes ATS
+        """
+        
+        if not RAPIDAPI_KEY:
+            logger.warning("No RAPIDAPI_KEY configured for Active Jobs API")
+            return []
+        
+        try:
+            client = await self._get_client()
+            
+            # Formatear el título para el filtro
+            # El API espera formato: "Data Engineer" (con comillas)
+            title_filter = f'"{query}"'
+            
+            # Formatear la ubicación
+            # El API espera formato: "United States" OR "California"
+            location_filter = f'"{location}"'
+            
+            params = {
+                "limit": str(min(limit, 50)),  # Max 50 por request
+                "offset": str(offset),
+                "title_filter": title_filter,
+                "location_filter": location_filter,
+                "description_type": "text"  # Puede ser "text" o "html"
+            }
+            
+            headers = {
+                "x-rapidapi-host": ACTIVE_JOBS_API_HOST,
+                "x-rapidapi-key": RAPIDAPI_KEY
+            }
+            
+            logger.info(f"Searching Active Jobs API: {query} in {location}")
+            
+            response = await client.get(
+                ACTIVE_JOBS_API_URL,
+                params=params,
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                jobs = []
+                
+                # La respuesta puede ser una lista directa o un objeto con data
+                job_list = data if isinstance(data, list) else data.get("data", data.get("jobs", []))
+                
+                for job in job_list[:limit]:
+                    # Extraer datos del job
+                    title = job.get("title", job.get("job_title", ""))
+                    company = job.get("company", job.get("company_name", job.get("employer_name", "")))
+                    location_str = job.get("location", job.get("job_location", ""))
+                    description = job.get("description", job.get("job_description", ""))
+                    url = job.get("url", job.get("job_url", job.get("apply_url", job.get("application_url", ""))))
+                    posted = job.get("posted_date", job.get("posted_at", job.get("date_posted", job.get("created_at", ""))))
+                    
+                    # Extraer salario si está disponible
+                    salary_min = 0
+                    salary_max = 0
+                    salary_str = job.get("salary", job.get("salary_range", job.get("compensation", "")))
+                    if salary_str:
+                        salary_min, salary_max = self._parse_salary(str(salary_str))
+                    
+                    # También buscar campos específicos de salario
+                    if not salary_min:
+                        salary_min = job.get("salary_min", job.get("min_salary", 0)) or 0
+                    if not salary_max:
+                        salary_max = job.get("salary_max", job.get("max_salary", 0)) or 0
+                    
+                    # Detectar si es remoto
+                    is_remote = (
+                        "remote" in location_str.lower() or 
+                        "remote" in title.lower() or
+                        job.get("is_remote", False) or
+                        job.get("remote", False) or
+                        job.get("work_type", "").lower() == "remote"
+                    )
+                    
+                    # Detectar visa sponsorship
+                    visa_sponsor = self._detect_visa_sponsorship(description)
+                    
+                    # Detectar nivel de experiencia
+                    exp_level = self._detect_experience_level(title)
+                    
+                    # Parsear ubicación
+                    city, state = self._parse_location(location_str)
+                    
+                    jobs.append(JobListing(
+                        job_id=job.get("id", job.get("job_id", str(hash(title + company)))),
+                        title=title,
+                        company=company,
+                        company_logo=job.get("company_logo", job.get("logo", "")),
+                        location=location_str,
+                        city=city,
+                        state=state,
+                        is_remote=is_remote,
+                        job_type=job.get("employment_type", job.get("job_type", job.get("type", "full-time"))),
+                        salary_min=int(salary_min) if salary_min else 0,
+                        salary_max=int(salary_max) if salary_max else 0,
+                        salary_currency="USD",
+                        salary_period="yearly",
+                        description=description[:1000] if description else "",
+                        requirements=self._extract_requirements(description),
+                        benefits=self._extract_benefits(description),
+                        posted_date=str(posted)[:10] if posted else datetime.now().strftime("%Y-%m-%d"),
+                        apply_url=url or f"https://www.linkedin.com/jobs/search/?keywords={quote(query)}",
+                        source="active-jobs-db",
+                        visa_sponsorship=visa_sponsor,
+                        experience_level=exp_level,
+                        industry=job.get("industry", job.get("category", "")),
+                    ))
+                
+                logger.info(f"Found {len(jobs)} jobs from Active Jobs DB API")
+                return jobs
+            else:
+                logger.error(f"Active Jobs API error: {response.status_code} - {response.text[:200]}")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error searching Active Jobs API: {e}")
+            return []
     
     async def _search_linkedin_api(
         self,
