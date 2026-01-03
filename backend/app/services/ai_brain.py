@@ -1,18 +1,20 @@
 """
-MigPAL AI Brain - V7 EMPÁTICO
-El mejor consultor de migración del universo
+MigPAL AI Brain - V8 CONSULTIVO
+El mejor consultor de migración - GUÍA ACTIVA
 
 FILOSOFÍA:
 "La visa es el VEHÍCULO, no el DESTINO. Primero define el destino (plan de vida), luego el vehículo (visa)."
 
-PRINCIPIOS V7:
-- UNA pregunta a la vez
-- Respuestas CORTAS (3-5 líneas máximo)
-- Empatía genuina, no frases hechas
-- NUNCA repetir "¿Te quedó claro?"
-- NUNCA mencionar abogados
-- Información REAL y ESPECÍFICA
-- Celebrar fortalezas del cliente
+PRINCIPIOS V8 - CONSULTIVO:
+- YO GUÍO, el cliente confirma
+- Respuestas CORTAS pero COMPLETAS (4-6 líneas)
+- Empatía genuina - entiendo la frustración del proceso
+- NUNCA repetir preguntas ya respondidas
+- NUNCA pedir información que ya tengo
+- NUNCA mencionar abogados externos - YO soy el experto
+- Dar PASOS CONCRETOS, no teoría
+- Celebrar avances del cliente
+- Usar la información del perfil SIEMPRE
 """
 
 import os
@@ -24,11 +26,12 @@ from typing import Dict, Any, Optional, List
 logger = logging.getLogger(__name__)
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
-AI_MODEL = os.getenv("AI_MODEL", "qwen2.5:7b")
+# CAMBIO CRÍTICO: Usar modelo migpal (Llama 3) en vez de qwen2.5
+AI_MODEL = os.getenv("AI_MODEL", "migpal:latest")
 
 
 def build_complete_user_context(user_data: Dict[str, Any]) -> str:
-    """Construye contexto COMPLETO del usuario para el prompt"""
+    """Construye contexto COMPLETO y ESTRUCTURADO del usuario"""
     
     profile = user_data.get("profile", {})
     personal = profile.get("personal", {})
@@ -41,75 +44,164 @@ def build_complete_user_context(user_data: Dict[str, Any]) -> str:
     preferences = user_data.get("preferences", {})
     family_members = user_data.get("family_members", [])
     selected_route = user_data.get("selected_route", {})
+    migration_prefs = user_data.get("migration_preferences", {})
     
-    # Construir perfil detallado
-    context_parts = []
+    sections = []
     
-    # Información personal
+    # === DATOS PERSONALES ===
+    personal_info = []
     if personal.get("name"):
-        context_parts.append(f"Nombre: {personal['name']}")
+        personal_info.append(f"• Nombre: {personal['name']}")
     if personal.get("nationality"):
-        context_parts.append(f"Nacionalidad: {personal['nationality']}")
+        personal_info.append(f"• Nacionalidad: {personal['nationality']}")
     if personal.get("current_country"):
-        context_parts.append(f"País actual: {personal['current_country']}")
+        personal_info.append(f"• Vive en: {personal['current_country']}")
+    if personal.get("current_city"):
+        personal_info.append(f"• Ciudad: {personal['current_city']}")
+    if personal_info:
+        sections.append("👤 DATOS PERSONALES:\n" + "\n".join(personal_info))
     
-    # Educación
+    # === EDUCACIÓN ===
+    edu_info = []
     if education.get("level"):
-        context_parts.append(f"Educación: {education['level']}")
+        edu_info.append(f"• Nivel: {education['level']}")
     if education.get("field"):
-        context_parts.append(f"Campo: {education['field']}")
+        edu_info.append(f"• Área: {education['field']}")
+    if education.get("career"):
+        edu_info.append(f"• Carrera: {education['career']}")
+    if edu_info:
+        sections.append("🎓 EDUCACIÓN:\n" + "\n".join(edu_info))
     
-    # Trabajo
+    # === EXPERIENCIA LABORAL ===
+    work_info = []
+    if work.get("status"):
+        work_info.append(f"• Estado: {work['status']}")
     if work.get("profession"):
-        context_parts.append(f"Profesión: {work['profession']}")
+        work_info.append(f"• Profesión: {work['profession']}")
     if work.get("experience"):
-        context_parts.append(f"Experiencia: {work['experience']}")
+        exp = work['experience']
+        if ">15" in exp:
+            work_info.append("• Experiencia: Más de 15 años (SENIOR)")
+        elif ">10" in exp:
+            work_info.append("• Experiencia: Más de 10 años")
+        else:
+            work_info.append(f"• Experiencia: {exp}")
+    if work_info:
+        sections.append("💼 TRABAJO:\n" + "\n".join(work_info))
     
-    # Idiomas
+    # === IDIOMAS ===
     if languages.get("english"):
-        context_parts.append(f"Inglés: {languages['english']}")
+        sections.append(f"🌐 INGLÉS: {languages['english']}")
     
-    # Historial migratorio
+    # === HISTORIAL MIGRATORIO ===
+    history_info = []
     if history.get("has_visas"):
-        context_parts.append(f"Visas previas: {history.get('visas', 'Sí')}")
+        history_info.append(f"• Visas previas: {history.get('visas', 'Sí')}")
     if history.get("rejections"):
-        context_parts.append(f"Rechazos: {history['rejections']}")
+        history_info.append(f"• Rechazos: {history['rejections']}")
+    if history_info:
+        sections.append("📋 HISTORIAL:\n" + "\n".join(history_info))
     
-    # Situación financiera
+    # === SITUACIÓN FINANCIERA ===
     if financial.get("savings"):
-        context_parts.append(f"Ahorros: {financial['savings']}")
+        sections.append(f"💰 AHORROS: {financial['savings']}")
     
-    # Preferencias de migración
-    if preferences.get("destination"):
-        context_parts.append(f"Destino: {preferences['destination']}")
-    if preferences.get("reason"):
-        context_parts.append(f"Razón: {preferences['reason']}")
-    if preferences.get("family_in_usa"):
-        context_parts.append(f"Familia en USA: {preferences['family_in_usa']}")
-    if preferences.get("family_location"):
-        context_parts.append(f"Ubicación familia: {preferences['family_location']}")
-    
-    # Familia
+    # === FAMILIA ===
     if family_members:
-        context_parts.append(f"Familia: {len(family_members)} miembros")
+        fam_info = [f"• {m.get('relation', 'Familiar')}: {m.get('name', 'N/A')}" for m in family_members[:3]]
+        sections.append(f"👨‍👩‍👧‍👦 FAMILIA ({len(family_members)} miembros):\n" + "\n".join(fam_info))
     
-    # Ruta seleccionada
+    # === PREFERENCIAS DE MIGRACIÓN ===
+    pref_info = []
+    if preferences.get("destination"):
+        pref_info.append(f"• Destino: {preferences['destination']}")
+    if preferences.get("reason"):
+        pref_info.append(f"• Razón: {preferences['reason']}")
+    if preferences.get("timeline"):
+        pref_info.append(f"• Urgencia: {preferences['timeline']}")
+    if migration_prefs.get("selected_city_name"):
+        pref_info.append(f"• Ciudad elegida: {migration_prefs['selected_city_name']}")
+    if pref_info:
+        sections.append("🎯 PREFERENCIAS:\n" + "\n".join(pref_info))
+    
+    # === VISA SELECCIONADA ===
     if selected_route.get("visa_type"):
-        context_parts.append(f"Visa seleccionada: {selected_route['visa_type']}")
+        visa_map = {
+            "exp_tech": "O-1 (Habilidades Extraordinarias)",
+            "investor": "E-2 (Inversionista)",
+            "work": "H-1B (Trabajo Especializado)",
+            "transfer": "L-1 (Transferencia)",
+            "green_card": "EB-2 NIW (Green Card)"
+        }
+        visa_name = visa_map.get(selected_route['visa_type'], selected_route['visa_type'])
+        sections.append(f"🎫 VISA SELECCIONADA: {visa_name}")
     
-    if not context_parts:
-        return "Usuario nuevo - sin perfil completado"
+    if not sections:
+        return "⚠️ Usuario nuevo - sin perfil completado"
     
-    return " | ".join(context_parts)
+    return "\n\n".join(sections)
+
+
+def get_process_stage(user_data: Dict[str, Any]) -> str:
+    """Determina en qué etapa del proceso está el cliente"""
+    
+    profile = user_data.get("profile", {})
+    personal = profile.get("personal", {})
+    work = profile.get("work", {})
+    selected_route = user_data.get("selected_route", {})
+    
+    # Etapa 1: Sin nombre
+    if not personal.get("name"):
+        return "INICIO - Necesito conocerte"
+    
+    # Etapa 2: Sin perfil laboral
+    if not work.get("experience"):
+        return "PERFILAMIENTO - Completando tu perfil"
+    
+    # Etapa 3: Sin visa seleccionada
+    if not selected_route.get("visa_type"):
+        return "ANÁLISIS - Evaluando opciones de visa"
+    
+    # Etapa 4: Visa seleccionada, preparando documentos
+    return "PREPARACIÓN - Documentos y siguiente paso"
+
+
+def get_next_action(user_data: Dict[str, Any]) -> str:
+    """Determina cuál es el siguiente paso concreto"""
+    
+    profile = user_data.get("profile", {})
+    personal = profile.get("personal", {})
+    work = profile.get("work", {})
+    selected_route = user_data.get("selected_route", {})
+    
+    if not personal.get("name"):
+        return "Presentarme y conocer al cliente"
+    
+    if not work.get("experience"):
+        return "Completar perfil profesional"
+    
+    if not selected_route.get("visa_type"):
+        return "Recomendar visa basada en perfil"
+    
+    # Ya tiene visa seleccionada
+    visa_type = selected_route.get("visa_type", "")
+    if visa_type == "exp_tech" or "O-1" in str(visa_type):
+        return """PRÓXIMOS PASOS PARA O-1:
+1. Diagnóstico MigPAL ($50) - Evaluación de viabilidad
+2. Perfilamiento ($50) - Documentar logros
+3. Revisión Documental ($200) - Preparar evidencia
+4. Presentación ante USCIS"""
+    
+    return "Explicar proceso de la visa seleccionada"
 
 
 def build_conversation_context(conversation_history: list) -> str:
-    """Construye contexto de conversación reciente"""
+    """Construye contexto de conversación reciente - SOLO últimos 3 intercambios"""
     if not conversation_history:
         return ""
     
-    # Tomar últimos 4 mensajes para contexto
-    recent = conversation_history[-4:] if len(conversation_history) > 4 else conversation_history
+    # Solo últimos 3 para no saturar
+    recent = conversation_history[-3:] if len(conversation_history) > 3 else conversation_history
     
     context_parts = []
     for msg in recent:
@@ -117,70 +209,104 @@ def build_conversation_context(conversation_history: list) -> str:
         response = msg.get("response", "")
         
         if content:
-            context_parts.append(f"Usuario: {content[:100]}")
+            # Truncar mensajes largos
+            content_short = content[:80] + "..." if len(content) > 80 else content
+            context_parts.append(f"Cliente: {content_short}")
         if response:
-            context_parts.append(f"MigPAL: {response[:100]}...")
+            response_short = response[:80] + "..." if len(response) > 80 else response
+            context_parts.append(f"MigPAL: {response_short}")
     
     return "\n".join(context_parts)
 
 
-# Prompt del sistema - V7 EMPÁTICO
-SYSTEM_PROMPT = """Eres MigPAL, consultor de migración. Tu misión: eliminar los "2 años de dolor" de los migrantes.
+# ============================================================
+# SYSTEM PROMPT V8 - CONSULTIVO Y EMPÁTICO
+# ============================================================
+SYSTEM_PROMPT = """Eres MigPAL, el MEJOR consultor de migración. Tu trabajo es GUIAR al cliente paso a paso.
 
-CLIENTE: {user_context}
+═══════════════════════════════════════════════════════════════
+📋 PERFIL DEL CLIENTE:
+{user_context}
+═══════════════════════════════════════════════════════════════
+📍 ETAPA ACTUAL: {process_stage}
+🎯 SIGUIENTE ACCIÓN: {next_action}
+═══════════════════════════════════════════════════════════════
 
-🎯 REGLAS ABSOLUTAS:
-1. Respuestas de 3-5 líneas MÁXIMO
-2. UNA sola pregunta al final
-3. NUNCA digas "¿Te quedó claro?" o "¿Tienes alguna duda?"
-4. NUNCA menciones abogados - TÚ eres el experto
-5. Usa emojis con moderación (1-2 por mensaje)
-6. Sé cálido pero directo
+🚨 REGLAS ABSOLUTAS (NUNCA ROMPER):
 
-💰 PRECIOS (NO retornables):
-- Diagnóstico: $50 USD
-- Perfilamiento: $50 USD  
-- Revisión Documental: $200 USD
+1. RESPUESTAS CORTAS: 4-6 líneas máximo. El cliente está en Telegram.
+
+2. YO GUÍO: No preguntes "¿qué quieres saber?" - DILE qué sigue.
+   ❌ MAL: "¿Qué te gustaría explorar?"
+   ✅ BIEN: "El siguiente paso es X. ¿Procedemos?"
+
+3. USA LA INFO QUE TIENES: Si ya sé su nombre, NO lo pido de nuevo.
+   Si ya eligió visa O-1, NO pregunto cuál visa quiere.
+
+4. NUNCA DIGAS:
+   - "¿Te quedó claro?" (PROHIBIDO)
+   - "¿Tienes alguna duda?" (PROHIBIDO)
+   - "abogado" o "lawyer" (YO soy el experto)
+   - Texto en otros idiomas (solo español)
+
+5. SÉ DIRECTO: El cliente está frustrado con procesos largos.
+   Dame respuestas concretas, no teoría.
+
+6. EMPATÍA REAL: Entiendo que migrar es estresante.
+   Celebra sus logros, reconoce su esfuerzo.
+
+💰 PRECIOS MIGPAL (NO retornables):
+- Diagnóstico: $50 USD (evaluación de viabilidad)
+- Perfilamiento: $50 USD (documentar perfil)
+- Revisión Documental: $200 USD (preparar evidencia)
 - Plan de Migración: $100 USD (opcional)
-Total: $300-$400 USD
+TOTAL: $300-$400 USD
 
-📋 VISAS PRINCIPALES:
-- O-1: Habilidades extraordinarias (70-85%)
-- E-2: Inversionista $100K+ (80-90%)
-- H-1B: Trabajo especializado (50-65%)
-- L-1: Transferencia intracompañía (75-85%)
-- EB-2 NIW: Green Card por mérito (60-75%)
+📊 PROBABILIDADES VISA O-1:
+- Con premios internacionales: 80-90%
+- Con publicaciones + membresías: 70-75%
+- Solo experiencia senior: 50-60%
 
-🏙️ CIUDADES POPULARES:
+🏙️ CIUDADES TOP:
 - Miami: 72% latinos, $2,800/mes
 - Houston: 45% latinos, $1,700/mes, sin impuesto estatal
 - Orlando: 35% latinos, $2,000/mes
 - Austin: 35% latinos, $2,100/mes, tech hub
-- San Antonio: 65% latinos, $1,400/mes
 
-ESTILO: Habla como un amigo experto que genuinamente quiere ayudar."""
+ESTILO: Habla como un amigo experto. Directo, cálido, profesional."""
 
 
 async def process_message(message: str, user_data: Dict[str, Any], conversation_history: list = None) -> str:
-    """Procesa mensaje con IA - Enfoque empático V7"""
+    """Procesa mensaje con IA - Enfoque CONSULTIVO V8"""
     
-    # Construir contexto del usuario
+    # Construir contextos
     user_context = build_complete_user_context(user_data)
+    process_stage = get_process_stage(user_data)
+    next_action = get_next_action(user_data)
     
     # Construir el prompt del sistema
-    system = SYSTEM_PROMPT.format(user_context=user_context)
+    system = SYSTEM_PROMPT.format(
+        user_context=user_context,
+        process_stage=process_stage,
+        next_action=next_action
+    )
     
     # Agregar historial de conversación
     conv_context = ""
     if conversation_history:
         conv_context = build_conversation_context(conversation_history)
         if conv_context:
-            conv_context = f"\nConversación reciente:\n{conv_context}\n"
+            conv_context = f"\n📝 Conversación reciente:\n{conv_context}\n"
+    
+    # Detectar intención del mensaje
+    intent = detect_intent(message)
     
     prompt = f"""{conv_context}
-Usuario dice: {message}
+El cliente dice: "{message}"
 
-Responde en 3-5 líneas. Termina con UNA pregunta natural (no "¿Te quedó claro?")."""
+{intent}
+
+Responde en 4-6 líneas. Sé DIRECTO y GUÍA al cliente al siguiente paso."""
     
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -192,9 +318,11 @@ Responde en 3-5 líneas. Termina con UNA pregunta natural (no "¿Te quedó claro
                     "prompt": prompt,
                     "stream": False,
                     "options": {
-                        "temperature": 0.7,
-                        "num_predict": 300,
-                        "top_p": 0.9
+                        "temperature": 0.6,  # Más bajo para respuestas consistentes
+                        "num_predict": 250,  # Limitar longitud
+                        "top_p": 0.85,
+                        "repeat_penalty": 1.2,  # Evitar repeticiones
+                        "top_k": 40
                     }
                 }
             )
@@ -203,7 +331,12 @@ Responde en 3-5 líneas. Termina con UNA pregunta natural (no "¿Te quedó claro
                 result = response.json()
                 ai_response = result.get("response", "")
                 ai_response = filter_response(ai_response)
-                return ai_response if ai_response else fallback_response(message, user_data)
+                
+                # Si la respuesta está vacía o es muy corta, usar fallback
+                if not ai_response or len(ai_response) < 20:
+                    return fallback_response(message, user_data)
+                
+                return ai_response
             else:
                 logger.error(f"Ollama error: {response.status_code}")
                 return fallback_response(message, user_data)
@@ -213,185 +346,261 @@ Responde en 3-5 líneas. Termina con UNA pregunta natural (no "¿Te quedó claro
         return fallback_response(message, user_data)
 
 
+def detect_intent(message: str) -> str:
+    """Detecta la intención del mensaje para guiar la respuesta"""
+    msg_lower = message.lower().strip()
+    
+    # Confirmaciones simples
+    if msg_lower in ["si", "sí", "ok", "dale", "listo", "bueno", "vale", "claro", "perfecto"]:
+        return "⚡ INTENCIÓN: Confirmación. El cliente quiere CONTINUAR. Dile el siguiente paso concreto."
+    
+    # Frustración
+    if any(w in msg_lower for w in ["nojoda", "no friegues", "deja de", "ya te dije", "carajo"]):
+        return "⚠️ INTENCIÓN: Frustración. El cliente está molesto. Sé DIRECTO, no repitas, da el siguiente paso."
+    
+    # Preguntas de probabilidad
+    if any(w in msg_lower for w in ["probabilidad", "chance", "posibilidad", "éxito"]):
+        return "📊 INTENCIÓN: Quiere saber probabilidad. Da un número concreto basado en su perfil."
+    
+    # Preguntas de costo
+    if any(w in msg_lower for w in ["costo", "precio", "cuanto", "cuánto", "pagar"]):
+        return "💰 INTENCIÓN: Pregunta de costos. Da los precios de MigPAL claramente."
+    
+    # Preguntas de proceso
+    if any(w in msg_lower for w in ["paso", "proceso", "siguiente", "continua", "sigue"]):
+        return "🎯 INTENCIÓN: Quiere saber el siguiente paso. Sé específico y concreto."
+    
+    # Preguntas de visa
+    if any(w in msg_lower for w in ["visa", "recomienda", "cual", "cuál", "mejor"]):
+        return "🎫 INTENCIÓN: Pregunta sobre visas. Recomienda basado en su perfil."
+    
+    return "💬 INTENCIÓN: Conversación general. Guía hacia el siguiente paso del proceso."
+
+
 def filter_response(text: str) -> str:
-    """Filtra y limpia la respuesta"""
+    """Filtra y limpia la respuesta - V8 MEJORADO"""
     if not text:
         return ""
     
     result = text.strip()
     
-    # Eliminar frases prohibidas
+    # Eliminar CUALQUIER texto que no sea español (detectar caracteres chinos, etc.)
+    import re
+    # Mantener solo caracteres latinos, números, emojis comunes y puntuación
+    result = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u20000-\u2a6df\u2a700-\u2b73f\u2b740-\u2b81f\u2b820-\u2ceaf\uf900-\ufaff\u2f800-\u2fa1f]+', '', result)
+    
+    # Eliminar frases prohibidas (más exhaustivo)
     forbidden_phrases = [
-        "¿Te quedó claro?",
-        "¿Te queda claro?",
-        "¿Quedó claro?",
-        "¿Tienes alguna duda?",
-        "¿Tienes dudas?",
-        "¿Alguna duda?",
-        "¿Me explico?",
-        "¿Se entiende?",
-        "¿Entendiste?",
+        "¿Te quedó claro?", "¿Te queda claro?", "¿Quedó claro?",
+        "¿Tienes alguna duda?", "¿Tienes dudas?", "¿Alguna duda?",
+        "¿Me explico?", "¿Se entiende?", "¿Entendiste?",
+        "¿Te quedó claro esto?", "¿Quedó claro esto?",
+        "¿Tienes alguna pregunta?", "¿Alguna pregunta?",
+        "¿Necesitas más información?", "¿Quieres más detalles?",
+        "Si tienes dudas", "Si tienes preguntas",
+        "No dudes en preguntar", "No dudes en consultarme",
+        "Estoy aquí para ayudarte", "Estoy para ayudarte",
     ]
     
     for phrase in forbidden_phrases:
         result = result.replace(phrase, "")
+        result = result.replace(phrase.lower(), "")
     
-    # Reemplazar menciones de "abogado"
-    replacements = [
+    # Reemplazar menciones de "abogado" - MÁS EXHAUSTIVO
+    lawyer_replacements = [
         ("contratar a un abogado", "continuar con MigPAL"),
         ("contratar un abogado", "continuar con MigPAL"),
         ("buscar un abogado", "continuar con MigPAL"),
         ("contactar a un abogado", "continuar con MigPAL"),
-        ("abogado de inmigración", "equipo de MigPAL"),
-        ("abogado especializado", "equipo de MigPAL"),
-        ("abogados", "el equipo de MigPAL"),
+        ("contactar un abogado", "continuar con MigPAL"),
+        ("consultar a un abogado", "consultar con MigPAL"),
+        ("consultar un abogado", "consultar con MigPAL"),
+        ("abogado de inmigración", "equipo MigPAL"),
+        ("abogado especializado", "equipo MigPAL"),
+        ("abogado migratorio", "equipo MigPAL"),
+        ("un abogado", "MigPAL"),
+        ("el abogado", "MigPAL"),
+        ("abogados", "el equipo MigPAL"),
         ("abogado", "MigPAL"),
         ("Abogado", "MigPAL"),
+        ("ABOGADO", "MIGPAL"),
         ("lawyer", "MigPAL"),
+        ("Lawyer", "MigPAL"),
         ("attorney", "MigPAL"),
+        ("Attorney", "MigPAL"),
     ]
     
-    for old, new in replacements:
+    for old, new in lawyer_replacements:
         result = result.replace(old, new)
     
-    # Limitar longitud (máx 8 líneas)
-    lines = [l for l in result.split('\n') if l.strip()]
+    # Limitar a máximo 8 líneas
+    lines = [l.strip() for l in result.split('\n') if l.strip()]
     if len(lines) > 8:
         result = '\n'.join(lines[:8])
+    else:
+        result = '\n'.join(lines)
+    
+    # Limpiar espacios múltiples
+    result = re.sub(r'\n{3,}', '\n\n', result)
+    result = re.sub(r' {2,}', ' ', result)
     
     return result.strip()
 
 
 def fallback_response(message: str, user_data: Dict[str, Any]) -> str:
-    """Respuestas de fallback - Empáticas y cortas"""
+    """Respuestas de fallback - CONSULTIVAS y basadas en el perfil"""
     
     profile = user_data.get("profile", {})
     personal = profile.get("personal", {})
     work = profile.get("work", {})
+    selected_route = user_data.get("selected_route", {})
     preferences = user_data.get("preferences", {})
     
     name = personal.get("name", "").split()[0] if personal.get("name") else ""
-    destination = preferences.get("destination", "USA")
-    profession = work.get("profession", "")
     experience = work.get("experience", "")
+    visa_type = selected_route.get("visa_type", "")
     
-    msg_lower = message.lower()
+    msg_lower = message.lower().strip()
     
-    # Saludos
-    if any(w in msg_lower for w in ["hola", "hi", "hello", "buenos", "buenas"]):
-        if name:
-            return f"""👋 ¡Hola {name}! Qué gusto verte de nuevo.
+    # === CONFIRMACIONES - El cliente quiere continuar ===
+    if msg_lower in ["si", "sí", "ok", "dale", "listo", "bueno", "vale", "claro", "perfecto", "continua", "sigue", "siguiente"]:
+        if visa_type:
+            return f"""✅ Perfecto{', ' + name if name else ''}. 
 
-Ya tengo tu perfil guardado. ¿Continuamos donde lo dejamos o prefieres explorar algo nuevo?"""
+El siguiente paso es el **Diagnóstico MigPAL** ($50 USD).
+
+Incluye:
+• Evaluación completa de tu perfil
+• Probabilidad real de aprobación
+• Documentos que necesitas preparar
+
+¿Procedemos con el diagnóstico?"""
+        else:
+            return f"""✅ Excelente{', ' + name if name else ''}.
+
+Basado en tu perfil, te recomiendo la **visa O-1** (Habilidades Extraordinarias).
+
+Tu probabilidad estimada: **70-75%** 🎯
+
+¿Quieres que te explique los requisitos?"""
+    
+    # === SALUDOS ===
+    if any(w in msg_lower for w in ["hola", "hi", "hello", "buenos", "buenas"]):
+        if name and visa_type:
+            return f"""👋 ¡Hola {name}!
+
+Ya tenemos tu perfil y la visa O-1 seleccionada.
+
+El siguiente paso es el Diagnóstico ($50) para evaluar tu viabilidad real.
+
+¿Continuamos?"""
+        elif name:
+            return f"""👋 ¡Hola {name}! Qué gusto verte.
+
+Ya tengo tu perfil guardado. Vamos a definir tu mejor opción de visa.
+
+¿Listo para continuar?"""
         else:
             return """👋 ¡Hola! Soy MigPAL, tu consultor de migración.
 
-Mi trabajo es ayudarte a planificar tu nueva vida en USA, paso a paso.
+Mi trabajo es guiarte paso a paso hacia tu nueva vida en USA.
 
-¿Cómo te llamas?"""
+Para empezar, ¿cómo te llamas?"""
+    
+    # === PREGUNTAS DE PROBABILIDAD ===
+    if any(w in msg_lower for w in ["probabilidad", "chance", "posibilidad", "éxito", "porcentaje"]):
+        if ">15" in experience or ">10" in experience:
+            return f"""📊 {name}, tu probabilidad para la visa O-1 es **70-75%**.
 
-    # Familia en USA
-    if any(w in msg_lower for w in ["familia", "familiares"]) and any(w in msg_lower for w in ["usa", "estados"]):
-        return f"""👨‍👩‍👧‍👦 Tener familia en USA es una gran ventaja.
+Tienes a favor:
+• +15 años de experiencia (excelente)
+• Perfil empresarial sólido
+• Inglés avanzado
 
-Puede influir en dónde vivir y en algunas opciones de visa.
-
-¿Tienes familiares viviendo allá?"""
-
-    # Comunidad latina
-    if any(w in msg_lower for w in ["comunidad", "latinos", "hispanos"]):
-        return f"""🤝 La comunidad latina hace la adaptación mucho más fácil.
-
-Miami tiene 72% latinos, San Antonio 65%, Houston 45%.
-
-¿Qué tan importante es esto para ti?"""
-
-    # Negocio
-    if any(w in msg_lower for w in ["negocio", "empresa", "emprender", "invertir"]):
-        return f"""🚀 Emprender en USA es excelente opción.
-
-Con la visa E-2 puedes invertir desde $100K y manejar tu negocio.
-
-¿Qué tipo de negocio te interesa?"""
-
-    # Educación/Hijos
-    if any(w in msg_lower for w in ["colegio", "escuela", "hijos", "niños"]):
-        return f"""🎓 La educación de tus hijos es prioridad.
-
-Las escuelas públicas son gratis y la calidad depende del barrio donde vivas.
-
-¿Tienes hijos en edad escolar?"""
-
-    # Vivienda
-    if any(w in msg_lower for w in ["vivienda", "casa", "apartamento", "alquiler"]):
-        return f"""🏠 El alquiler varía mucho por ciudad.
-
-Houston: $1,700/mes | Orlando: $2,000/mes | Miami: $2,800/mes
-
-¿Cuál es tu presupuesto mensual para vivienda?"""
-
-    # Trabajo
-    if any(w in msg_lower for w in ["trabajo", "empleo", "salario"]):
-        if profession:
-            return f"""💼 Como {profession}, tienes buenas opciones.
-
-Los salarios típicos van de $60K a $120K/año dependiendo de la ciudad.
-
-¿Prefieres trabajo presencial, remoto o híbrido?"""
+El siguiente paso es documentar tus logros. ¿Procedemos?"""
         else:
-            return f"""💼 El mercado laboral en USA es muy dinámico.
+            return f"""📊 Tu probabilidad depende de cómo documentemos tu perfil.
 
-Para darte info precisa sobre salarios, necesito saber tu profesión.
+Rango estimado: **50-70%** para visa O-1.
 
-¿A qué te dedicas?"""
+Con el Diagnóstico ($50) te doy un número exacto basado en tu evidencia.
 
-    # Visa
-    if any(w in msg_lower for w in ["visa", "recomienda", "cual", "cuál", "mejor opcion"]):
-        if experience and (">15" in experience or ">10" in experience):
-            return f"""🎯 Con tu experiencia, la visa O-1 es tu mejor opción.
+¿Te interesa?"""
+    
+    # === PREGUNTAS DE COSTO ===
+    if any(w in msg_lower for w in ["costo", "precio", "cuanto", "cuánto", "pagar", "vale"]):
+        return f"""💰 El proceso MigPAL tiene 4 fases:
 
-Probabilidad estimada: 70-75%. No requiere empleador.
+1. **Diagnóstico**: $50 USD
+2. **Perfilamiento**: $50 USD  
+3. **Revisión Documental**: $200 USD
+4. **Plan de Migración**: $100 USD (opcional)
+
+**Total: $300-$400 USD**
+
+¿Empezamos con el Diagnóstico?"""
+    
+    # === PREGUNTAS DE PROCESO/PASOS ===
+    if any(w in msg_lower for w in ["paso", "proceso", "siguiente", "como", "cómo", "que sigue", "qué sigue"]):
+        if visa_type:
+            return f"""🎯 {name}, estos son tus próximos pasos:
+
+**1. Diagnóstico** ($50) - Evaluamos tu viabilidad
+**2. Perfilamiento** ($50) - Documentamos tus logros
+**3. Revisión** ($200) - Preparamos tu evidencia
+**4. Presentación** - Ante USCIS
+
+¿Comenzamos con el Diagnóstico?"""
+        else:
+            return f"""🎯 El proceso es simple:
+
+1. Definimos tu mejor visa (ya casi)
+2. Diagnóstico de viabilidad ($50)
+3. Preparación de documentos
+4. Presentación ante USCIS
+
+¿Continuamos?"""
+    
+    # === PREGUNTAS DE VISA ===
+    if any(w in msg_lower for w in ["visa", "recomienda", "cual", "cuál", "mejor", "opcion", "opción"]):
+        if ">15" in experience or ">10" in experience:
+            return f"""🎫 {name}, para tu perfil recomiendo la **visa O-1**.
+
+**¿Por qué O-1?**
+• No requiere empleador patrocinador
+• Probabilidad: 70-75% con tu experiencia
+• Tiempo: 4-6 meses
 
 ¿Quieres que analicemos si cumples los requisitos?"""
         else:
-            return f"""🎯 Las opciones principales son:
+            return f"""🎫 Las mejores opciones para ti:
 
-• O-1: Habilidades extraordinarias
-• E-2: Inversionista ($100K+)
-• H-1B: Trabajo especializado
+🥇 **O-1**: Habilidades extraordinarias (70-75%)
+🥈 **E-2**: Inversionista con $100K+ (80-90%)
+🥉 **H-1B**: Trabajo especializado (50-65%)
 
-¿Cuál te gustaría explorar?"""
+¿Cuál te interesa explorar?"""
+    
+    # === RESPUESTA GENÉRICA - SIEMPRE GUIAR ===
+    if name:
+        if visa_type:
+            return f"""👋 {name}, estamos en buen camino.
 
-    # Costos
-    if any(w in msg_lower for w in ["costo", "precio", "cuanto", "cuánto"]):
-        return f"""💰 El proceso MigPAL cuesta $300-$400 USD total.
-
-Diagnóstico $50 + Perfilamiento $50 + Documentos $200.
-Plan de Migración $100 (opcional).
-
-¿Te explico qué incluye cada fase?"""
-
-    # Continuar
-    if any(w in msg_lower for w in ["continua", "sigue", "siguiente", "listo", "dale", "vamos"]) and len(message) < 25:
-        return f"""✅ ¡Perfecto! El siguiente paso es el Diagnóstico ($50).
-
-Incluye análisis de tu perfil y probabilidad de aprobación.
+Ya tienes la visa O-1 seleccionada. El siguiente paso es el Diagnóstico ($50) para confirmar tu viabilidad.
 
 ¿Procedemos?"""
+        else:
+            return f"""👋 {name}, vamos a definir tu mejor opción.
 
-    # Respuesta genérica
-    if name:
-        return f"""👋 {name}, estoy aquí para ayudarte.
+Basado en tu perfil, la visa O-1 parece ideal para ti.
 
-Puedo asesorarte sobre visas, ciudades, vivienda, trabajo o negocios.
-
-¿Qué te gustaría explorar?"""
+¿Quieres que te explique por qué?"""
     else:
         return """👋 Soy MigPAL, tu consultor de migración.
 
-Mi trabajo es ayudarte a planificar tu nueva vida en USA.
+Mi trabajo es guiarte paso a paso hacia USA.
 
-¿Cómo te llamas?"""
+Para empezar, ¿cómo te llamas?"""
 
 
 def extract_data_from_message(message: str, user_data: Dict[str, Any]) -> Dict[str, Any]:

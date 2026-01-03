@@ -49,7 +49,7 @@ except ImportError:
 # Set default AI config
 if not os.getenv("AI_PROVIDER"):
     os.environ["AI_PROVIDER"] = "ollama"
-    os.environ["AI_MODEL"] = "qwen2.5:7b"
+    os.environ["AI_MODEL"] = "migpal:latest"
     os.environ["OLLAMA_URL"] = "http://127.0.0.1:11434"
 
 logging.basicConfig(
