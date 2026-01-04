@@ -139,8 +139,9 @@ class OffTopicDetector:
             r'^(' + '|'.join(re.escape(w) for w in CONFIRMATION_WORDS) + r')[\s\.\!\?]*$',
             re.IGNORECASE
         )
+        # Patrón de rechazo mejorado - acepta texto adicional después
         self.rejection_pattern = re.compile(
-            r'^(' + '|'.join(re.escape(w) for w in REJECTION_WORDS) + r')[\s\.\!\?]*$',
+            r'^(' + '|'.join(re.escape(w) for w in REJECTION_WORDS) + r')[\s\.\!\?,]*',
             re.IGNORECASE
         )
         self.greeting_pattern = re.compile(
@@ -171,13 +172,15 @@ class OffTopicDetector:
         if not msg:
             return MessageType.OFF_TOPIC, 1.0
         
-        # Confirmación simple
+        # Confirmación simple (debe ser exacta)
         if self.confirmation_pattern.match(msg):
             return MessageType.CONFIRMATION, 0.95
         
-        # Rechazo simple
+        # Rechazo (puede tener texto adicional como "no, después")
         if self.rejection_pattern.match(msg):
-            return MessageType.REJECTION, 0.95
+            # Verificar que no sea una pregunta sobre migración
+            if not self.migration_pattern.search(msg):
+                return MessageType.REJECTION, 0.95
         
         # Saludo
         if self.greeting_pattern.match(msg):
