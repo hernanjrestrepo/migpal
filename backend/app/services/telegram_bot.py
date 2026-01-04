@@ -4041,7 +4041,7 @@ class MigPALBot:
         await update.message.reply_text(msg, parse_mode='Markdown')
     
     async def _compare_cities_action(self, update, city1_name: str, city2_name: str):
-        """Compara dos ciudades"""
+        """Compara dos ciudades con gráfico interactivo"""
         # Buscar ciudades
         city1_results = search_cities(city1_name)
         city2_results = search_cities(city2_name)
@@ -4060,13 +4060,37 @@ class MigPALBot:
         # Comparar
         result = compare_cities(city1, city2)
         
+        # Enviar mensaje de texto primero
         await update.message.reply_text(
             result.formatted_message,
             parse_mode='Markdown'
         )
+        
+        # Generar y enviar gráfico de comparación
+        try:
+            city1_scores = city1.get("scores", {})
+            city2_scores = city2.get("scores", {})
+            city1_display = city1.get("name", city1_name)
+            city2_display = city2.get("name", city2_name)
+            
+            chart_bytes = generate_comparison_chart(
+                city1_display, city1_scores,
+                city2_display, city2_scores
+            )
+            
+            if chart_bytes:
+                from io import BytesIO
+                photo = BytesIO(chart_bytes)
+                photo.name = "comparison_chart.png"
+                await update.message.reply_photo(
+                    photo=photo,
+                    caption=f"📊 Gráfico comparativo: {city1_display} vs {city2_display}"
+                )
+        except Exception as e:
+            logger.warning(f"No se pudo generar gráfico de comparación: {e}")
     
     async def _show_city_info(self, update, city_name: str):
-        """Muestra información completa de una ciudad"""
+        """Muestra información completa de una ciudad con gráfico radar"""
         # Buscar ciudad
         results = search_cities(city_name)
         
@@ -4083,6 +4107,24 @@ class MigPALBot:
         for msg in messages:
             await update.message.reply_text(msg, parse_mode='Markdown')
             await asyncio.sleep(0.3)  # Pequeña pausa entre mensajes
+        
+        # Generar y enviar gráfico radar de la ciudad
+        try:
+            city_scores = city.get("scores", {})
+            city_display = city.get("name", city_name)
+            
+            radar_bytes = generate_radar_chart(city_display, city_scores)
+            
+            if radar_bytes:
+                from io import BytesIO
+                photo = BytesIO(radar_bytes)
+                photo.name = "city_radar.png"
+                await update.message.reply_photo(
+                    photo=photo,
+                    caption=f"📊 Perfil de {city_display}"
+                )
+        except Exception as e:
+            logger.warning(f"No se pudo generar gráfico radar: {e}")
     
     @safe_async_handler
     async def _cmd_compare(self, update, context):

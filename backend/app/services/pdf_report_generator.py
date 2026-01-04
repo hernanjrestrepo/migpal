@@ -45,11 +45,7 @@ class PDFReportGenerator:
         self.page_size = letter
         self.margin = 0.75 * inch
         
-        if REPORTLAB_AVAILABLE:
-            self.styles = getSampleStyleSheet()
-            self._setup_custom_styles()
-        
-        # Colores corporativos
+        # Colores corporativos (DEBE ir antes de _setup_custom_styles)
         self.colors = {
             "primary": colors.HexColor("#2196F3"),
             "secondary": colors.HexColor("#4CAF50"),
@@ -60,6 +56,10 @@ class PDFReportGenerator:
             "warning": colors.HexColor("#FFC107"),
             "danger": colors.HexColor("#F44336"),
         }
+        
+        if REPORTLAB_AVAILABLE:
+            self.styles = getSampleStyleSheet()
+            self._setup_custom_styles()
     
     def _setup_custom_styles(self):
         """Configura estilos personalizados"""
@@ -99,9 +99,9 @@ class PDFReportGenerator:
             borderPadding=5,
         ))
         
-        # Texto normal
+        # Texto normal (MigPalBody para evitar conflicto con BodyText existente)
         self.styles.add(ParagraphStyle(
-            name='BodyText',
+            name='MigPalBody',
             parent=self.styles['Normal'],
             fontSize=11,
             textColor=self.colors["dark"],
