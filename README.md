@@ -343,9 +343,8 @@ Proyecto privado - Todos los derechos reservados
 ## 📋 Pendientes (Roadmap)
 
 ### Prioridad Alta
-- [ ] Integración directa con Zillow API (actualmente scraping)
+- [x] ✅ Gráficos interactivos en Telegram (matplotlib)
 - [ ] Imágenes reales de ciudades (actualmente Unsplash)
-- [ ] Gráficos interactivos en Telegram
 
 ### Prioridad Media
 - [ ] Monetización - Integración Stripe/PayPal
