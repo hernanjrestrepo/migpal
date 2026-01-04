@@ -1,13 +1,14 @@
 """
-MigPAL AI Brain - V8 CONSULTIVO
-El mejor consultor de migración - GUÍA ACTIVA
+MigPAL AI Brain - V9 CONSULTIVO + OFF-TOPIC
+El mejor consultor de migración - GUÍA ACTIVA Y ESTRICTA
 
 FILOSOFÍA:
 "La visa es el VEHÍCULO, no el DESTINO. Primero define el destino (plan de vida), luego el vehículo (visa)."
 
-PRINCIPIOS V8 - CONSULTIVO:
+PRINCIPIOS V9 - CONSULTIVO + ESTRICTO:
 - YO GUÍO, el cliente confirma
 - Respuestas CORTAS pero COMPLETAS (4-6 líneas)
+- UNA SOLA PREGUNTA por mensaje
 - Empatía genuina - entiendo la frustración del proceso
 - NUNCA repetir preguntas ya respondidas
 - NUNCA pedir información que ya tengo
@@ -15,6 +16,8 @@ PRINCIPIOS V8 - CONSULTIVO:
 - Dar PASOS CONCRETOS, no teoría
 - Celebrar avances del cliente
 - Usar la información del perfil SIEMPRE
+- DETECTAR OFF-TOPIC y volver al tema
+- FALLBACKS claros si falla integración
 """
 
 import os
@@ -22,6 +25,14 @@ import logging
 import re
 import httpx
 from typing import Dict, Any, Optional
+
+# Importar detector de off-topic
+from .off_topic_detector import (
+    get_detector, MessageType, 
+    get_off_topic_response, get_redirect_response,
+    validate_single_question, enforce_short_response,
+    is_confirmation, is_rejection, needs_redirect
+)
 
 logger = logging.getLogger(__name__)
 
@@ -347,16 +358,40 @@ Responde en 4-6 líneas. Sé DIRECTO y GUÍA al cliente al siguiente paso."""
 
 
 def detect_intent(message: str) -> str:
-    """Detecta la intención del mensaje para guiar la respuesta"""
+    """Detecta la intención del mensaje para guiar la respuesta - V9 con OFF-TOPIC"""
     msg_lower = message.lower().strip()
     
+    # Usar el detector de off-topic
+    detector = get_detector()
+    msg_type, confidence = detector.detect(message)
+    
+    # OFF-TOPIC detectado
+    if msg_type == MessageType.OFF_TOPIC and confidence >= 0.7:
+        return "🚫 INTENCIÓN: OFF-TOPIC. El mensaje NO está relacionado con migración. Reconoce brevemente (1 línea) y VUELVE al tema actual. Haz la pregunta pendiente."
+    
     # Confirmaciones simples
-    if msg_lower in ["si", "sí", "ok", "dale", "listo", "bueno", "vale", "claro", "perfecto"]:
+    if msg_type == MessageType.CONFIRMATION:
         return "⚡ INTENCIÓN: Confirmación. El cliente quiere CONTINUAR. Dile el siguiente paso concreto."
     
+    # Rechazos
+    if msg_type == MessageType.REJECTION:
+        return "❌ INTENCIÓN: Rechazo. El cliente no quiere continuar ahora. Pregunta si prefiere otro momento o tiene dudas."
+    
     # Frustración
-    if any(w in msg_lower for w in ["nojoda", "no friegues", "deja de", "ya te dije", "carajo"]):
-        return "⚠️ INTENCIÓN: Frustración. El cliente está molesto. Sé DIRECTO, no repitas, da el siguiente paso."
+    if msg_type == MessageType.FRUSTRATION:
+        return "⚠️ INTENCIÓN: Frustración. El cliente está molesto. Sé DIRECTO, no repitas, da el siguiente paso inmediatamente."
+    
+    # Ayuda
+    if msg_type == MessageType.HELP:
+        return "❓ INTENCIÓN: Necesita ayuda. Explica brevemente en qué fase está y cuál es el siguiente paso."
+    
+    # Pagos
+    if msg_type == MessageType.PAYMENT:
+        return "💳 INTENCIÓN: Pregunta de pagos. Da las opciones de pago disponibles."
+    
+    # Saludos
+    if msg_type == MessageType.GREETING:
+        return "👋 INTENCIÓN: Saludo. Responde brevemente y continúa con el proceso."
     
     # Preguntas de probabilidad
     if any(w in msg_lower for w in ["probabilidad", "chance", "posibilidad", "éxito"]):
@@ -378,11 +413,14 @@ def detect_intent(message: str) -> str:
 
 
 def filter_response(text: str) -> str:
-    """Filtra y limpia la respuesta - V8 MEJORADO"""
+    """Filtra y limpia la respuesta - V9 MEJORADO con validación de UNA PREGUNTA"""
     if not text:
         return ""
     
     result = text.strip()
+    
+    # VALIDAR UNA SOLA PREGUNTA
+    is_valid, result = validate_single_question(result)
     
     # Eliminar CUALQUIER texto que no sea español (detectar caracteres chinos, etc.)
     # Mantener solo caracteres latinos, números, emojis comunes y puntuación
@@ -446,8 +484,45 @@ def filter_response(text: str) -> str:
     return result.strip()
 
 
+# ============== FALLBACK MESSAGES ==============
+
+FALLBACK_AI_PROCESSING = """Estoy procesando tu información. Dame un momento...
+
+Mientras tanto, puedes revisar tu progreso con /estado"""
+
+FALLBACK_SEARCH_ERROR = """No pude obtener resultados en este momento.
+Intentaré de nuevo en unos segundos.
+
+Si el problema persiste, escribe /ayuda"""
+
+FALLBACK_PAYMENT_ERROR = """Hubo un problema procesando el pago.
+Por favor intenta de nuevo o usa otro método.
+
+Métodos disponibles:
+💳 Tarjeta
+🅿️ PayPal
+📱 Zelle
+🏦 Transferencia"""
+
+FALLBACK_GENERIC = """Disculpa, hubo un problema técnico.
+Vamos a continuar con tu proceso.
+
+¿En qué puedo ayudarte?"""
+
+
+def get_fallback_message(error_type: str = "generic") -> str:
+    """Obtiene mensaje de fallback según el tipo de error"""
+    fallbacks = {
+        "ai": FALLBACK_AI_PROCESSING,
+        "search": FALLBACK_SEARCH_ERROR,
+        "payment": FALLBACK_PAYMENT_ERROR,
+        "generic": FALLBACK_GENERIC,
+    }
+    return fallbacks.get(error_type, FALLBACK_GENERIC)
+
+
 def fallback_response(message: str, user_data: Dict[str, Any]) -> str:
-    """Respuestas de fallback - CONSULTIVAS y basadas en el perfil"""
+    """Respuestas de fallback - CONSULTIVAS y basadas en el perfil - V9"""
     
     profile = user_data.get("profile", {})
     personal = profile.get("personal", {})
@@ -635,5 +710,8 @@ __all__ = [
     'extract_data_from_message',
     'get_next_question',
     'build_complete_user_context',
-    'build_process_state'
+    'build_process_state',
+    'get_fallback_message',
+    'fallback_response',
+    'detect_intent',
 ]

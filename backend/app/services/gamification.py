@@ -1,8 +1,13 @@
 """
-MigPAL Gamification System - Sistema de Niveles y Precios
-=========================================================
-Sistema de gamificación con 4 fases y precios claros.
+MigPAL Gamification System - Sistema de Niveles y Precios V3.0
+==============================================================
+Sistema de gamificación con 6 fases obligatorias y precios claros.
 Incluye política de referidos a abogados.
+
+FLUJO OBLIGATORIO:
+REGISTRO → DIAGNÓSTICO → PERFILAMIENTO → PLAN_MIGRACIÓN → EJECUCIÓN → CIERRE
+
+OBJETIVO ÚNICO: Generar el Plan Maestro de Migración consolidado.
 """
 
 from dataclasses import dataclass, field
@@ -10,15 +15,29 @@ from typing import Dict, List, Optional, Any
 from enum import Enum
 from datetime import datetime
 
+# Importar el nuevo sistema de fases
+from .phase_manager import (
+    Phase, MigrantType, PhaseConfig, PHASE_CONFIG,
+    PRICES as PHASE_PRICES, MIGRANT_TYPE_INFO,
+    PhaseManager, get_phase_manager
+)
+
+
+# Mantener Level como alias de Phase para compatibilidad
+Level = Phase
+
 
 class Level(Enum):
-    """Niveles del proceso MigPAL"""
-    REGISTRO = 0  # Registro y consulta inicial - GRATIS
-    DIAGNOSTICO = 1  # Diagnóstico - $50 USD
-    PERFILAMIENTO = 2  # Perfilamiento completo - $100 USD
+    """Niveles del proceso MigPAL (alias de Phase para compatibilidad)"""
+    REGISTRO = 0      # Registro y consulta inicial - GRATIS
+    DIAGNOSTICO = 1   # Diagnóstico - $50 USD
+    PERFILAMIENTO = 2 # Perfilamiento completo - $100 USD
     PLAN_MIGRACION = 3  # Plan de migración - $200 USD
-    EJECUCION = 4  # Ejecución (con MigPAL o abogado)
-    COMPLETADO = 5  # Proceso completado
+    EJECUCION = 4     # Ejecución (con MigPAL o abogado)
+    CIERRE = 5        # Proceso completado (antes COMPLETADO)
+    
+    # Alias para compatibilidad
+    COMPLETADO = 5
 
 
 @dataclass
