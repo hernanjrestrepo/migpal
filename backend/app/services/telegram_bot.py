@@ -4724,6 +4724,172 @@ class MigPALBot:
                 f"⚠️ Error al generar PDF: {str(e)[:100]}"
             )
     
+    # ============== FORM STATE HANDLER ==============
+    
+    async def _handle_form_state(self, update, user_id: int, user: dict, state: str, text: str) -> bool:
+        """
+        Procesa estados de formulario directamente.
+        Retorna True si el estado fue manejado, False si no.
+        """
+        try:
+            # === NAME ===
+            if state == STATE_NAME:
+                user["profile"]["personal"]["name"] = text
+                save_user_data(user_id, user)
+                
+                # NUEVO: Iniciar flujo proactivo después del nombre
+                await update.message.reply_text(
+                    f"¡Hola {text}! 😊\n\n"
+                    "Encantado de conocerte. Ahora voy a guiarte paso a paso "
+                    "en tu proceso de migración.\n\n"
+                    "💡 *Mi filosofía:* \"La visa es el VEHÍCULO, no el DESTINO\"\n\n"
+                    "Primero vamos a entender tu situación y sueños, "
+                    "y luego encontraremos la mejor ruta para ti.\n\n"
+                    "¿Empezamos?",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("✅ Sí, empecemos", "flow_start_discovery")],
+                        [("ℹ️ Cuéntame más sobre el proceso", "flow_explain_process")],
+                    ])
+                )
+                set_state(user_id, STATE_START)  # Volver a estado inicial para el flujo
+                return True
+            
+            # === BIRTH DATE ===
+            elif state == STATE_BIRTH_DATE:
+                user["profile"]["personal"]["birth_date"] = text
+                save_user_data(user_id, user)
+                set_state(user_id, STATE_NATIONALITY)
+                await update.message.reply_text(
+                    "¿Cuál es tu nacionalidad?",
+                    reply_markup=self._kb([
+                        [("🇨🇴 Colombiano", "Colombiano"), ("🇲🇽 Mexicano", "Mexicano")],
+                        [("🇻🇪 Venezolano", "Venezolano"), ("🇦🇷 Argentino", "Argentino")],
+                        [("🇵🇪 Peruano", "Peruano"), ("🇪🇨 Ecuatoriano", "Ecuatoriano")],
+                        [("🌎 Otra", "Otra")]
+                    ])
+                )
+                return True
+            
+            # === CURRENT CITY ===
+            elif state == STATE_CURRENT_CITY:
+                user["profile"]["personal"]["current_city"] = text
+                save_user_data(user_id, user)
+                set_state(user_id, STATE_EMAIL)
+                await update.message.reply_text("📧 ¿Cuál es tu correo electrónico?")
+                return True
+            
+            # === EMAIL ===
+            elif state == STATE_EMAIL:
+                user["profile"]["personal"]["email"] = text
+                save_user_data(user_id, user)
+                set_state(user_id, STATE_PHONE)
+                await update.message.reply_text("📱 ¿Tu número de teléfono? (con código de país)")
+                return True
+            
+            # === PHONE ===
+            elif state == STATE_PHONE:
+                user["profile"]["personal"]["phone"] = text
+                save_user_data(user_id, user)
+                set_state(user_id, STATE_EDUCATION_LEVEL)
+                await update.message.reply_text(
+                    "🎓 ¿Cuál es tu nivel educativo más alto?",
+                    reply_markup=self._kb([
+                        [("📚 Bachillerato", "Bachillerato"), ("📖 Técnico", "Técnico")],
+                        [("🎓 Universitario", "Universitario"), ("📜 Especialización", "Especialización")],
+                        [("🏅 Maestría", "Maestría"), ("🏆 Doctorado", "Doctorado")]
+                    ])
+                )
+                return True
+            
+            # === EDUCATION CAREER ===
+            elif state == STATE_EDUCATION_CAREER:
+                user["profile"]["education"]["career"] = text
+                save_user_data(user_id, user)
+                set_state(user_id, STATE_WORK_STATUS)
+                await update.message.reply_text(
+                    "¿Cuál es tu situación laboral actual?",
+                    reply_markup=self._kb([
+                        ("👔 Empleado", "Empleado"),
+                        ("🏢 Independiente/Freelance", "Independiente"),
+                        ("🚀 Empresario/Dueño", "Empresario"),
+                        ("📚 Estudiante", "Estudiante"),
+                        ("🔍 Buscando empleo", "Desempleado")
+                    ])
+                )
+                return True
+            
+            # === PROFESSION ===
+            elif state == STATE_PROFESSION:
+                user["profile"]["work"]["profession"] = text
+                save_user_data(user_id, user)
+                set_state(user_id, STATE_WORK_EXPERIENCE)
+                await update.message.reply_text(
+                    "¿Cuántos años de experiencia tienes?",
+                    reply_markup=self._kb([
+                        [("< 1 año", "<1"), ("1-3 años", "1-3"), ("3-5 años", "3-5")],
+                        [("5-10 años", "5-10"), ("10-15 años", "10-15"), ("> 15 años", ">15")]
+                    ])
+                )
+                return True
+            
+            # === LINKEDIN ===
+            elif state == STATE_LINKEDIN:
+                if text.lower() not in ["omitir", "no", "skip", "-"]:
+                    user["profile"]["work"]["linkedin"] = text
+                save_user_data(user_id, user)
+                # Continuar con el flujo proactivo
+                await update.message.reply_text(
+                    "✅ *¡Perfil básico completado!*\n\n"
+                    "Ahora vamos a definir tu plan de migración.\n\n"
+                    "¿Empezamos?",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("✅ Sí, empecemos", "flow_start_discovery")],
+                    ])
+                )
+                set_state(user_id, STATE_START)
+                return True
+            
+            # === COMPANY ===
+            elif state == STATE_COMPANY:
+                user["profile"]["work"]["company"] = text
+                save_user_data(user_id, user)
+                set_state(user_id, STATE_SALARY)
+                await update.message.reply_text(
+                    "¿Cuál es tu salario mensual aproximado (en USD)?",
+                    reply_markup=self._kb([
+                        [("< $1,000", "<1000"), ("$1,000-$2,000", "1000-2000")],
+                        [("$2,000-$5,000", "2000-5000"), ("$5,000-$10,000", "5000-10000")],
+                        [("> $10,000", ">10000"), ("🔒 Prefiero no decir", "private")]
+                    ])
+                )
+                return True
+            
+            # === SALARY ===
+            elif state == STATE_SALARY:
+                user["profile"]["work"]["salary"] = text
+                save_user_data(user_id, user)
+                # Continuar con flujo
+                await update.message.reply_text(
+                    "✅ Información guardada.\n\n"
+                    "Continuemos con tu plan de migración.",
+                    reply_markup=self._kb([
+                        [("▶️ Continuar", "flow_start_discovery")],
+                    ])
+                )
+                set_state(user_id, STATE_START)
+                return True
+            
+            # === OTROS ESTADOS ===
+            # Para estados no manejados explícitamente, guardar y continuar
+            else:
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error handling form state {state}: {e}")
+            return False
+    
     # ============== MESSAGE HANDLER ==============
     
     async def _handle_message(self, update, context):
@@ -4734,6 +4900,21 @@ class MigPALBot:
         user = get_user_data(user_id)
         
         logger.info(f"MSG: {user_id} | {state} | {text[:50]}")
+        
+        # === PRIMERO: Verificar si estamos en un estado de FORMULARIO ===
+        # Si el usuario está en un estado de formulario, procesar directamente
+        FORM_STATES = [
+            STATE_NAME, STATE_BIRTH_DATE, STATE_CURRENT_CITY, STATE_EMAIL, STATE_PHONE,
+            STATE_EDUCATION_CAREER, STATE_PROFESSION, STATE_LINKEDIN, STATE_COMPANY,
+            STATE_SALARY, STATE_ACHIEVEMENTS, STATE_FAMILY_DETAILS, STATE_BUDGET,
+            STATE_TIMELINE, STATE_CONCERNS, STATE_GOALS
+        ]
+        
+        if state in FORM_STATES:
+            # Procesar el estado de formulario directamente
+            handled = await self._handle_form_state(update, user_id, user, state, text)
+            if handled:
+                return
         
         # V2.1 - DETECTAR INTENCIÓN DEL MENSAJE (Comandos Invisibles)
         detected = detect_intent(text)
