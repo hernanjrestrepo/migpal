@@ -549,10 +549,20 @@ class EducationSearchEngine:
         limit: int = 10
     ) -> List[University]:
         """Busca universidades con filtros"""
+        # Mapeo de nombres de estado a abreviaturas
+        STATE_ABBREV = {
+            "florida": "FL", "texas": "TX", "california": "CA", "new york": "NY",
+            "georgia": "GA", "massachusetts": "MA", "illinois": "IL", "ohio": "OH",
+            "washington": "WA", "colorado": "CO", "arizona": "AZ", "michigan": "MI",
+            "north carolina": "NC", "pennsylvania": "PA", "new jersey": "NJ",
+        }
+        
         results = list(self.universities.values())
         
         if state:
-            results = [u for u in results if u.state == state]
+            # Normalizar el estado
+            state_normalized = state.upper() if len(state) == 2 else STATE_ABBREV.get(state.lower(), state.upper())
+            results = [u for u in results if u.state == state_normalized]
         
         if city:
             results = [u for u in results if city.lower() in u.city.lower()]

@@ -643,10 +643,33 @@ def get_cities_by_state(state_code: str) -> List[Dict]:
     """Obtiene todas las ciudades de un estado"""
     return [c for c in CITIES_TOP_1000.values() if c["state_code"] == state_code]
 
-def search_cities(query: str) -> List[Dict]:
-    """Busca ciudades por nombre"""
+def search_cities(query: str, limit: int = 50) -> List[Dict]:
+    """Busca ciudades por nombre, estado o abreviatura de estado"""
     query_lower = query.lower()
-    return [c for c in CITIES_TOP_1000.values() if query_lower in c["name"].lower()]
+    
+    # Mapeo de abreviaturas a nombres completos
+    STATE_NAMES = {
+        "fl": "florida", "tx": "texas", "ca": "california", "ny": "new york",
+        "ga": "georgia", "nc": "north carolina", "az": "arizona", "nv": "nevada",
+        "co": "colorado", "wa": "washington", "or": "oregon", "il": "illinois",
+        "oh": "ohio", "mi": "michigan", "pa": "pennsylvania", "nj": "new jersey",
+        "ma": "massachusetts", "va": "virginia", "md": "maryland", "tn": "tennessee",
+    }
+    
+    # Si es una abreviatura de estado, convertir a nombre completo
+    if len(query_lower) == 2 and query_lower in STATE_NAMES:
+        query_lower = STATE_NAMES[query_lower]
+    
+    results = []
+    for c in CITIES_TOP_1000.values():
+        # Buscar en nombre de ciudad
+        if query_lower in c["name"].lower():
+            results.append(c)
+        # Buscar en estado
+        elif query_lower in c.get("state", "").lower():
+            results.append(c)
+    
+    return results[:limit]
 
 def get_top_cities(limit: int = 50) -> List[Dict]:
     """Obtiene las ciudades más pobladas"""
