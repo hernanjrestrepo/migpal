@@ -191,6 +191,24 @@ from app.services.city_comparator import (
     get_city_image_url
 )
 
+# V2.2 - Import housing scraper (Zillow, Apartments.com)
+from app.services.housing_scraper import (
+    housing_scraper, search_rentals, HousingListing
+)
+
+# V2.2 - Import visual generator (images, charts)
+from app.services.visual_generator import (
+    get_city_image_url as get_real_city_image,
+    download_image, chart_generator,
+    generate_comparison_chart, generate_radar_chart
+)
+
+# V2.2 - Import PDF report generator
+from app.services.pdf_report_generator import (
+    pdf_generator, generate_diagnostic_pdf, generate_city_pdf,
+    generate_comparison_pdf, generate_migration_plan_pdf
+)
+
 # In-memory cache (loaded from disk)
 user_data: Dict[int, Dict[str, Any]] = {}
 
@@ -362,6 +380,11 @@ class MigPALBot:
         self.application.add_handler(CommandHandler("explorar", self._cmd_explore))
         self.application.add_handler(CommandHandler("viviendas", self._cmd_housing))
         self.application.add_handler(CommandHandler("flujo", self._cmd_flow))
+        # V2.2 commands - Education, PDF reports, comparison
+        self.application.add_handler(CommandHandler("escuelas", self._cmd_schools))
+        self.application.add_handler(CommandHandler("universidades", self._cmd_universities))
+        self.application.add_handler(CommandHandler("comparar", self._cmd_compare))
+        self.application.add_handler(CommandHandler("pdf", self._cmd_pdf))
         self.application.add_handler(CallbackQueryHandler(self._handle_callback))
         self.application.add_handler(MessageHandler(filters.Document.ALL, self._handle_document))
         self.application.add_handler(MessageHandler(filters.PHOTO, self._handle_photo))
@@ -4060,6 +4083,159 @@ class MigPALBot:
         for msg in messages:
             await update.message.reply_text(msg, parse_mode='Markdown')
             await asyncio.sleep(0.3)  # Pequeña pausa entre mensajes
+    
+    @safe_async_handler
+    async def _cmd_compare(self, update, context):
+        """Comando /comparar - Compara dos ciudades"""
+        user_id = update.effective_user.id
+        
+        # Obtener argumentos del comando
+        args = context.args if context.args else []
+        
+        if len(args) < 2:
+            await update.message.reply_text(
+                "⚔️ *COMPARAR CIUDADES*\n\n"
+                "Uso: /comparar [ciudad1] [ciudad2]\n\n"
+                "Ejemplos:\n"
+                "• /comparar Miami Orlando\n"
+                "• /comparar Austin Dallas\n"
+                "• /comparar Seattle Denver\n\n"
+                "O simplemente escribe:\n"
+                "_\"Compara Miami con Orlando\"_",
+                parse_mode='Markdown'
+            )
+            return
+        
+        city1_name = args[0]
+        city2_name = args[1] if args[1].lower() not in ["con", "vs", "y", "and"] else args[2] if len(args) > 2 else args[1]
+        
+        await self._compare_cities_action(update, city1_name, city2_name)
+    
+    @safe_async_handler
+    async def _cmd_pdf(self, update, context):
+        """Comando /pdf - Genera reportes PDF"""
+        user_id = update.effective_user.id
+        user = get_user_data(user_id)
+        
+        await update.message.reply_text(
+            "📄 *GENERAR REPORTE PDF*\n\n"
+            "Selecciona el tipo de reporte:",
+            parse_mode='Markdown',
+            reply_markup=self._kb([
+                [("📊 Diagnóstico", "pdf_diagnostic"), ("🏙️ Ciudad", "pdf_city")],
+                [("⚔️ Comparación", "pdf_comparison"), ("🗺️ Plan Migración", "pdf_plan")],
+                [("📋 Checklist Docs", "pdf_checklist")],
+            ])
+        )
+    
+    async def _generate_and_send_pdf(self, update, pdf_type: str, user: dict):
+        """Genera y envía un PDF"""
+        user_id = update.effective_user.id
+        
+        try:
+            pdf_bytes = None
+            filename = "reporte.pdf"
+            
+            if pdf_type == "diagnostic":
+                # Generar PDF de diagnóstico
+                client_name = user.get("profile", {}).get("personal", {}).get("name", "Cliente")
+                visa_analysis = {
+                    "recommended_visa": user.get("selected_route", {}).get("visa_type", "Por determinar"),
+                    "probability": user.get("visa_probability", 50),
+                    "timeline": "6-12 meses",
+                }
+                recommendations = [
+                    "Completar el perfilamiento detallado",
+                    "Reunir documentos base según checklist",
+                    "Definir ciudad destino",
+                    "Evaluar opciones de visa",
+                ]
+                pdf_bytes = generate_diagnostic_pdf(client_name, user, visa_analysis, recommendations)
+                filename = f"diagnostico_{client_name.replace(' ', '_')}.pdf"
+            
+            elif pdf_type == "city":
+                # Generar PDF de ciudad
+                route = user.get("selected_route", {})
+                city_name = route.get("city", "")
+                
+                if not city_name:
+                    await update.message.reply_text(
+                        "⚠️ Primero selecciona una ciudad con /explorar"
+                    )
+                    return
+                
+                city_results = search_cities(city_name)
+                if city_results:
+                    pdf_bytes = generate_city_pdf(city_results[0])
+                    filename = f"ciudad_{city_name.replace(' ', '_')}.pdf"
+            
+            elif pdf_type == "comparison":
+                # Necesita dos ciudades guardadas
+                favorites = user.get("favorites", {}).get("cities", [])
+                if len(favorites) < 2:
+                    await update.message.reply_text(
+                        "⚠️ Necesitas al menos 2 ciudades favoritas.\n"
+                        "Usa /explorar y marca ciudades con ❤️"
+                    )
+                    return
+                
+                city1 = search_cities(favorites[0])
+                city2 = search_cities(favorites[1])
+                if city1 and city2:
+                    pdf_bytes = generate_comparison_pdf(city1[0], city2[0])
+                    filename = f"comparacion_{favorites[0]}_{favorites[1]}.pdf"
+            
+            elif pdf_type == "plan":
+                # Plan de migración completo
+                client_name = user.get("profile", {}).get("personal", {}).get("name", "Cliente")
+                route = user.get("selected_route", {})
+                city_name = route.get("city", "")
+                
+                if not city_name:
+                    await update.message.reply_text(
+                        "⚠️ Primero completa tu perfil y selecciona una ciudad."
+                    )
+                    return
+                
+                city_results = search_cities(city_name)
+                city_data = city_results[0] if city_results else {}
+                
+                visa_info = {
+                    "type": route.get("visa_type", "Por determinar"),
+                    "probability": user.get("visa_probability", 50),
+                    "processing_time": "6-12 meses",
+                    "cost": 5000,
+                }
+                
+                timeline = [
+                    {"phase": "1. Diagnóstico", "description": "Evaluación inicial", "duration": "1 semana"},
+                    {"phase": "2. Perfilamiento", "description": "Definición de perfil", "duration": "2 semanas"},
+                    {"phase": "3. Documentos", "description": "Recopilación", "duration": "1-2 meses"},
+                    {"phase": "4. Aplicación", "description": "Envío de visa", "duration": "Variable"},
+                    {"phase": "5. Establecimiento", "description": "Llegada y setup", "duration": "1-3 meses"},
+                ]
+                
+                pdf_bytes = generate_migration_plan_pdf(client_name, user, city_data, visa_info, timeline)
+                filename = f"plan_migracion_{client_name.replace(' ', '_')}.pdf"
+            
+            if pdf_bytes:
+                # Enviar el PDF
+                from telegram import InputFile
+                await update.message.reply_document(
+                    document=InputFile(io.BytesIO(pdf_bytes), filename=filename),
+                    caption=f"📄 *{filename}*\n\nGenerado por MigPAL",
+                    parse_mode='Markdown'
+                )
+            else:
+                await update.message.reply_text(
+                    "⚠️ No se pudo generar el PDF. Intenta de nuevo."
+                )
+        
+        except Exception as e:
+            logger.error(f"Error generating PDF: {e}")
+            await update.message.reply_text(
+                f"⚠️ Error al generar PDF: {str(e)[:100]}"
+            )
     
     # ============== MESSAGE HANDLER ==============
     
