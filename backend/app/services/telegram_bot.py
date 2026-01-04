@@ -2417,25 +2417,123 @@ class MigPALBot:
         
         # Flow callbacks
         elif data.startswith("flow_"):
-            action = data.split("_")[1]
+            # Obtener la acción completa después de "flow_"
+            action = data[5:]  # Remover "flow_" del inicio
             
-            if action == "start":
+            # === NUEVOS HANDLERS PROACTIVOS ===
+            if action == "start_discovery" or action == "start":
                 # Iniciar flujo desde DISCOVERY_WHY
                 ctx = flow_engine.get_context(user_id)
                 ctx.current_state = ConversationState.DISCOVERY_WHY
                 flow_engine.contexts[user_id] = ctx
                 
-                question_data = STATE_QUESTIONS.get(ConversationState.DISCOVERY_WHY, {})
-                name = user.get("profile", {}).get("personal", {}).get("name", "amigo")
-                message = question_data.get("message", "").format(name=name)
-                
-                options = question_data.get("options", [])
-                buttons = [(opt[1], f"flow_{opt[0]}") for opt in options]
+                name = user.get("profile", {}).get("personal", {}).get("name", "")
+                greeting = f"{name}, " if name else ""
                 
                 await query.edit_message_text(
-                    f"📊 Progreso: 5%\n\n{message}",
+                    f"📊 *PASO 1 DE 5: DESCUBRIMIENTO*\n\n"
+                    f"{greeting}para ayudarte mejor, necesito conocerte.\n\n"
+                    "💡 *¿Por qué quieres migrar a Estados Unidos?*\n\n"
+                    "Selecciona la opción que más te represente:",
                     parse_mode='Markdown',
-                    reply_markup=self._kb(buttons)
+                    reply_markup=self._kb([
+                        [("💼 Mejores oportunidades laborales", "flow_why_work")],
+                        [("💰 Mejor calidad de vida", "flow_why_quality")],
+                        [("👨‍👩‍👧 Reunirme con familia", "flow_why_family")],
+                        [("🎓 Estudios/Educación", "flow_why_education")],
+                        [("🏢 Emprender un negocio", "flow_why_business")],
+                        [("🌍 Otra razón", "flow_why_other")],
+                    ])
+                )
+            
+            elif action == "explain_process":
+                await query.edit_message_text(
+                    "ℹ️ *CÓMO FUNCIONA MIGPAL*\n\n"
+                    "Te guío en 5 pasos:\n\n"
+                    "*1️⃣ Descubrimiento* - Entender tu situación y sueños\n"
+                    "*2️⃣ Plan de Vida* - Definir trabajo/negocio ideal\n"
+                    "*3️⃣ Ubicación* - Elegir estado, ciudad y barrio\n"
+                    "*4️⃣ Ruta Migratoria* - Encontrar la visa adecuada\n"
+                    "*5️⃣ Ejecución* - Documentos y proceso\n\n"
+                    "💡 *Filosofía:* \"La visa es el VEHÍCULO, no el DESTINO\"\n\n"
+                    "Primero definimos tu plan de vida, luego la visa.",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("✅ Entendido, empecemos", "flow_start_discovery")],
+                    ])
+                )
+            
+            elif action == "continue_location":
+                # Continuar con selección de ubicación
+                await query.edit_message_text(
+                    "🗺️ *PASO 3: UBICACIÓN*\n\n"
+                    "¿En qué región de Estados Unidos te gustaría vivir?\n\n"
+                    "Cada región tiene características únicas:",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("☀️ Sur (FL, TX, GA)", "flow_region_south")],
+                        [("🌃 Noreste (NY, NJ, MA)", "flow_region_northeast")],
+                        [("🌲 Oeste (CA, WA, CO)", "flow_region_west")],
+                        [("🌾 Medio Oeste (IL, OH, MI)", "flow_region_midwest")],
+                        [("🤔 No estoy seguro", "flow_region_help")],
+                    ])
+                )
+            
+            elif action == "continue_city":
+                # Continuar con exploración de ciudades
+                route = user.get("selected_route", {})
+                state = route.get("state", "")
+                await query.edit_message_text(
+                    f"🏙️ *EXPLORANDO CIUDADES EN {state.upper()}*\n\n"
+                    "Voy a mostrarte las mejores ciudades según tu perfil.\n\n"
+                    "¿Qué es más importante para ti?",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("💰 Costo de vida bajo", "flow_priority_cost")],
+                        [("🛡️ Seguridad", "flow_priority_safety")],
+                        [("💼 Oportunidades laborales", "flow_priority_jobs")],
+                        [("🎓 Buenas escuelas", "flow_priority_schools")],
+                        [("⚖️ Balance de todo", "flow_priority_balanced")],
+                    ])
+                )
+            
+            elif action == "continue_visa":
+                # Continuar con análisis de visa
+                route = user.get("selected_route", {})
+                city = route.get("city", "")
+                state = route.get("state", "")
+                await query.edit_message_text(
+                    f"📝 *ANÁLISIS DE VISA*\n\n"
+                    f"Destino: {city}, {state}\n\n"
+                    "Ahora analizaré tu perfil para recomendarte la mejor ruta migratoria.\n\n"
+                    "¿Cuál es tu situación actual?",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("💼 Tengo oferta de trabajo en USA", "flow_visa_job_offer")],
+                        [("🏢 Quiero invertir/emprender", "flow_visa_investor")],
+                        [("🎓 Quiero estudiar primero", "flow_visa_student")],
+                        [("👨‍👩‍👧 Tengo familia ciudadana/residente", "flow_visa_family")],
+                        [("🤔 No tengo nada de eso", "flow_visa_none")],
+                    ])
+                )
+            
+            elif action == "continue_execution":
+                # Continuar con ejecución del plan
+                route = user.get("selected_route", {})
+                await query.edit_message_text(
+                    "🚀 *EJECUCIÓN DEL PLAN*\n\n"
+                    f"Tu plan:\n"
+                    f"• Ciudad: {route.get('city', 'Por definir')}\n"
+                    f"• Estado: {route.get('state', 'Por definir')}\n"
+                    f"• Visa: {route.get('visa_type', 'Por definir')}\n\n"
+                    "¿Qué quieres hacer ahora?",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("💳 Iniciar diagnóstico ($50)", "start_diagnosis")],
+                        [("📋 Ver checklist de documentos", "show_checklist")],
+                        [("🏠 Buscar viviendas", "cmd_housing")],
+                        [("💼 Buscar empleos", "cmd_jobs")],
+                    ])
                 )
             
             elif action == "info":
@@ -2452,6 +2550,268 @@ class MigPALBot:
                     parse_mode='Markdown',
                     reply_markup=self._kb([
                         ("✅ Entendido, empecemos", "flow_start"),
+                    ])
+                )
+            
+            # === HANDLERS DE RAZÓN DE MIGRACIÓN ===
+            elif action.startswith("why_"):
+                reason = action[4:]  # work, quality, family, education, business, other
+                reason_texts = {
+                    "work": "mejores oportunidades laborales",
+                    "quality": "mejor calidad de vida",
+                    "family": "reunirte con tu familia",
+                    "education": "estudios y educación",
+                    "business": "emprender un negocio",
+                    "other": "otras razones personales",
+                }
+                reason_text = reason_texts.get(reason, "tu motivación")
+                
+                # Guardar en el perfil
+                user["profile"]["migration"] = user.get("profile", {}).get("migration", {})
+                user["profile"]["migration"]["reason"] = reason
+                user["profile"]["migration"]["reason_text"] = reason_text
+                save_user_data(user_id, user)
+                
+                await query.edit_message_text(
+                    f"✅ Entendido, quieres migrar por *{reason_text}*.\n\n"
+                    "📊 *PASO 2 DE 5: PLAN DE VIDA*\n\n"
+                    "¿Qué tipo de actividad te gustaría realizar en USA?",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("💼 Trabajar para una empresa", "flow_activity_employee")],
+                        [("🏢 Tener mi propio negocio", "flow_activity_business")],
+                        [("💻 Trabajo remoto (ya tengo)", "flow_activity_remote")],
+                        [("🎓 Estudiar primero", "flow_activity_study")],
+                    ])
+                )
+            
+            # === HANDLERS DE ACTIVIDAD ===
+            elif action.startswith("activity_"):
+                activity = action[9:]  # employee, business, remote, study
+                activity_texts = {
+                    "employee": "trabajar para una empresa",
+                    "business": "tener tu propio negocio",
+                    "remote": "trabajo remoto",
+                    "study": "estudiar",
+                }
+                activity_text = activity_texts.get(activity, "trabajar")
+                
+                user["profile"]["migration"]["activity"] = activity
+                save_user_data(user_id, user)
+                
+                await query.edit_message_text(
+                    f"✅ Perfecto, quieres *{activity_text}*.\n\n"
+                    "🗺️ *PASO 3 DE 5: UBICACIÓN*\n\n"
+                    "¿En qué región de Estados Unidos te gustaría vivir?",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("☀️ Sur (FL, TX, GA) - Cálido, latinos", "flow_region_south")],
+                        [("🌃 Noreste (NY, NJ, MA) - Urbano, diverso", "flow_region_northeast")],
+                        [("🌲 Oeste (CA, WA, CO) - Tech, naturaleza", "flow_region_west")],
+                        [("🌾 Medio Oeste (IL, OH) - Económico", "flow_region_midwest")],
+                        [("🤔 Ayúdame a elegir", "flow_region_help")],
+                    ])
+                )
+            
+            # === HANDLERS DE REGIÓN ===
+            elif action.startswith("region_"):
+                region = action[7:]  # south, northeast, west, midwest, help
+                
+                if region == "help":
+                    await query.edit_message_text(
+                        "🗺️ *TE AYUDO A ELEGIR*\n\n"
+                        "¿Qué es más importante para ti?",
+                        parse_mode='Markdown',
+                        reply_markup=self._kb([
+                            [("☀️ Clima cálido", "flow_pref_warm")],
+                            [("💰 Bajo costo de vida", "flow_pref_cheap")],
+                            [("💼 Muchos empleos tech", "flow_pref_tech")],
+                            [("🤝 Comunidad latina grande", "flow_pref_latino")],
+                        ])
+                    )
+                else:
+                    region_states = {
+                        "south": ["Florida", "Texas", "Georgia"],
+                        "northeast": ["New York", "New Jersey", "Massachusetts"],
+                        "west": ["California", "Washington", "Colorado"],
+                        "midwest": ["Illinois", "Ohio", "Michigan"],
+                    }
+                    states = region_states.get(region, ["Florida"])
+                    
+                    user["profile"]["migration"]["region"] = region
+                    save_user_data(user_id, user)
+                    
+                    buttons = [[(f"🏛️ {state}", f"flow_state_{state.lower().replace(' ', '_')}") for state in states[:2]]]
+                    if len(states) > 2:
+                        buttons.append([(f"🏛️ {state}", f"flow_state_{state.lower().replace(' ', '_')}") for state in states[2:]])
+                    
+                    await query.edit_message_text(
+                        f"✅ Excelente elección.\n\n"
+                        f"🏛️ *ESTADOS EN ESTA REGIÓN:*\n\n"
+                        f"¿Cuál te interesa más?",
+                        parse_mode='Markdown',
+                        reply_markup=self._kb(buttons)
+                    )
+            
+            # === HANDLERS DE ESTADO ===
+            elif action.startswith("state_"):
+                state_key = action[6:]  # florida, texas, etc.
+                state_names = {
+                    "florida": "Florida", "texas": "Texas", "georgia": "Georgia",
+                    "new_york": "New York", "new_jersey": "New Jersey", "massachusetts": "Massachusetts",
+                    "california": "California", "washington": "Washington", "colorado": "Colorado",
+                    "illinois": "Illinois", "ohio": "Ohio", "michigan": "Michigan",
+                }
+                state_name = state_names.get(state_key, state_key.replace("_", " ").title())
+                
+                user["selected_route"] = user.get("selected_route", {})
+                user["selected_route"]["state"] = state_name
+                save_user_data(user_id, user)
+                
+                await query.edit_message_text(
+                    f"✅ *{state_name}* - Excelente elección!\n\n"
+                    f"🏙️ *PASO 4 DE 5: CIUDAD*\n\n"
+                    f"Ahora vamos a explorar las mejores ciudades de {state_name}.\n\n"
+                    f"¿Qué es más importante para ti en una ciudad?",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("💰 Costo de vida bajo", "flow_priority_cost")],
+                        [("🛡️ Seguridad", "flow_priority_safety")],
+                        [("💼 Oportunidades de empleo", "flow_priority_jobs")],
+                        [("🎓 Buenas escuelas", "flow_priority_schools")],
+                        [("⚖️ Balance de todo", "flow_priority_balanced")],
+                    ])
+                )
+            
+            # === HANDLERS DE PRIORIDAD ===
+            elif action.startswith("priority_"):
+                priority = action[9:]  # cost, safety, jobs, schools, balanced
+                
+                user["profile"]["migration"]["priority"] = priority
+                save_user_data(user_id, user)
+                
+                # Buscar ciudades del estado seleccionado
+                state = user.get("selected_route", {}).get("state", "Florida")
+                cities = search_cities(state, limit=5)
+                
+                if cities:
+                    city = cities[0]
+                    user["temp_city_index"] = 0
+                    user["temp_cities"] = [c.get("name") for c in cities]
+                    save_user_data(user_id, user)
+                    
+                    # Mostrar primera ciudad
+                    score = city.get("scores", {}).get("overall", 75)
+                    await query.edit_message_text(
+                        f"🏙️ *{city.get('name', 'Ciudad')}*, {state}\n\n"
+                        f"⭐ Score: {score}/100\n"
+                        f"👥 Población: {city.get('population', 'N/A'):,}\n"
+                        f"💰 Costo de vida: {city.get('cost_index', 'Medio')}\n"
+                        f"🛡️ Seguridad: {city.get('safety_score', 70)}/100\n"
+                        f"🤝 Latinos: {city.get('latino_percentage', 15)}%\n\n"
+                        f"Ciudad 1 de {len(cities)}",
+                        parse_mode='Markdown',
+                        reply_markup=self._kb([
+                            [("❤️ Me gusta esta", f"flow_select_city_{city.get('name', '').lower().replace(' ', '_')}")],
+                            [("➡️ Ver siguiente", "flow_next_city")],
+                            [("📊 Ver todas", "flow_list_cities")],
+                        ])
+                    )
+                else:
+                    await query.edit_message_text(
+                        f"No encontré ciudades en {state}. Usa /explorar para buscar manualmente."
+                    )
+            
+            # === HANDLER SIGUIENTE CIUDAD ===
+            elif action == "next_city":
+                state = user.get("selected_route", {}).get("state", "Florida")
+                cities = search_cities(state, limit=5)
+                current_index = user.get("temp_city_index", 0) + 1
+                
+                if current_index >= len(cities):
+                    current_index = 0  # Volver al inicio
+                
+                user["temp_city_index"] = current_index
+                save_user_data(user_id, user)
+                
+                city = cities[current_index]
+                score = city.get("scores", {}).get("overall", 75)
+                
+                await query.edit_message_text(
+                    f"🏙️ *{city.get('name', 'Ciudad')}*, {state}\n\n"
+                    f"⭐ Score: {score}/100\n"
+                    f"👥 Población: {city.get('population', 'N/A'):,}\n"
+                    f"💰 Costo de vida: {city.get('cost_index', 'Medio')}\n"
+                    f"🛡️ Seguridad: {city.get('safety_score', 70)}/100\n"
+                    f"🤝 Latinos: {city.get('latino_percentage', 15)}%\n\n"
+                    f"Ciudad {current_index + 1} de {len(cities)}",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("❤️ Me gusta esta", f"flow_select_city_{city.get('name', '').lower().replace(' ', '_')}")],
+                        [("➡️ Ver siguiente", "flow_next_city")],
+                        [("📊 Ver todas", "flow_list_cities")],
+                    ])
+                )
+            
+            # === HANDLER SELECCIONAR CIUDAD ===
+            elif action.startswith("select_city_"):
+                city_key = action[12:]
+                city_name = city_key.replace("_", " ").title()
+                state = user.get("selected_route", {}).get("state", "")
+                
+                user["selected_route"]["city"] = city_name
+                save_user_data(user_id, user)
+                
+                await query.edit_message_text(
+                    f"✅ *¡Excelente!* Has elegido *{city_name}, {state}*\n\n"
+                    f"📝 *PASO 5 DE 5: RUTA MIGRATORIA*\n\n"
+                    f"Ahora analizaré tu perfil para recomendarte la mejor visa.\n\n"
+                    f"¿Cuál es tu situación actual?",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("💼 Tengo oferta de trabajo en USA", "flow_visa_job_offer")],
+                        [("🏢 Quiero invertir (>$100k)", "flow_visa_investor")],
+                        [("🎓 Quiero estudiar primero", "flow_visa_student")],
+                        [("👨‍👩‍👧 Tengo familia ciudadana", "flow_visa_family")],
+                        [("🤔 Ninguna de las anteriores", "flow_visa_none")],
+                    ])
+                )
+            
+            # === HANDLERS DE VISA ===
+            elif action.startswith("visa_"):
+                visa_type = action[5:]  # job_offer, investor, student, family, none
+                
+                visa_recommendations = {
+                    "job_offer": ("H-1B", "Visa de trabajo especializado", 70),
+                    "investor": ("E-2", "Visa de inversionista", 80),
+                    "student": ("F-1", "Visa de estudiante", 90),
+                    "family": ("CR-1/IR-1", "Visa familiar", 85),
+                    "none": ("B-1/B-2 + Opciones", "Visa de turista mientras exploras opciones", 60),
+                }
+                
+                visa, desc, prob = visa_recommendations.get(visa_type, ("Por determinar", "", 50))
+                
+                user["selected_route"]["visa_type"] = visa
+                user["visa_probability"] = prob
+                save_user_data(user_id, user)
+                
+                city = user.get("selected_route", {}).get("city", "")
+                state = user.get("selected_route", {}).get("state", "")
+                
+                await query.edit_message_text(
+                    f"🎉 *¡PLAN COMPLETO!*\n\n"
+                    f"🗺️ *Destino:* {city}, {state}\n"
+                    f"📝 *Visa recomendada:* {visa}\n"
+                    f"📊 *Probabilidad:* {prob}%\n\n"
+                    f"_{desc}_\n\n"
+                    f"¿Qué quieres hacer ahora?",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("💳 Iniciar diagnóstico profesional ($50)", "start_diagnosis")],
+                        [("🏠 Buscar viviendas en " + city, "cmd_housing")],
+                        [("💼 Buscar empleos con sponsor", "cmd_jobs")],
+                        [("📋 Ver checklist de documentos", "show_checklist")],
+                        [("📄 Generar PDF de mi plan", "pdf_plan")],
                     ])
                 )
             
@@ -2510,6 +2870,46 @@ class MigPALBot:
         
         elif data == "cmd_jobs":
             await query.edit_message_text("💼 Usa /empleos para buscar trabajos")
+        
+        # === SHOW PROGRESS ===
+        elif data == "show_progress":
+            route = user.get("selected_route", {})
+            profile = user.get("profile", {})
+            migration = profile.get("migration", {})
+            
+            # Calcular progreso
+            steps_completed = 0
+            total_steps = 5
+            
+            if migration.get("reason"):
+                steps_completed += 1
+            if migration.get("activity"):
+                steps_completed += 1
+            if route.get("state"):
+                steps_completed += 1
+            if route.get("city"):
+                steps_completed += 1
+            if route.get("visa_type"):
+                steps_completed += 1
+            
+            progress_pct = int((steps_completed / total_steps) * 100)
+            progress_bar = "█" * (progress_pct // 10) + "░" * (10 - progress_pct // 10)
+            
+            await query.edit_message_text(
+                f"📊 *TU PROGRESO*\n\n"
+                f"{progress_bar} {progress_pct}%\n\n"
+                f"✅ Razón de migración: {migration.get('reason_text', '❌ Pendiente')}\n"
+                f"✅ Actividad: {migration.get('activity', '❌ Pendiente')}\n"
+                f"✅ Estado: {route.get('state', '❌ Pendiente')}\n"
+                f"✅ Ciudad: {route.get('city', '❌ Pendiente')}\n"
+                f"✅ Visa: {route.get('visa_type', '❌ Pendiente')}\n\n"
+                f"¿Quieres continuar?",
+                parse_mode='Markdown',
+                reply_markup=self._kb([
+                    [("▶️ Continuar proceso", "flow_start_discovery" if steps_completed == 0 else "flow_continue_location" if not route.get('state') else "flow_continue_city" if not route.get('city') else "flow_continue_visa")],
+                    [("🔄 Empezar de nuevo", "reset_profile")],
+                ])
+            )
         
         # ===== V5 CALLBACKS =====
         
@@ -3920,21 +4320,66 @@ class MigPALBot:
                 await self._cmd_sos(update, context)
                 return True
             
-            # SALUDOS - Responder rápido sin IA
+            # SALUDOS - Responder de forma PROACTIVA, guiando al usuario
             elif intent == Intent.GREETING:
                 name = user.get("profile", {}).get("personal", {}).get("name", "")
-                greeting = f"¡Hola{' ' + name if name else ''}! 👋" if name else "¡Hola! 👋"
-                await update.message.reply_text(
-                    f"{greeting}\n\n"
-                    "Soy MigPAL, tu consultor de migración. ¿En qué puedo ayudarte hoy?\n\n"
-                    "💡 *Puedes decirme cosas como:*\n"
-                    "• \"Quiero ver ciudades en Florida\"\n"
-                    "• \"Busco casa en Miami\"\n"
-                    "• \"Compara Austin con Dallas\"\n"
-                    "• \"Busco trabajo en tecnología\"\n"
-                    "• \"Escuelas para mis hijos\"",
-                    parse_mode='Markdown'
-                )
+                flow_state = user.get("flow_state", "")
+                has_profile = bool(user.get("profile", {}).get("personal", {}).get("country_origin"))
+                
+                # Si es usuario NUEVO o sin perfil -> Iniciar flujo de descubrimiento
+                if not has_profile:
+                    greeting = f"¡Hola{' ' + name if name else ''}! 👋" if name else "¡Hola! 👋"
+                    await update.message.reply_text(
+                        f"{greeting}\n\n"
+                        "Soy MigPAL, tu consultor de migración. 🌍\n\n"
+                        "Voy a guiarte paso a paso en tu proceso de migración. "
+                        "Mi filosofía es simple:\n\n"
+                        "💡 *\"La visa es el VEHÍCULO, no el DESTINO\"*\n\n"
+                        "Primero vamos a definir tu plan de vida en USA, "
+                        "y luego encontraremos la mejor ruta migratoria para ti.\n\n"
+                        "¿Empezamos?",
+                        parse_mode='Markdown',
+                        reply_markup=self._kb([
+                            [("✅ Sí, empecemos", "flow_start_discovery")],
+                            [("ℹ️ Primero cuéntame más", "flow_explain_process")],
+                        ])
+                    )
+                else:
+                    # Usuario con perfil -> Retomar donde quedó
+                    greeting = f"¡Hola de nuevo, {name}! 👋" if name else "¡Hola de nuevo! 👋"
+                    
+                    # Determinar en qué fase está
+                    route = user.get("selected_route", {})
+                    city = route.get("city", "")
+                    state = route.get("state", "")
+                    visa = route.get("visa_type", "")
+                    
+                    if not state:
+                        next_step = "Continuemos definiendo tu ubicación ideal en USA."
+                        next_action = "flow_continue_location"
+                        next_label = "🗺️ Elegir ubicación"
+                    elif not city:
+                        next_step = f"Ya elegiste {state}. Ahora vamos a explorar ciudades."
+                        next_action = "flow_continue_city"
+                        next_label = "🏙️ Explorar ciudades"
+                    elif not visa:
+                        next_step = f"Ya elegiste {city}, {state}. Ahora analicemos tu mejor ruta de visa."
+                        next_action = "flow_continue_visa"
+                        next_label = "📝 Analizar visa"
+                    else:
+                        next_step = f"Tu plan: {city}, {state} con visa {visa}. ¿Listo para el siguiente paso?"
+                        next_action = "flow_continue_execution"
+                        next_label = "🚀 Continuar proceso"
+                    
+                    await update.message.reply_text(
+                        f"{greeting}\n\n"
+                        f"{next_step}",
+                        parse_mode='Markdown',
+                        reply_markup=self._kb([
+                            [(next_label, next_action)],
+                            [("📊 Ver mi progreso", "show_progress")],
+                        ])
+                    )
                 return True
             
             # AGRADECIMIENTOS
