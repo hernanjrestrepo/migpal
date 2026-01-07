@@ -487,6 +487,202 @@ def test_segment_3_explanation_required():
     return all_passed
 
 
+def test_segment_4_no_visa_before_summary():
+    """
+    SEGMENTO 4/4: ❌ No mencionar visas antes del resumen confirmado
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 4/4: No Visa Antes de Resumen")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    test_cases = [
+        # (bot_response, confirmed, should_pass, desc)
+        ("Podrías considerar la visa H-1B", False, False, "H-1B sin confirmar"),
+        ("Podrías considerar la visa H-1B", True, True, "H-1B con confirmación"),
+        ("La visa O-1 es para talentos", False, False, "O-1 sin confirmar"),
+        ("Hablemos de tu situación", False, True, "Sin mención de visa"),
+        ("La green card es un camino", False, False, "Green card sin confirmar"),
+        ("Hay varios caminos posibles", False, True, "Lenguaje genérico"),
+    ]
+    
+    all_passed = True
+    for response, confirmed, should_pass, desc in test_cases:
+        result = guardian.check_no_visa_names_before_summary(response, confirmed)
+        status = "✅" if result.passed == should_pass else "❌"
+        print(f"   {status} {desc}: {'PASS' if result.passed else 'BLOCK'}")
+        if result.passed != should_pass:
+            all_passed = False
+    
+    return all_passed
+
+
+def test_segment_4_visa_context_sufficient():
+    """
+    SEGMENTO 4/4: Contexto suficiente antes de recomendar visas
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 4/4: Contexto Suficiente")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    # Contexto completo
+    complete = {
+        "understanding": {
+            "desired_lifestyle": "Trabajar en tech",
+            "current_profession": "ingeniero",
+            "available_savings": 50000,
+            "migrating_alone": False,
+        }
+    }
+    
+    # Contexto incompleto
+    incomplete = {
+        "understanding": {
+            "desired_lifestyle": "Trabajar en tech",
+            # Falta: profession, savings, family
+        }
+    }
+    
+    test_cases = [
+        (complete, True, "Contexto completo"),
+        (incomplete, False, "Contexto incompleto"),
+        ({"understanding": {}}, False, "Sin contexto"),
+    ]
+    
+    all_passed = True
+    for context, should_pass, desc in test_cases:
+        result = guardian.check_visa_context_sufficient(context)
+        status = "✅" if result.passed == should_pass else "❌"
+        print(f"   {status} {desc}: {'PASS' if result.passed else 'BLOCK'}")
+        if result.passed != should_pass:
+            all_passed = False
+    
+    return all_passed
+
+
+def test_segment_4_visa_as_path():
+    """
+    SEGMENTO 4/4: Visas como "caminos posibles", no "respuestas"
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 4/4: Visa como Camino")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    test_cases = [
+        # (bot_response, should_pass, desc)
+        ("La mejor opción es la H-1B", False, "Presentada como 'mejor opción'"),
+        ("Debes solicitar la O-1", False, "Presentada como obligación"),
+        ("La H-1B podría ser un camino a explorar", True, "Como camino posible"),
+        ("Una opción a considerar es la EB-2", True, "Como opción a considerar"),
+        ("Definitivamente necesitas la L-1", False, "Lenguaje definitivo"),
+        ("Hay varias posibilidades que dependen de tu perfil", True, "Lenguaje exploratorio"),
+    ]
+    
+    all_passed = True
+    for response, should_pass, desc in test_cases:
+        result = guardian.check_visa_presented_as_path(response, "es")
+        status = "✅" if result.passed == should_pass else "❌"
+        print(f"   {status} {desc}: {'PASS' if result.passed else 'BLOCK'}")
+        if result.passed != should_pass:
+            all_passed = False
+    
+    return all_passed
+
+
+def test_segment_4_recommendation_elements():
+    """
+    SEGMENTO 4/4: Recomendación debe incluir requisitos, no-garantías, riesgos
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 4/4: Elementos de Recomendación")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    # Recomendación completa
+    complete_rec = """
+    La H-1B podría ser una opción. 
+    Requiere título universitario y oferta de trabajo.
+    Importante saber que no garantiza la aprobación.
+    Hay riesgo de rechazo si no cumples todos los requisitos.
+    """
+    
+    # Recomendación incompleta (sin riesgos)
+    incomplete_rec = """
+    La H-1B podría ser una opción.
+    Requiere título universitario.
+    """
+    
+    # Sin mención de visa (no aplica)
+    no_visa = "Hablemos de tu situación actual."
+    
+    test_cases = [
+        (complete_rec, True, "Recomendación completa"),
+        (incomplete_rec, False, "Falta riesgos y no-garantías"),
+        (no_visa, True, "Sin mención de visa (no aplica)"),
+    ]
+    
+    all_passed = True
+    for response, should_pass, desc in test_cases:
+        result = guardian.check_recommendation_has_required_elements(response, "es")
+        status = "✅" if result.passed == should_pass else "❌"
+        print(f"   {status} {desc}: {'PASS' if result.passed else 'BLOCK'}")
+        if result.passed != should_pass:
+            all_passed = False
+    
+    return all_passed
+
+
+def test_segment_4_full_validation():
+    """
+    SEGMENTO 4/4: Validación completa de recomendación
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 4/4: Validación Completa")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    # Contexto completo y confirmado
+    valid_context = {
+        "understanding": {
+            "desired_lifestyle": "Trabajar en tech",
+            "current_profession": "ingeniero",
+            "available_savings": 50000,
+            "migrating_alone": False,
+            "confirmed_by_user": True,
+        }
+    }
+    
+    # Recomendación válida
+    valid_rec = """
+    Un camino que podrías explorar es la H-1B.
+    Requiere título universitario y oferta de trabajo especializado.
+    Importante saber que no garantiza la aprobación - hay cuota anual.
+    Hay riesgo de rechazo y el proceso puede demorar.
+    """
+    
+    result = guardian.validate_visa_recommendation(valid_rec, valid_context, "es")
+    
+    checks = [
+        (result.passed, "Validación completa pasa"),
+    ]
+    
+    all_passed = True
+    for check, description in checks:
+        status = "✅" if check else "❌"
+        print(f"   {status} {description}")
+        if not check:
+            all_passed = False
+    
+    return all_passed
+
+
 def test_convenience_functions():
     """Test funciones de conveniencia"""
     print("\n" + "=" * 70)
@@ -539,6 +735,13 @@ def main():
     results.append(("S3: Detección fuera de tema", test_segment_3_off_topic_detection()))
     results.append(("S3: Manejo de audio", test_segment_3_audio_handling()))
     results.append(("S3: Explicación requerida", test_segment_3_explanation_required()))
+    
+    # SEGMENTO 4/4
+    results.append(("S4: ❌ No visa antes de resumen", test_segment_4_no_visa_before_summary()))
+    results.append(("S4: Contexto suficiente", test_segment_4_visa_context_sufficient()))
+    results.append(("S4: Visa como camino", test_segment_4_visa_as_path()))
+    results.append(("S4: Elementos de recomendación", test_segment_4_recommendation_elements()))
+    results.append(("S4: Validación completa", test_segment_4_full_validation()))
     
     results.append(("Funciones de conveniencia", test_convenience_functions()))
     

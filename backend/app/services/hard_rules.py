@@ -13,7 +13,7 @@ SEGMENTOS:
 1/4 - Principios Inviolables (Core) ✅
 2/4 - Control de Flujo (Bloqueos) ✅
 3/4 - Inteligencia Conversacional ✅
-4/4 - (Pendiente)
+4/4 - Visas USA (Restricción Crítica) ✅
 """
 
 import logging
@@ -50,6 +50,13 @@ class RuleViolation(Enum):
     OFF_TOPIC_IGNORED = "off_topic_ignored"
     AUDIO_NOT_CONFIRMED = "audio_not_confirmed"
     NO_EXPLANATION_WHY = "no_explanation_why"
+    
+    # Segmento 4/4 - Visas USA (Restricción Crítica)
+    VISA_NAME_BEFORE_SUMMARY = "visa_name_before_summary"
+    VISA_WITHOUT_CONTEXT = "visa_without_context"
+    VISA_AS_ANSWER_NOT_PATH = "visa_as_answer_not_path"
+    RECOMMENDATION_WITHOUT_RISKS = "recommendation_without_risks"
+    INSUFFICIENT_CONTEXT_FOR_VISA = "insufficient_context_for_visa"
 
 
 @dataclass
@@ -925,6 +932,331 @@ class HardRulesGuardian:
             )
         
         return RuleCheckResult(passed=True)
+    
+    # =========================================================================
+    # SEGMENTO 4/4 — VISAS USA (RESTRICCIÓN CRÍTICA)
+    # =========================================================================
+    
+    # Nombres de visas que NO se pueden mencionar antes del resumen confirmado
+    VISA_NAMES = [
+        # Visas de trabajo
+        r"H-1B", r"H1B", r"H-2A", r"H-2B", r"H2A", r"H2B",
+        r"L-1", r"L1", r"L-1A", r"L-1B",
+        r"O-1", r"O1", r"O-1A", r"O-1B",
+        r"P-1", r"P1",
+        r"TN",
+        # Visas de inversión
+        r"E-1", r"E-2", r"E1", r"E2", r"EB-5", r"EB5",
+        # Visas de inmigrante
+        r"EB-1", r"EB-2", r"EB-3", r"EB-4",
+        r"EB1", r"EB2", r"EB3", r"EB4",
+        # Visas familiares
+        r"F-1", r"F-2", r"F1", r"F2",
+        r"K-1", r"K1",
+        # Visas de estudiante
+        r"F-1", r"J-1", r"M-1",
+        # Otras
+        r"B-1", r"B-2", r"B1", r"B2",
+        r"DACA",
+        r"green card", r"greencard", r"tarjeta verde",
+        r"residencia permanente",
+    ]
+    
+    # Contexto mínimo requerido antes de hablar de visas
+    VISA_CONTEXT_REQUIREMENTS = [
+        "life_type",        # Tipo de vida
+        "work_type",        # Tipo de trabajo
+        "income_type",      # Tipo de ingreso
+        "family_type",      # Tipo de familia
+    ]
+    
+    # Elementos obligatorios en toda recomendación de visa
+    RECOMMENDATION_REQUIRED_ELEMENTS = [
+        "requirements",     # Qué exige
+        "no_guarantees",    # Qué NO garantiza
+        "risks",            # Qué riesgos tiene
+    ]
+    
+    def check_no_visa_names_before_summary(
+        self,
+        bot_response: str,
+        understanding_confirmed: bool
+    ) -> RuleCheckResult:
+        """
+        ❌ REGLA CRÍTICA: No mencionar tipos de visa por nombre
+        hasta terminar UNDERSTANDING_SUMMARY confirmado.
+        """
+        import re
+        
+        if understanding_confirmed:
+            return RuleCheckResult(passed=True)
+        
+        response_upper = bot_response.upper()
+        
+        for visa_pattern in self.VISA_NAMES:
+            if re.search(visa_pattern, response_upper, re.IGNORECASE):
+                self._log_violation(RuleViolation.VISA_NAME_BEFORE_SUMMARY, visa_pattern)
+                return RuleCheckResult(
+                    passed=False,
+                    violation=RuleViolation.VISA_NAME_BEFORE_SUMMARY,
+                    message=f"❌ PROHIBIDO: Mención de visa '{visa_pattern}' antes de confirmar resumen",
+                    should_rollback=True,
+                    rollback_to_phase="understanding"
+                )
+        
+        return RuleCheckResult(passed=True)
+    
+    def check_visa_context_sufficient(
+        self,
+        context: Dict[str, Any]
+    ) -> RuleCheckResult:
+        """
+        Verificar que hay contexto suficiente antes de recomendar visas.
+        
+        Primero hablar de:
+        - Tipo de vida
+        - Tipo de trabajo
+        - Tipo de ingreso
+        - Tipo de familia
+        - Riesgos reales
+        """
+        understanding = context.get("understanding", {})
+        
+        # Verificar campos mínimos
+        missing = []
+        
+        # Tipo de vida
+        if not understanding.get("desired_lifestyle"):
+            missing.append("tipo de vida deseada")
+        
+        # Tipo de trabajo
+        if not understanding.get("current_profession") and not understanding.get("desired_work"):
+            missing.append("tipo de trabajo")
+        
+        # Tipo de ingreso/recursos
+        if not understanding.get("available_savings") and not understanding.get("current_income"):
+            missing.append("situación económica")
+        
+        # Tipo de familia
+        if understanding.get("migrating_alone") is None and not understanding.get("family_members"):
+            missing.append("situación familiar")
+        
+        if missing:
+            self._log_violation(RuleViolation.INSUFFICIENT_CONTEXT_FOR_VISA, str(missing))
+            return RuleCheckResult(
+                passed=False,
+                violation=RuleViolation.INSUFFICIENT_CONTEXT_FOR_VISA,
+                message=f"Contexto insuficiente. Falta: {', '.join(missing)}",
+                should_rollback=False
+            )
+        
+        return RuleCheckResult(passed=True)
+    
+    def check_visa_presented_as_path(
+        self,
+        bot_response: str,
+        lang: str = "es"
+    ) -> RuleCheckResult:
+        """
+        Las visas se presentan como "caminos posibles", no "respuestas".
+        
+        Verificar que NO se presente como solución definitiva.
+        """
+        import re
+        response_lower = bot_response.lower()
+        
+        # Patrones que indican presentación como "respuesta" (MALO)
+        answer_patterns = [
+            r"la (mejor|\u00fanica) opción es",
+            r"debes (solicitar|aplicar|pedir)",
+            r"tienes que (sacar|obtener)",
+            r"la solución es",
+            r"esto es lo que necesitas",
+            r"definitivamente",
+            r"sin duda",
+            r"100%",
+            r"garantizado",
+        ]
+        
+        for pattern in answer_patterns:
+            if re.search(pattern, response_lower):
+                self._log_violation(RuleViolation.VISA_AS_ANSWER_NOT_PATH, pattern)
+                return RuleCheckResult(
+                    passed=False,
+                    violation=RuleViolation.VISA_AS_ANSWER_NOT_PATH,
+                    message="Visa presentada como 'respuesta', no como 'camino posible'"
+                )
+        
+        # Patrones que indican presentación como "camino" (BUENO)
+        path_patterns = [
+            r"podría ser",
+            r"una opción",
+            r"un camino",
+            r"posibilidad",
+            r"explorar",
+            r"considerar",
+            r"depende de",
+            r"habría que evaluar",
+        ]
+        
+        # Si menciona visa, debe usar lenguaje de "camino"
+        mentions_visa = any(
+            re.search(pattern, bot_response, re.IGNORECASE)
+            for pattern in self.VISA_NAMES
+        )
+        
+        if mentions_visa:
+            has_path_language = any(
+                re.search(pattern, response_lower)
+                for pattern in path_patterns
+            )
+            
+            if not has_path_language:
+                return RuleCheckResult(
+                    passed=False,
+                    violation=RuleViolation.VISA_AS_ANSWER_NOT_PATH,
+                    message="Mención de visa sin lenguaje de 'camino posible'"
+                )
+        
+        return RuleCheckResult(passed=True)
+    
+    def check_recommendation_has_required_elements(
+        self,
+        bot_response: str,
+        lang: str = "es"
+    ) -> RuleCheckResult:
+        """
+        Toda recomendación debe incluir:
+        - Qué exige
+        - Qué NO garantiza
+        - Qué riesgos tiene
+        """
+        import re
+        response_lower = bot_response.lower()
+        
+        # Verificar si es una recomendación de visa
+        is_recommendation = any(
+            re.search(pattern, bot_response, re.IGNORECASE)
+            for pattern in self.VISA_NAMES
+        )
+        
+        if not is_recommendation:
+            return RuleCheckResult(passed=True)
+        
+        # Patrones que indican cada elemento requerido
+        element_patterns = {
+            "requirements": [
+                r"(requiere|exige|necesita|pide)",
+                r"requisitos?",
+                r"debes (tener|demostrar|cumplir)",
+                r"es necesario",
+            ],
+            "no_guarantees": [
+                r"no garantiza",
+                r"no asegura",
+                r"no significa que",
+                r"importante (saber|entender)",
+                r"ten en cuenta",
+            ],
+            "risks": [
+                r"riesgo",
+                r"puede (fallar|ser rechazad[oa]|demorar)",
+                r"no siempre",
+                r"complicación",
+                r"dificultad",
+                r"cuidado con",
+            ],
+        }
+        
+        missing_elements = []
+        
+        for element, patterns in element_patterns.items():
+            has_element = any(
+                re.search(pattern, response_lower)
+                for pattern in patterns
+            )
+            if not has_element:
+                missing_elements.append(element)
+        
+        if missing_elements:
+            self._log_violation(RuleViolation.RECOMMENDATION_WITHOUT_RISKS, str(missing_elements))
+            return RuleCheckResult(
+                passed=False,
+                violation=RuleViolation.RECOMMENDATION_WITHOUT_RISKS,
+                message=f"Recomendación incompleta. Falta: {', '.join(missing_elements)}"
+            )
+        
+        return RuleCheckResult(passed=True)
+    
+    def validate_visa_recommendation(
+        self,
+        bot_response: str,
+        context: Dict[str, Any],
+        lang: str = "es"
+    ) -> RuleCheckResult:
+        """
+        Validación completa de una recomendación de visa.
+        
+        Verifica TODAS las reglas del Segmento 4/4.
+        """
+        understanding = context.get("understanding", {})
+        confirmed = understanding.get("confirmed_by_user", False)
+        
+        # 1. No mencionar visas antes del resumen confirmado
+        result = self.check_no_visa_names_before_summary(bot_response, confirmed)
+        if not result.passed:
+            return result
+        
+        # 2. Verificar contexto suficiente
+        result = self.check_visa_context_sufficient(context)
+        if not result.passed:
+            return result
+        
+        # 3. Verificar que se presenta como "camino", no "respuesta"
+        result = self.check_visa_presented_as_path(bot_response, lang)
+        if not result.passed:
+            return result
+        
+        # 4. Verificar elementos requeridos en recomendación
+        result = self.check_recommendation_has_required_elements(bot_response, lang)
+        if not result.passed:
+            return result
+        
+        return RuleCheckResult(passed=True, message="Recomendación de visa válida")
+    
+    def get_safe_visa_language(
+        self,
+        visa_type: str,
+        lang: str = "es"
+    ) -> Dict[str, str]:
+        """
+        Obtener lenguaje seguro para hablar de una visa.
+        
+        Returns:
+            Dict con templates para:
+            - intro: Introducción como "camino posible"
+            - requirements: Qué exige
+            - no_guarantees: Qué NO garantiza
+            - risks: Riesgos
+        """
+        if lang == "es":
+            return {
+                "intro": f"Un camino que podrías explorar es {visa_type}. "
+                         f"No es una solución mágica, pero podría ser viable para tu situación.",
+                "requirements": "Para este camino, generalmente se requiere:",
+                "no_guarantees": "⚠️ Importante: Esto NO garantiza:",
+                "risks": "🚨 Riesgos a considerar:",
+                "next_steps": "Si quieres explorar esta opción, los siguientes pasos serían:",
+            }
+        else:
+            return {
+                "intro": f"A path you could explore is {visa_type}. "
+                         f"It's not a magic solution, but it could be viable for your situation.",
+                "requirements": "For this path, it's generally required:",
+                "no_guarantees": "⚠️ Important: This does NOT guarantee:",
+                "risks": "🚨 Risks to consider:",
+                "next_steps": "If you want to explore this option, the next steps would be:",
+            }
     
     def _log_violation(self, violation: RuleViolation, context: str):
         """Registrar violación para análisis"""
