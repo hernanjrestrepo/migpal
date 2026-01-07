@@ -2415,6 +2415,53 @@ class MigPALBot:
                     # Show favorites
                     await query.edit_message_text(msg, parse_mode='Markdown')
         
+        # Name confirmation callbacks
+        elif data.startswith("confirm_name_"):
+            action = data.replace("confirm_name_", "")
+            lang = user.get("language", "en")
+            
+            if action == "yes":
+                # Confirmar nombre y continuar
+                pending_name = user.get("_pending_name", "")
+                if pending_name:
+                    user["profile"]["personal"]["name"] = pending_name
+                    # Limpiar nombre pendiente
+                    if "_pending_name" in user:
+                        del user["_pending_name"]
+                    encrypted_data = encrypt_user_data(user)
+                    save_user_data(user_id, encrypted_data)
+                    
+                    logger.info(f"Name confirmed for user {user_id}: {pending_name}")
+                    
+                    # Mensaje de bienvenida traducido y avance inmediato
+                    hello_text = get_text("hello_name", lang).format(name=pending_name)
+                    lets_start = get_text("lets_start", lang)
+                    philosophy = get_text("philosophy", lang)
+                    first_understand = get_text("first_understand", lang)
+                    shall_we = get_text("shall_we_start", lang)
+                    yes_start = get_text("yes_lets_start", lang)
+                    tell_more = get_text("tell_me_more", lang)
+                    
+                    await query.edit_message_text(
+                        f"{hello_text}\n\n"
+                        f"{lets_start}\n\n"
+                        f"{philosophy}\n\n"
+                        f"{first_understand}\n\n"
+                        f"{shall_we}",
+                        parse_mode='Markdown',
+                        reply_markup=self._kb([
+                            [(yes_start, "flow_start_discovery")],
+                            [(tell_more, "flow_explain_process")],
+                        ])
+                    )
+                    set_state(user_id, STATE_START)
+            
+            elif action == "no":
+                # Pedir nombre nuevamente
+                retry_text = get_text("name_retry", lang)
+                await query.edit_message_text(retry_text)
+                set_state(user_id, STATE_NAME)
+        
         # Flow callbacks
         elif data.startswith("flow_"):
             # Obtener la acción completa después de "flow_"
@@ -3005,7 +3052,9 @@ class MigPALBot:
                 )
             else:
                 user["language"] = lang
-                save_user_data(user_id, user)
+                # Encrypt and save to ensure persistence
+                encrypted_data = encrypt_user_data(user)
+                save_user_data(user_id, encrypted_data)
                 
                 # Get language name
                 lang_info = SUPPORTED_LANGUAGES.get(lang, {})
@@ -3014,14 +3063,17 @@ class MigPALBot:
                 # Continue to profile after language selection
                 set_state(user_id, STATE_NAME)
                 
-                # Get translated text
+                # Get translated text - ALL messages must use get_text()
                 welcome_text = get_text("welcome", lang)
+                phase1_text = get_text("phase1_profile", lang)
                 ask_name = get_text("ask_name", lang)
+                
+                logger.info(f"Language set to {lang} for user {user_id}, persisted to disk")
                 
                 await query.edit_message_text(
                     f"✅ {lang_info.get('flag', '')} {lang_name}\n\n"
                     f"{welcome_text}\n\n"
-                    f"📝 *PHASE 1: Your Profile*\n\n"
+                    f"📝 *{phase1_text}*\n\n"
                     f"{ask_name}",
                     parse_mode='Markdown'
                 )
@@ -4731,29 +4783,55 @@ class MigPALBot:
         Procesa estados de formulario directamente.
         Retorna True si el estado fue manejado, False si no.
         """
+        # Get user's language for translations
+        lang = user.get("language", "en")
+        
         try:
             # === NAME ===
             if state == STATE_NAME:
-                user["profile"]["personal"]["name"] = text
-                save_user_data(user_id, user)
+                # VALIDACIÓN: trim whitespace
+                name = text.strip()
                 
-                # NUEVO: Iniciar flujo proactivo después del nombre
+                # VALIDACIÓN: nombre muy corto
+                if len(name) < 2:
+                    await update.message.reply_text(get_text("name_too_short", lang))
+                    return True
+                
+                # VALIDACIÓN: titlecase si todo mayúsculas o minúsculas
+                if name.isupper() or name.islower():
+                    name = name.title()
+                
+                # VALIDACIÓN: dedupe - verificar si ya existe este nombre
+                existing_name = user.get("profile", {}).get("personal", {}).get("name", "")
+                if existing_name and existing_name.lower() == name.lower():
+                    # Mismo nombre, continuar sin preguntar
+                    pass
+                
+                # Guardar nombre pendiente para confirmación
+                user["_pending_name"] = name
+                encrypted_data = encrypt_user_data(user)
+                save_user_data(user_id, encrypted_data)
+                
+                # CONFIRMACIÓN EXPLÍCITA
+                confirm_text = get_text("confirm_name", lang).format(name=name)
+                yes_text = get_text("yes_correct", lang)
+                no_text = get_text("no_change", lang)
+                
                 await update.message.reply_text(
-                    f"¡Hola {text}! 😊\n\n"
-                    "Encantado de conocerte. Ahora voy a guiarte paso a paso "
-                    "en tu proceso de migración.\n\n"
-                    "💡 *Mi filosofía:* \"La visa es el VEHÍCULO, no el DESTINO\"\n\n"
-                    "Primero vamos a entender tu situación y sueños, "
-                    "y luego encontraremos la mejor ruta para ti.\n\n"
-                    "¿Empezamos?",
+                    confirm_text,
                     parse_mode='Markdown',
                     reply_markup=self._kb([
-                        [("✅ Sí, empecemos", "flow_start_discovery")],
-                        [("ℹ️ Cuéntame más sobre el proceso", "flow_explain_process")],
+                        [(yes_text, "confirm_name_yes")],
+                        [(no_text, "confirm_name_no")]
                     ])
                 )
-                set_state(user_id, STATE_START)  # Volver a estado inicial para el flujo
+                set_state(user_id, "confirm_name")
                 return True
+            
+            # === CONFIRM NAME (nuevo estado) ===
+            elif state == "confirm_name":
+                # Si el usuario escribe algo en lugar de usar botones, tratar como nuevo nombre
+                return await self._handle_form_state(update, user_id, user, STATE_NAME, text)
             
             # === BIRTH DATE ===
             elif state == STATE_BIRTH_DATE:
@@ -4904,7 +4982,7 @@ class MigPALBot:
         # === PRIMERO: Verificar si estamos en un estado de FORMULARIO ===
         # Si el usuario está en un estado de formulario, procesar directamente
         FORM_STATES = [
-            STATE_NAME, STATE_BIRTH_DATE, STATE_CURRENT_CITY, STATE_EMAIL, STATE_PHONE,
+            STATE_NAME, "confirm_name", STATE_BIRTH_DATE, STATE_CURRENT_CITY, STATE_EMAIL, STATE_PHONE,
             STATE_EDUCATION_CAREER, STATE_PROFESSION, STATE_LINKEDIN, STATE_COMPANY,
             STATE_SALARY, STATE_ACHIEVEMENTS, STATE_FAMILY_DETAILS, STATE_BUDGET,
             STATE_TIMELINE, STATE_CONCERNS, STATE_GOALS

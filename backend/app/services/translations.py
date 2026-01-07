@@ -52,6 +52,41 @@ TRANSLATIONS = {
         "select_language": "🌐 Selecciona tu idioma:",
         "language_changed": "✅ Idioma cambiado a: Español",
         
+        # Phase headers
+        "phase1_profile": "FASE 1: Tu Perfil",
+        "phase2_diagnostic": "FASE 2: Diagnóstico",
+        "phase3_profiling": "FASE 3: Perfilamiento",
+        "phase4_plan": "FASE 4: Plan de Migración",
+        "phase5_execution": "FASE 5: Ejecución",
+        "phase6_closing": "FASE 6: Cierre",
+        
+        # Name flow
+        "confirm_name": "¿Tu nombre es *{name}*?",
+        "yes_correct": "✅ Sí, es correcto",
+        "no_change": "❌ No, quiero cambiarlo",
+        "name_too_short": "El nombre es muy corto. Por favor escribe tu nombre completo.",
+        "name_confirmed": "¡Perfecto, {name}! 😊",
+        "name_retry": "Escribe tu nombre nuevamente:",
+        "hello_name": "¡Hola {name}! 😊",
+        "lets_start": "Encantado de conocerte. Ahora voy a guiarte paso a paso en tu proceso de migración.",
+        "philosophy": "💡 *Mi filosofía:* \"La visa es el VEHÍCULO, no el DESTINO\"",
+        "first_understand": "Primero vamos a entender tu situación y sueños, y luego encontraremos la mejor ruta para ti.",
+        "shall_we_start": "¿Empezamos?",
+        "yes_lets_start": "✅ Sí, empecemos",
+        "tell_me_more": "ℹ️ Cuéntame más sobre el proceso",
+        
+        # Form messages
+        "ask_birthdate_full": "¿Cuál es tu fecha de nacimiento? (DD/MM/AAAA)",
+        "ask_nationality_full": "¿Cuál es tu nacionalidad?",
+        "ask_current_city": "¿En qué ciudad vives actualmente?",
+        "ask_email_full": "📧 ¿Cuál es tu correo electrónico?",
+        "ask_phone_full": "📱 ¿Tu número de teléfono? (con código de país)",
+        "ask_education_full": "🎓 ¿Cuál es tu nivel educativo más alto?",
+        "ask_work_status": "¿Cuál es tu situación laboral actual?",
+        "ask_experience": "¿Cuántos años de experiencia tienes?",
+        "profile_complete": "✅ *¡Perfil básico completado!*",
+        "now_plan": "Ahora vamos a definir tu plan de migración.",
+        
         # Commands
         "cmd_start": "Iniciar",
         "cmd_new": "Reiniciar",
@@ -171,6 +206,41 @@ TRANSLATIONS = {
         "help_title": "🆘 *MigPAL Help*",
         "select_language": "🌐 Select your language:",
         "language_changed": "✅ Language changed to: English",
+        
+        # Phase headers
+        "phase1_profile": "PHASE 1: Your Profile",
+        "phase2_diagnostic": "PHASE 2: Diagnostic",
+        "phase3_profiling": "PHASE 3: Profiling",
+        "phase4_plan": "PHASE 4: Migration Plan",
+        "phase5_execution": "PHASE 5: Execution",
+        "phase6_closing": "PHASE 6: Closing",
+        
+        # Name flow
+        "confirm_name": "Is your name *{name}*?",
+        "yes_correct": "✅ Yes, that's correct",
+        "no_change": "❌ No, I want to change it",
+        "name_too_short": "The name is too short. Please write your full name.",
+        "name_confirmed": "Perfect, {name}! 😊",
+        "name_retry": "Please write your name again:",
+        "hello_name": "Hello {name}! 😊",
+        "lets_start": "Nice to meet you. Now I'll guide you step by step through your migration process.",
+        "philosophy": "💡 *My philosophy:* \"The visa is the VEHICLE, not the DESTINATION\"",
+        "first_understand": "First, let's understand your situation and dreams, then we'll find the best route for you.",
+        "shall_we_start": "Shall we start?",
+        "yes_lets_start": "✅ Yes, let's start",
+        "tell_me_more": "ℹ️ Tell me more about the process",
+        
+        # Form messages
+        "ask_birthdate_full": "What is your date of birth? (DD/MM/YYYY)",
+        "ask_nationality_full": "What is your nationality?",
+        "ask_current_city": "What city do you currently live in?",
+        "ask_email_full": "📧 What is your email address?",
+        "ask_phone_full": "📱 Your phone number? (with country code)",
+        "ask_education_full": "🎓 What is your highest education level?",
+        "ask_work_status": "What is your current work status?",
+        "ask_experience": "How many years of experience do you have?",
+        "profile_complete": "✅ *Basic profile completed!*",
+        "now_plan": "Now let's define your migration plan.",
         
         # Commands
         "cmd_start": "Start",
