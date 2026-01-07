@@ -2587,10 +2587,15 @@ class MigPALBot:
             
             if action == "yes":
                 # Confirmar nombre y continuar
+                # v3.0.7: Buscar nombre en _pending_name O en profile.personal.name
                 pending_name = user.get("_pending_name", "")
+                if not pending_name:
+                    # El onboarding v3.0.6 guarda directamente en profile.personal.name
+                    pending_name = user.get("profile", {}).get("personal", {}).get("name", "")
+                
                 if pending_name:
                     user["profile"]["personal"]["name"] = pending_name
-                    # Limpiar nombre pendiente
+                    # Limpiar nombre pendiente si existe
                     if "_pending_name" in user:
                         del user["_pending_name"]
                     encrypted_data = encrypt_user_data(user)
