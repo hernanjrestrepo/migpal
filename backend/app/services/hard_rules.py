@@ -13,7 +13,7 @@ Estas reglas tienen PRIORIDAD sobre cualquier lógica existente.
 SEGMENTOS:
 1/5 - Identidad y Principios Inviolables ✅
 2/5 - Flujo Obligatorio (General → Particular) ✅
-3/5 - (Pendiente)
+3/5 - Comportamiento Conversacional (IA Real) ✅
 4/5 - (Pendiente)
 5/5 - (Pendiente)
 
@@ -678,7 +678,28 @@ class HardRulesGuardian:
         return RuleCheckResult(passed=True)
     
     # =========================================================================
-    # SEGMENTO 3/4 — INTELIGENCIA CONVERSACIONAL
+    # SEGMENTO 3/5 — COMPORTAMIENTO CONVERSACIONAL (IA REAL)
+    # =========================================================================
+    #
+    # REGLAS:
+    # 1. Si el usuario CORRIGE algo:
+    #    - NO avanza
+    #    - Reinterpreta
+    #    - Resume
+    #    - Pide confirmación
+    #
+    # 2. Si el usuario responde FUERA de la pregunta:
+    #    - Interpretar intención
+    #    - Ajustar contexto
+    #    - NO ignorar el mensaje
+    #
+    # 3. Si llega AUDIO:
+    #    - Transcribir
+    #    - Parafrasear
+    #    - Confirmar comprensión
+    #
+    # 4. MigPAL debe explicar POR QUÉ pregunta cada cosa, sin tecnicismos.
+    #
     # =========================================================================
     
     # Patrones de corrección del usuario
@@ -793,11 +814,19 @@ class HardRulesGuardian:
         """
         Manejar una corrección del usuario.
         
+        SEGMENTO 3/5 - Si el usuario CORRIGE algo:
+        1. NO avanza
+        2. Reinterpreta
+        3. Resume (lo que entendió)
+        4. Pide confirmación
+        
         Returns:
             Dict con:
-            - response: Mensaje de confirmación
+            - response: Mensaje con resumen y confirmación
             - should_reinterpret: True
+            - should_resume: True
             - field_to_update: Campo a actualizar
+            - should_advance: False (NUNCA avanzar)
         """
         if lang == "es":
             responses = {
@@ -840,8 +869,10 @@ class HardRulesGuardian:
         return {
             "response": responses.get(correction_type, responses["general_correction"]),
             "should_reinterpret": True,
+            "should_resume": True,  # Debe resumir lo que entendió
+            "requires_confirmation": True,  # Debe pedir confirmación
             "field_to_update": field_map.get(correction_type),
-            "should_advance": False,  # NUNCA avanzar en corrección
+            "should_advance": False,  # 🚨 NUNCA avanzar en corrección
         }
     
     def handle_off_topic(

@@ -390,10 +390,11 @@ def test_segment_2_state_transition():
 
 def test_segment_3_correction_detection():
     """
-    SEGMENTO 3/4: Detectar correcciones del usuario
+    SEGMENTO 3/5: Detectar correcciones del usuario
+    Si el usuario CORRIGE algo: NO avanza, Reinterpreta, Resume, Pide confirmación
     """
     print("\n" + "=" * 70)
-    print("🔒 TEST SEGMENTO 3/4: Detección de Correcciones")
+    print("🔒 TEST SEGMENTO 3/5: Detección de Correcciones")
     print("=" * 70)
     
     guardian = HardRulesGuardian()
@@ -428,10 +429,11 @@ def test_segment_3_correction_detection():
 
 def test_segment_3_off_topic_detection():
     """
-    SEGMENTO 3/4: Detectar respuestas fuera de tema
+    SEGMENTO 3/5: Detectar respuestas fuera de tema
+    Si responde FUERA de la pregunta: Interpretar intención, Ajustar contexto, NO ignorar
     """
     print("\n" + "=" * 70)
-    print("🔒 TEST SEGMENTO 3/4: Detección Fuera de Tema")
+    print("🔒 TEST SEGMENTO 3/5: Detección Fuera de Tema")
     print("=" * 70)
     
     guardian = HardRulesGuardian()
@@ -467,10 +469,11 @@ def test_segment_3_off_topic_detection():
 
 def test_segment_3_audio_handling():
     """
-    SEGMENTO 3/4: Manejo de mensajes de audio
+    SEGMENTO 3/5: Manejo de mensajes de audio
+    Si llega AUDIO: Transcribir, Parafrasear, Confirmar comprensión
     """
     print("\n" + "=" * 70)
-    print("🔒 TEST SEGMENTO 3/4: Manejo de Audio")
+    print("🔒 TEST SEGMENTO 3/5: Manejo de Audio")
     print("=" * 70)
     
     guardian = HardRulesGuardian()
@@ -500,10 +503,10 @@ def test_segment_3_audio_handling():
 
 def test_segment_3_explanation_required():
     """
-    SEGMENTO 3/4: MigPAL DEBE explicar por qué pregunta
+    SEGMENTO 3/5: MigPAL debe explicar POR QUÉ pregunta cada cosa, sin tecnicismos
     """
     print("\n" + "=" * 70)
-    print("🔒 TEST SEGMENTO 3/4: Explicación Requerida")
+    print("🔒 TEST SEGMENTO 3/5: Explicar Por Qué Pregunta")
     print("=" * 70)
     
     guardian = HardRulesGuardian()
@@ -773,11 +776,11 @@ def main():
     results.append(("S2: 🚨 understanding_confirmed requerido", test_segment_2_confirmation_required()))
     results.append(("S2: Transición de estado", test_segment_2_state_transition()))
     
-    # SEGMENTO 3/4
-    results.append(("S3: Detección de correcciones", test_segment_3_correction_detection()))
-    results.append(("S3: Detección fuera de tema", test_segment_3_off_topic_detection()))
-    results.append(("S3: Manejo de audio", test_segment_3_audio_handling()))
-    results.append(("S3: Explicación requerida", test_segment_3_explanation_required()))
+    # SEGMENTO 3/5 - Comportamiento Conversacional (IA Real)
+    results.append(("S3: Corrección → NO avanza + Resume + Confirma", test_segment_3_correction_detection()))
+    results.append(("S3: Fuera de tema → Interpretar + NO ignorar", test_segment_3_off_topic_detection()))
+    results.append(("S3: Audio → Transcribir + Parafrasear + Confirmar", test_segment_3_audio_handling()))
+    results.append(("S3: Explicar POR QUÉ pregunta", test_segment_3_explanation_required()))
     
     # SEGMENTO 4/4
     results.append(("S4: ❌ No visa antes de resumen", test_segment_4_no_visa_before_summary()))
