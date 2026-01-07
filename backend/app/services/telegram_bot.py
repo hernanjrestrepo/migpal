@@ -5481,6 +5481,28 @@ class MigPALBot:
                 conv_ai = get_conversational_ai()
                 response = await conv_ai.process_free_text(text, user, state, lang)
                 
+                # v3.0.9: Guardar datos extraídos por la IA
+                if response.extracted_data:
+                    data = response.extracted_data
+                    if "name" in data:
+                        user["profile"]["personal"]["name"] = data["name"]
+                    if "profession" in data:
+                        user["profile"]["professional"]["profession"] = data["profession"]
+                    if "experience_years" in data:
+                        user["profile"]["professional"]["experience_years"] = data["experience_years"]
+                    if "salary" in data:
+                        user["profile"]["financial"] = user.get("profile", {}).get("financial", {})
+                        user["profile"]["financial"]["current_salary"] = data["salary"]
+                    if "savings" in data:
+                        user["profile"]["financial"] = user.get("profile", {}).get("financial", {})
+                        user["profile"]["financial"]["savings"] = data["savings"]
+                    if "motivation" in data:
+                        user["profile"]["migration"] = user.get("profile", {}).get("migration", {})
+                        user["profile"]["migration"]["motivation"] = data["motivation"]
+                    
+                    save_user_data(user_id, user)
+                    logger.info(f"💾 Datos guardados: {list(data.keys())}")
+                
                 if response.suggested_actions:
                     await update.message.reply_text(
                         response.message,
@@ -5504,8 +5526,7 @@ class MigPALBot:
                 )
                 await update.message.reply_text(fallback_msg)
         
-        # Si estamos en un estado de formulario Y la IA extrajo datos, guardarlos
-        # Pero la IA ya respondió al usuario de forma natural
+        # La IA ya respondió al usuario de forma natural
         return
         
         # ===== LEGACY: Solo se usa si la IA falla =====

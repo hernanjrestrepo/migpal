@@ -36,6 +36,7 @@ class UserIntent(Enum):
     READY_TO_CONTINUE = "ready"         # Listo para continuar
     CORRECTION = "correction"           # Quiere corregir algo
     OFF_TOPIC = "off_topic"             # Tema no relacionado
+    PROVIDING_INFO = "providing_info"   # Dando información (nombre, profesión, etc)
     UNKNOWN = "unknown"                 # No se pudo determinar
 
 
@@ -331,7 +332,136 @@ class ConversationalAI:
         if "?" in text:
             return UserIntent.ASKING_QUESTION
         
+        # Si parece estar dando información (nombre, profesión, números)
+        if self._looks_like_info(text):
+            return UserIntent.PROVIDING_INFO
+        
         return UserIntent.UNKNOWN
+    
+    def _looks_like_info(self, text: str) -> bool:
+        """Detectar si el texto parece información del usuario"""
+        # Patrones que indican que está dando información
+        info_patterns = [
+            r"^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+",  # Nombre Apellido
+            r"\d+\s*(años?|years?)",  # X años
+            r"\$?\d{1,3}[,.]?\d{3}",  # Cantidades de dinero
+            r"ingeniero|doctor|abogado|contador|profesor|diseñador|programador",  # Profesiones
+            r"soy\s+\w+",  # "Soy X"
+            r"trabajo\s+(como|en|de)",  # "Trabajo como/en/de"
+            r"tengo\s+\d+",  # "Tengo X"
+            r"gano\s+",  # "Gano X"
+            r"mi\s+(nombre|profesión|trabajo|salario)",  # "Mi nombre/profesión es"
+        ]
+        
+        text_lower = text.lower()
+        for pattern in info_patterns:
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                return True
+        
+        return False
+    
+    def extract_data(self, text: str, current_state: str) -> Dict[str, Any]:
+        """Extraer datos del texto libre del usuario"""
+        extracted = {}
+        text_lower = text.lower()
+        
+        # Extraer nombre (si parece un nombre)
+        # Patrón 1: Solo nombre y apellido
+        name_match = re.match(r"^([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)+)$", text.strip())
+        if name_match:
+            extracted["name"] = name_match.group(1)
+        else:
+            # Patrón 2: "mi nombre es X" o "me llamo X" o "soy X"
+            name_patterns = [
+                r"(?:mi nombre(?:\s+correcto)?\s+es|me llamo|soy)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*)",
+                r"(?:my name is|i'm|i am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
+            ]
+            for pattern in name_patterns:
+                match = re.search(pattern, text, re.IGNORECASE)
+                if match:
+                    potential_name = match.group(1)
+                    # Verificar que no sea una profesión
+                    professions = ["ingeniero", "doctor", "abogado", "contador", "profesor", "diseñador", "programador"]
+                    if potential_name.lower() not in professions:
+                        # Capitalizar correctamente
+                        name_parts = potential_name.split()
+                        extracted["name"] = " ".join(p.capitalize() for p in name_parts)
+                    break
+        
+        # Extraer profesión
+        profession_patterns = [
+            r"soy\s+(ingeniero|doctor|abogado|contador|profesor|diseñador|programador|desarrollador)[^.]*",
+            r"(ingeniero|doctor|abogado|contador|profesor|diseñador|programador|desarrollador)\s+de\s+\w+",
+            r"trabajo\s+como\s+(\w+(?:\s+\w+)?)",
+        ]
+        for pattern in profession_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                extracted["profession"] = match.group(0).strip()
+                break
+        
+        # Extraer años de experiencia
+        exp_match = re.search(r"(\d+)\s*años?\s*(de\s+experiencia)", text_lower)
+        if exp_match:
+            extracted["experience_years"] = int(exp_match.group(1))
+        
+        # Extraer salario (solo si tiene indicador de dinero)
+        salary_match = re.search(r"(gano|salario|sueldo)[^\d]*\$?([\d,]+)", text_lower)
+        if salary_match:
+            salary_str = salary_match.group(2).replace(",", "")
+            try:
+                extracted["salary"] = int(salary_str)
+            except:
+                pass
+        else:
+            # Buscar patrón con $ explícito
+            salary_match2 = re.search(r"\$([\d,]+)\s*(usd|dólares|dolares|mensuales?)?", text_lower)
+            if salary_match2 and "ahorr" not in text_lower:  # No confundir con ahorros
+                salary_str = salary_match2.group(1).replace(",", "")
+                try:
+                    val = int(salary_str)
+                    if val > 100:  # Salarios son > 100
+                        extracted["salary"] = val
+                except:
+                    pass
+        
+        # Extraer ahorros
+        savings_match = re.search(r"(ahorr[oa]d?[oa]?s?|tengo)\s*[^\d]*\$?([\d,]+)", text_lower)
+        if savings_match:
+            savings_str = savings_match.group(2).replace(",", "")
+            try:
+                extracted["savings"] = int(savings_str)
+            except:
+                pass
+        
+        # Extraer motivación
+        motivation_keywords = {
+            "trabajo": "work",
+            "trabajar": "work",
+            "oportunidades": "work",
+            "empleo": "work",
+            "laboral": "work",
+            "familia": "family",
+            "hijos": "family",
+            "esposa": "family",
+            "esposo": "family",
+            "padres": "family",
+            "educación": "education",
+            "estudiar": "education",
+            "universidad": "education",
+            "seguridad": "safety",
+            "violencia": "safety",
+            "peligro": "safety",
+            "calidad de vida": "quality",
+            "mejor vida": "quality",
+            "futuro": "quality",
+        }
+        for keyword, motivation in motivation_keywords.items():
+            if keyword in text_lower:
+                extracted["motivation"] = motivation
+                break
+        
+        return extracted
     
     def detect_topic(self, text: str, current_state: str) -> str:
         """Detectar el tema de la conversación"""
@@ -373,10 +503,17 @@ class ConversationalAI:
         intent = self.detect_intent(text)
         topic = self.detect_topic(text, current_state)
         
-        logger.info(f"🧠 AI Processing | user={user.get('telegram_id')} | intent={intent.value} | topic={topic}")
+        # Extraer datos del texto
+        extracted_data = self.extract_data(text, current_state)
+        
+        logger.info(f"🧠 AI Processing | user={user.get('telegram_id')} | intent={intent.value} | topic={topic} | extracted={extracted_data}")
         
         # Obtener información contextual
         context_info = self.CONTEXT_INFO.get(lang, self.CONTEXT_INFO["es"]).get(topic, "")
+        
+        # Si el usuario está dando información, procesarla y confirmar
+        if intent == UserIntent.PROVIDING_INFO and extracted_data:
+            return await self._handle_providing_info(name, text, extracted_data, lang, user)
         
         # Construir respuesta según intención
         if intent == UserIntent.NOT_READY:
@@ -398,8 +535,110 @@ class ConversationalAI:
             return await self._handle_needs_help(name, text, topic, context_info, lang)
         
         else:
-            # Intención desconocida - usar IA para responder
+            # Intención desconocida - intentar extraer datos de todas formas
+            if extracted_data:
+                return await self._handle_providing_info(name, text, extracted_data, lang, user)
+            # Si no hay datos, usar respuesta genérica amigable
             return await self._handle_unknown(name, text, topic, context_info, lang, user)
+    
+    async def _handle_providing_info(
+        self, name: str, text: str, extracted_data: Dict[str, Any], lang: str, user: Dict
+    ) -> ConversationalResponse:
+        """Manejar cuando el usuario da información"""
+        
+        confirmations = []
+        follow_up = None
+        
+        if lang == "es":
+            # Confirmar datos extraídos
+            if "name" in extracted_data:
+                new_name = extracted_data["name"]
+                confirmations.append(f"¡Mucho gusto, {new_name}! 😊")
+                name = new_name
+            
+            if "profession" in extracted_data:
+                confirmations.append(f"¡Excelente! Eres {extracted_data['profession']}. 💼")
+            
+            if "experience_years" in extracted_data:
+                years = extracted_data["experience_years"]
+                confirmations.append(f"Con {years} años de experiencia, tienes un perfil muy sólido. 💪")
+            
+            if "salary" in extracted_data:
+                salary = extracted_data["salary"]
+                confirmations.append(f"Entendido, tu salario actual es ${salary:,}. 💰")
+            
+            if "savings" in extracted_data:
+                savings = extracted_data["savings"]
+                confirmations.append(f"Tienes ${savings:,} en ahorros. ¡Eso es un buen comienzo! 🎯")
+            
+            if "motivation" in extracted_data:
+                motivation_texts = {
+                    "work": "Buscar mejores oportunidades laborales es una razón muy válida.",
+                    "family": "Reunirte con tu familia es algo muy especial.",
+                    "education": "La educación es una inversión increíble.",
+                    "safety": "La seguridad es fundamental.",
+                    "quality": "Buscar mejor calidad de vida es completamente válido.",
+                }
+                mot = extracted_data["motivation"]
+                confirmations.append(motivation_texts.get(mot, "Entiendo tu motivación."))
+            
+            # Determinar siguiente pregunta
+            if not confirmations:
+                confirmations.append(f"Gracias por compartir eso, {name}. 😊")
+            
+            # Construir mensaje
+            message = "\n\n".join(confirmations)
+            
+            # Determinar qué preguntar a continuación
+            profile = user.get("profile", {})
+            personal = profile.get("personal", {})
+            professional = profile.get("professional", {})
+            
+            # Si acabamos de recibir el nombre, no preguntar nombre de nuevo
+            has_name = personal.get("name") or "name" in extracted_data
+            has_motivation = extracted_data.get("motivation")
+            has_profession = professional.get("profession") or "profession" in extracted_data
+            has_experience = "experience_years" in extracted_data
+            
+            if not has_name:
+                follow_up = "¿Cómo te llamas?"
+            elif not has_motivation:
+                follow_up = "Cuéntame, ¿qué te motiva a considerar migrar?"
+            elif not has_profession:
+                follow_up = "¿A qué te dedicas profesionalmente?"
+            elif not has_experience:
+                follow_up = "¿Cuántos años de experiencia tienes en tu campo?"
+            else:
+                follow_up = "¡Excelente! Ya tengo una buena idea de tu perfil. ¿Te gustaría que exploremos opciones de destino?"
+            
+            message += f"\n\n{follow_up}"
+            
+        else:
+            # English version
+            if "name" in extracted_data:
+                new_name = extracted_data["name"]
+                confirmations.append(f"Nice to meet you, {new_name}! 😊")
+                name = new_name
+            
+            if "profession" in extracted_data:
+                confirmations.append(f"Great! You're a {extracted_data['profession']}. 💼")
+            
+            if "experience_years" in extracted_data:
+                years = extracted_data["experience_years"]
+                confirmations.append(f"With {years} years of experience, you have a solid profile. 💪")
+            
+            if not confirmations:
+                confirmations.append(f"Thanks for sharing that, {name}. 😊")
+            
+            message = "\n\n".join(confirmations)
+            follow_up = "Is there anything else you'd like to tell me about your situation?"
+            message += f"\n\n{follow_up}"
+        
+        return ConversationalResponse(
+            message=message,
+            extracted_data=extracted_data,
+            should_advance_state=False  # No avanzar automáticamente, seguir conversando
+        )
     
     async def _handle_not_ready(
         self, name: str, text: str, topic: str, context_info: str, lang: str, current_state: str
