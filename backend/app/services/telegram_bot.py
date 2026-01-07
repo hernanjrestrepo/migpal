@@ -496,6 +496,36 @@ class MigPALBot:
                 keyboard.append([InlineKeyboardButton(opt, callback_data=opt)])
         return InlineKeyboardMarkup(keyboard)
     
+    def _get_state_prompt(self, state: str, user: dict, lang: str = "es") -> str:
+        """Obtener el prompt para el estado actual (para re-preguntar después de corrección)"""
+        prompts = {
+            "es": {
+                STATE_NAME: "¿Cuál es tu nombre completo?",
+                STATE_BIRTH_DATE: "¿Cuál es tu fecha de nacimiento? (DD/MM/AAAA)",
+                STATE_EMAIL: "¿Cuál es tu correo electrónico?",
+                STATE_PHONE: "¿Cuál es tu número de teléfono?",
+                STATE_CURRENT_CITY: "¿En qué ciudad vives actualmente?",
+                STATE_EDUCATION_CAREER: "¿Qué carrera estudiaste o estudias?",
+                STATE_PROFESSION: "¿Cuál es tu profesión actual?",
+                "education_level": "¿Cuál es tu nivel educativo?",
+                "work_status": "¿Cuál es tu situación laboral actual?",
+            },
+            "en": {
+                STATE_NAME: "What is your full name?",
+                STATE_BIRTH_DATE: "What is your birth date? (DD/MM/YYYY)",
+                STATE_EMAIL: "What is your email address?",
+                STATE_PHONE: "What is your phone number?",
+                STATE_CURRENT_CITY: "What city do you currently live in?",
+                STATE_EDUCATION_CAREER: "What did you study or are studying?",
+                STATE_PROFESSION: "What is your current profession?",
+                "education_level": "What is your education level?",
+                "work_status": "What is your current work status?",
+            }
+        }
+        
+        lang_prompts = prompts.get(lang, prompts["es"])
+        return lang_prompts.get(state, "Continúa con tu respuesta:" if lang == "es" else "Continue with your answer:")
+    
     # ============== COMMANDS ==============
     
     async def _check_rate_limit(self, update) -> bool:
@@ -2758,15 +2788,68 @@ class MigPALBot:
                     ])
                 )
             
+            # === HANDLERS DE PREFERENCIA (TE AYUDO A ELEGIR) ===
+            elif action.startswith("pref_"):
+                pref = action[5:]  # warm, cheap, tech, latino
+                
+                # Mapeo de preferencias a regiones y estados recomendados
+                pref_recommendations = {
+                    "warm": {
+                        "regions": ["south", "west"],
+                        "states": ["Florida", "Texas", "Arizona"],
+                        "emoji": "☀️",
+                        "desc": "clima cálido"
+                    },
+                    "cheap": {
+                        "regions": ["south", "midwest"],
+                        "states": ["Texas", "Ohio", "Tennessee"],
+                        "emoji": "💰",
+                        "desc": "bajo costo de vida"
+                    },
+                    "tech": {
+                        "regions": ["west", "northeast"],
+                        "states": ["California", "Washington", "Texas"],
+                        "emoji": "💼",
+                        "desc": "empleos tech"
+                    },
+                    "latino": {
+                        "regions": ["south", "west"],
+                        "states": ["Florida", "Texas", "California"],
+                        "emoji": "🤝",
+                        "desc": "comunidad latina"
+                    }
+                }
+                
+                rec = pref_recommendations.get(pref, pref_recommendations["tech"])
+                states = rec["states"]
+                
+                # Guardar preferencia
+                user["profile"]["migration"]["preference"] = pref
+                save_user_data(user_id, user)
+                
+                # Crear botones para estados recomendados
+                buttons = []
+                for state in states:
+                    state_key = state.lower().replace(" ", "_")
+                    buttons.append([(f"🏛️ {state}", f"flow_state_{state_key}")])
+                buttons.append([("🔙 Ver todas las regiones", "flow_continue_location")])
+                
+                await query.edit_message_text(
+                    f"{rec['emoji']} Excelente, te interesa {rec['desc']}.\n\n"
+                    f"🏛️ Te recomiendo estos estados:\n\n"
+                    f"¿Cuál te gustaría explorar?",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb(buttons)
+                )
+            
             # === HANDLERS DE REGIÓN ===
             elif action.startswith("region_"):
                 region = action[7:]  # south, northeast, west, midwest, help
                 
                 if region == "help":
                     await query.edit_message_text(
-                        "🗺️ *TE AYUDO A ELEGIR*\n\n"
+                        "🗺️ TE AYUDO A ELEGIR\n\n"
                         "¿Qué es más importante para ti?",
-                        parse_mode='Markdown',
                         reply_markup=self._kb([
                             [("☀️ Clima cálido", "flow_pref_warm")],
                             [("💰 Bajo costo de vida", "flow_pref_cheap")],
@@ -5128,6 +5211,48 @@ class MigPALBot:
             return
         
         logger.info(f"MSG: {user_id} | {state} | {text[:50]}")
+        
+        # === V3.0.5: NLU DE CORRECCIÓN ===
+        # Detectar si el usuario quiere corregir un campo mientras está en otro prompt
+        try:
+            from app.services.ux_v305 import CorrectionNLU, CorrectionType
+            
+            correction = CorrectionNLU.detect_correction(text)
+            if correction and correction.confidence >= 0.6:
+                # Actualizar el campo correspondiente
+                field_updated = False
+                field_name = ""
+                
+                if correction.type == CorrectionType.EMAIL:
+                    user["profile"]["personal"]["email"] = correction.value
+                    field_updated = True
+                    field_name = "correo" if lang == "es" else "email"
+                elif correction.type == CorrectionType.PHONE:
+                    user["profile"]["personal"]["phone"] = correction.value
+                    field_updated = True
+                    field_name = "teléfono" if lang == "es" else "phone"
+                elif correction.type == CorrectionType.NAME:
+                    user["profile"]["personal"]["name"] = correction.value
+                    field_updated = True
+                    field_name = "nombre" if lang == "es" else "name"
+                
+                if field_updated:
+                    save_user_data(user_id, user)
+                    logger.info(f"✏️ CORRECTION | user={user_id} | field={correction.type.value} | value={correction.value}")
+                    
+                    # Confirmar la corrección y re-preguntar el campo pendiente
+                    confirm_msg = CorrectionNLU.get_confirmation_message(correction, lang)
+                    
+                    # Obtener el prompt del estado actual
+                    current_prompt = self._get_state_prompt(state, user, lang)
+                    
+                    await update.message.reply_text(
+                        f"{confirm_msg}\n\n{current_prompt}",
+                        parse_mode='Markdown'
+                    )
+                    return
+        except Exception as e:
+            logger.warning(f"Error en NLU de corrección: {e}")
         
         # === PRIMERO: Verificar si estamos en un estado de FORMULARIO ===
         # Si el usuario está en un estado de formulario, procesar directamente
