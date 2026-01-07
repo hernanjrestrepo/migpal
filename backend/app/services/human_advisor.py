@@ -685,52 +685,50 @@ class HumanAdvisor:
     async def _phase_who_migrates(
         self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
     ) -> Dict[str, Any]:
-        """Fase de quiénes migran"""
+        """
+        SEGMENTO 3: Familia y realidad humana
+        
+        GUIÓN OFICIAL:
+        - Cuéntame un poco más sobre eso
+        - ¿Quiénes serían? ¿Pareja, hijos, padres? ¿Edades aproximadas?
+        - No necesito exactitud, solo contexto humano
+        - Conversación libre. Extraer datos sin formularios.
+        """
+        from app.services.migpal_script_usa import get_migpal_script_usa, MigPALScriptUSA
+        
+        # Detectar información familiar del texto
+        script = MigPALScriptUSA()  # Nueva instancia para este segmento
+        family_type = script._detect_family_type(text.lower(), extracted)
         
         # Guardar información familiar
-        family_situation = extracted.get("family_situation", "")
-        ctx.understanding.migrating_alone = family_situation == "alone"
+        if family_type == "solo":
+            ctx.understanding.migrating_alone = True
+        else:
+            ctx.understanding.migrating_alone = False
         
-        if extracted.get("child_age"):
+        # Detectar edades de hijos
+        import re
+        age_matches = re.findall(r'(\d+)\s*(?:años?|years?)', text.lower())
+        for age in age_matches:
             ctx.understanding.family_members.append({
                 "type": "child",
-                "age": extracted["child_age"]
+                "age": int(age)
             })
         
-        # Parafrasear
-        if family_situation == "alone":
-            paraphrase = "viajas solo/a"
-        elif family_situation == "with_partner":
-            paraphrase = "viajas con tu pareja"
-        elif family_situation == "with_children":
-            paraphrase = "viajas con tus hijos"
-        elif family_situation == "whole_family":
-            paraphrase = "viaja toda la familia"
-        else:
-            paraphrase = "tu situación familiar"
+        # Respuesta según tipo de familia detectado
+        responses = script.SEGMENT_3_RESPONSES.get(lang, script.SEGMENT_3_RESPONSES["es"])
+        response_template = responses.get(family_type, responses["default"])
         
-        if lang == "es":
-            response = (
-                f"Perfecto, entonces {paraphrase}. 👨‍👩‍👧\n\n"
-                "Ahora me gustaría entender tu situación actual.\n\n"
-                "¿A qué te dedicas actualmente? "
-                "¿Cuántos años de experiencia tienes? "
-                "¿Qué nivel de estudios completaste?"
-            )
-        else:
-            response = (
-                f"Perfect, so {paraphrase}. 👨‍👩‍👧\n\n"
-                "Now I'd like to understand your current situation.\n\n"
-                "What do you currently do for work? "
-                "How many years of experience do you have? "
-                "What level of education did you complete?"
-            )
+        # Transición al Segmento 4
+        transition = script.SEGMENT_3_ACKNOWLEDGMENT.get(lang, script.SEGMENT_3_ACKNOWLEDGMENT["es"])
+        response_text = response_template.format(transition=transition)
         
+        # Avanzar a la siguiente fase
         ctx.phase = ExplorationPhase.CURRENT_SITUATION
         ctx.topics_discussed.append("family")
         
         return {
-            "response": response,
+            "response": response_text,
             "buttons": None,
             "extracted_data": extracted,
             "phase_changed": True,

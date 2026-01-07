@@ -273,6 +273,185 @@ To start, tell me something open, in your own words:
             requires_confirmation=False
         )
     
+    # =========================================================================
+    # SEGMENTO 3: FAMILIA Y REALIDAD HUMANA
+    # =========================================================================
+    
+    SEGMENT_3_INITIAL = {
+        "es": """Cuéntame un poco más sobre eso. 👨‍👩‍👧
+
+¿Quiénes serían? ¿Pareja, hijos, padres? ¿Edades aproximadas?
+
+No necesito exactitud, solo contexto humano.""",
+
+        "en": """Tell me a bit more about that. 👨‍👩‍👧
+
+Who would they be? Partner, children, parents? Approximate ages?
+
+I don't need exact numbers, just human context."""
+    }
+    
+    SEGMENT_3_ACKNOWLEDGMENT = {
+        "es": """Gracias. Esto cambia completamente el tipo de opciones reales en Estados Unidos. 🎯
+
+Ahora, para entender desde dónde partes:
+
+👉 *¿Dónde vives hoy y cómo es tu situación laboral o económica actualmente?*""",
+
+        "en": """Thank you. This completely changes the type of real options in the United States. 🎯
+
+Now, to understand where you're starting from:
+
+👉 *Where do you live today and what's your current work or economic situation?*"""
+    }
+    
+    # Respuestas empáticas para Segmento 3
+    SEGMENT_3_RESPONSES = {
+        "es": {
+            "solo": (
+                "Entiendo, vas solo/a. 💪\n\n"
+                "Eso tiene sus ventajas: más flexibilidad, menos trámites, "
+                "y puedes moverte más rápido.\n\n"
+                "{transition}"
+            ),
+            "pareja": (
+                "Ir con tu pareja es un gran paso juntos. 💑\n\n"
+                "Es importante que ambos estén alineados en esta decisión.\n\n"
+                "{transition}"
+            ),
+            "hijos_pequenos": (
+                "Entiendo, tienes hijos pequeños. 👶\n\n"
+                "Eso es muy importante porque afecta las opciones de visa, "
+                "escuelas, y el tipo de ciudad que te conviene.\n\n"
+                "{transition}"
+            ),
+            "hijos_grandes": (
+                "Hijos adolescentes o jóvenes. 📚\n\n"
+                "Eso abre opciones interesantes, especialmente si están "
+                "en edad de estudiar allá.\n\n"
+                "{transition}"
+            ),
+            "familia_extendida": (
+                "Llevar a padres o familia extendida es un acto de amor. ❤️\n\n"
+                "También complica un poco los trámites, pero hay opciones.\n\n"
+                "{transition}"
+            ),
+            "default": (
+                "Gracias por contarme. 🙏\n\n"
+                "Cada situación familiar es única y eso influye mucho "
+                "en las opciones reales.\n\n"
+                "{transition}"
+            ),
+        },
+        "en": {
+            "solo": (
+                "I understand, you're going alone. 💪\n\n"
+                "That has its advantages: more flexibility, less paperwork, "
+                "and you can move faster.\n\n"
+                "{transition}"
+            ),
+            "default": (
+                "Thank you for sharing. 🙏\n\n"
+                "Every family situation is unique and that greatly influences "
+                "the real options.\n\n"
+                "{transition}"
+            ),
+        }
+    }
+    
+    def process_segment_3(
+        self,
+        user_text: str,
+        extracted_data: dict,
+        lang: str = "es"
+    ) -> ScriptResponse:
+        """
+        Procesar Segmento 3: Familia y realidad humana
+        
+        REGLA: Conversación libre. Extraer datos sin formularios.
+        """
+        import re
+        
+        self.segment_interactions += 1
+        text_lower = user_text.lower()
+        
+        # Detectar situación familiar
+        family_type = self._detect_family_type(text_lower, extracted_data)
+        
+        # Obtener respuesta apropiada
+        responses = self.SEGMENT_3_RESPONSES.get(lang, self.SEGMENT_3_RESPONSES["es"])
+        response_template = responses.get(family_type, responses["default"])
+        
+        # Si es la primera interacción del segmento, solo escuchar
+        if self.segment_interactions == 1:
+            transition = self.SEGMENT_3_ACKNOWLEDGMENT.get(lang, self.SEGMENT_3_ACKNOWLEDGMENT["es"])
+            response_text = response_template.format(transition=transition)
+            
+            return ScriptResponse(
+                message=response_text,
+                segment=ScriptSegment.S3_QUIENES_MIGRAN,
+                can_advance=True,
+                requires_confirmation=False
+            )
+        
+        # Si ya respondió sobre familia, transicionar a Segmento 4
+        return self._transition_to_segment_4(lang)
+    
+    def _detect_family_type(self, text: str, extracted: dict) -> str:
+        """Detectar tipo de situación familiar"""
+        import re
+        
+        # Patrones para detectar situación familiar
+        if re.search(r"solo|sola|solter[oa]|sin familia|nadie", text):
+            return "solo"
+        
+        if re.search(r"pareja|esposa|esposo|novi[oa]|marido|mujer", text):
+            if re.search(r"hijo|hija|niño|niña|bebé", text):
+                # Tiene pareja e hijos
+                if re.search(r"\b[0-5]\b|pequeño|bebé|añitos", text):
+                    return "hijos_pequenos"
+                elif re.search(r"\b(1[0-9]|20)\b|adolescente|joven|universidad", text):
+                    return "hijos_grandes"
+                return "hijos_pequenos"  # Default si no se detecta edad
+            return "pareja"
+        
+        if re.search(r"hijo|hija|niño|niña", text):
+            if re.search(r"\b[0-5]\b|pequeño|bebé", text):
+                return "hijos_pequenos"
+            return "hijos_grandes"
+        
+        if re.search(r"padre|madre|papá|mamá|abuelo|abuela|hermano|hermana", text):
+            return "familia_extendida"
+        
+        return "default"
+    
+    def _transition_to_segment_4(self, lang: str) -> ScriptResponse:
+        """Transición al Segmento 4: Situación actual"""
+        self.current_segment = ScriptSegment.S4_SITUACION_ACTUAL
+        self.segment_interactions = 0
+        
+        if lang == "es":
+            message = (
+                "Perfecto, ya tengo una imagen más clara. 📝\n\n"
+                "Ahora cuéntame sobre tu situación actual:\n\n"
+                "👉 *¿A qué te dedicas? ¿Cuántos años de experiencia tienes? "
+                "¿Cómo está tu situación económica hoy?*"
+            )
+        else:
+            message = (
+                "Perfect, I now have a clearer picture. 📝\n\n"
+                "Now tell me about your current situation:\n\n"
+                "👉 *What do you do for work? How many years of experience do you have? "
+                "How's your economic situation today?*"
+            )
+        
+        return ScriptResponse(
+            message=message,
+            segment=ScriptSegment.S4_SITUACION_ACTUAL,
+            can_advance=False,
+            requires_confirmation=False
+        )
+    
     def is_visa_talk_allowed(self) -> bool:
         """Verificar si se puede hablar de visas (solo después de S7)"""
         allowed_segments = [
