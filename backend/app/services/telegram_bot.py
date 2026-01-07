@@ -4981,11 +4981,12 @@ class MigPALBot:
         
         # === PRIMERO: Verificar si estamos en un estado de FORMULARIO ===
         # Si el usuario está en un estado de formulario, procesar directamente
+        # P0 FIX: Solo incluir estados que están definidos y tienen handlers
         FORM_STATES = [
             STATE_NAME, "confirm_name", STATE_BIRTH_DATE, STATE_CURRENT_CITY, STATE_EMAIL, STATE_PHONE,
-            STATE_EDUCATION_CAREER, STATE_PROFESSION, STATE_LINKEDIN, STATE_COMPANY,
-            STATE_SALARY, STATE_ACHIEVEMENTS, STATE_FAMILY_DETAILS, STATE_BUDGET,
-            STATE_TIMELINE, STATE_CONCERNS, STATE_GOALS
+            STATE_EDUCATION_CAREER, STATE_PROFESSION, STATE_LINKEDIN,
+            STATE_TIMELINE, STATE_BUDGET_INITIAL, STATE_SAVINGS,
+            STATE_FAMILY_MEMBER_NAME, STATE_FAMILY_MEMBER_BIRTH
         ]
         
         if state in FORM_STATES:
