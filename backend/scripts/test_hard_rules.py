@@ -194,6 +194,158 @@ def test_rule_5_no_advance_on_doubt():
     return all_passed
 
 
+def test_segment_2_mandatory_states():
+    """
+    SEGMENTO 2/4: Estados obligatorios y bloqueantes
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 2/4: Estados Obligatorios")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    # Verificar que los estados obligatorios están definidos
+    expected_states = [
+        "greeting",
+        "deep_motivation",
+        "who_migrates",
+        "current_situation",
+        "desired_life",
+        "real_constraints",
+        "understanding",
+    ]
+    
+    all_passed = True
+    for state in expected_states:
+        if state in guardian.MANDATORY_STATES:
+            print(f"   ✅ Estado obligatorio: {state}")
+        else:
+            print(f"   ❌ Estado faltante: {state}")
+            all_passed = False
+    
+    return all_passed
+
+
+def test_segment_2_no_skip_states():
+    """
+    SEGMENTO 2/4: No se pueden saltar estados obligatorios
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 2/4: No saltar estados")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    test_cases = [
+        # (current, next, should_pass, desc)
+        ("greeting", "deep_motivation", True, "Avance normal"),
+        ("greeting", "current_situation", False, "Saltar who_migrates"),
+        ("deep_motivation", "who_migrates", True, "Avance normal"),
+        ("deep_motivation", "desired_life", False, "Saltar 2 estados"),
+        ("who_migrates", "current_situation", True, "Avance normal"),
+        ("current_situation", "desired_life", True, "Avance normal"),
+        ("desired_life", "real_constraints", True, "Avance normal"),
+        ("real_constraints", "understanding", True, "Avance normal"),
+    ]
+    
+    all_passed = True
+    for current, next_state, should_pass, desc in test_cases:
+        result = guardian._check_no_skipped_states(current, next_state)
+        status = "✅" if result.passed == should_pass else "❌"
+        print(f"   {status} {desc}: {current} → {next_state} = {'PASS' if result.passed else 'BLOCK'}")
+        if result.passed != should_pass:
+            all_passed = False
+    
+    return all_passed
+
+
+def test_segment_2_confirmation_required():
+    """
+    SEGMENTO 2/4: 🚨 Ningún estado posterior sin understanding_confirmed = true
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 2/4: 🚨 Confirmación Requerida")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    # Sin confirmación
+    unconfirmed = {"understanding": {"confirmed_by_user": False}}
+    
+    # Con confirmación
+    confirmed = {"understanding": {"confirmed_by_user": True}}
+    
+    test_cases = [
+        # (next_state, context, should_pass, desc)
+        ("options", unconfirmed, False, "options sin confirmación"),
+        ("options", confirmed, True, "options con confirmación"),
+        ("plan_creation", unconfirmed, False, "plan_creation sin confirmación"),
+        ("plan_creation", confirmed, True, "plan_creation con confirmación"),
+        ("visa_analysis", unconfirmed, False, "visa_analysis sin confirmación"),
+        ("recommendations", unconfirmed, False, "recommendations sin confirmación"),
+        ("understanding", unconfirmed, True, "understanding no requiere confirmación"),
+        ("desired_life", unconfirmed, True, "desired_life no requiere confirmación"),
+    ]
+    
+    all_passed = True
+    for next_state, context, should_pass, desc in test_cases:
+        result = guardian._check_confirmation_required(next_state, context)
+        status = "✅" if result.passed == should_pass else "❌"
+        print(f"   {status} {desc}: {'PASS' if result.passed else '🚨 BLOQUEADO'}")
+        if result.passed != should_pass:
+            all_passed = False
+    
+    return all_passed
+
+
+def test_segment_2_state_transition():
+    """
+    SEGMENTO 2/4: Verificación completa de transición de estado
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 2/4: Transición de Estado Completa")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    # Contexto con perfil completo y confirmado
+    complete_context = {
+        "understanding": {
+            "deep_motivation": "Mejor vida",
+            "migrating_alone": False,
+            "family_members": [{"type": "child", "age": 10}],
+            "current_profession": "ingeniero",
+            "desired_lifestyle": "Trabajar en tech",
+            "available_savings": 50000,
+            "confirmed_by_user": True,
+        }
+    }
+    
+    # Contexto sin confirmación
+    incomplete_context = {
+        "understanding": {
+            "deep_motivation": "Mejor vida",
+            "confirmed_by_user": False,
+        }
+    }
+    
+    test_cases = [
+        ("understanding", "options", complete_context, True, "Transición válida con confirmación"),
+        ("understanding", "options", incomplete_context, False, "Transición bloqueada sin confirmación"),
+        ("greeting", "options", complete_context, False, "Saltar estados obligatorios"),
+    ]
+    
+    all_passed = True
+    for current, next_state, context, should_pass, desc in test_cases:
+        result = guardian.check_state_transition(current, next_state, context)
+        status = "✅" if result.passed == should_pass else "❌"
+        print(f"   {status} {desc}: {'PASS' if result.passed else 'BLOCK'}")
+        if result.passed != should_pass:
+            all_passed = False
+    
+    return all_passed
+
+
 def test_convenience_functions():
     """Test funciones de conveniencia"""
     print("\n" + "=" * 70)
@@ -228,11 +380,19 @@ def main():
     
     results = []
     
-    results.append(("REGLA 1: No datos personales temprano", test_rule_1_no_personal_data_early()))
-    results.append(("REGLA 2: No visa sin perfil", test_rule_2_no_visa_without_profile()))
-    results.append(("REGLA 3: No opciones sin resumen", test_rule_3_no_options_without_summary()))
-    results.append(("REGLA 4: Límite de formularios", test_rule_4_form_limit()))
-    results.append(("REGLA 5: No avanzar con duda", test_rule_5_no_advance_on_doubt()))
+    # SEGMENTO 1/4
+    results.append(("S1 R1: No datos personales temprano", test_rule_1_no_personal_data_early()))
+    results.append(("S1 R2: No visa sin perfil", test_rule_2_no_visa_without_profile()))
+    results.append(("S1 R3: No opciones sin resumen", test_rule_3_no_options_without_summary()))
+    results.append(("S1 R4: Límite de formularios", test_rule_4_form_limit()))
+    results.append(("S1 R5: No avanzar con duda", test_rule_5_no_advance_on_doubt()))
+    
+    # SEGMENTO 2/4
+    results.append(("S2: Estados obligatorios", test_segment_2_mandatory_states()))
+    results.append(("S2: No saltar estados", test_segment_2_no_skip_states()))
+    results.append(("S2: 🚨 Confirmación requerida", test_segment_2_confirmation_required()))
+    results.append(("S2: Transición de estado", test_segment_2_state_transition()))
+    
     results.append(("Funciones de conveniencia", test_convenience_functions()))
     
     print("\n" + "#" * 70)

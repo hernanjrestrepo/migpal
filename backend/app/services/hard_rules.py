@@ -10,8 +10,8 @@ Si una regla se viola → el flujo NO puede avanzar.
 Si hay conflicto código vs regla → LA REGLA PREVALECE.
 
 SEGMENTOS:
-1/4 - Principios Inviolables (Core)
-2/4 - Conversación vs Formularios
+1/4 - Principios Inviolables (Core) ✅
+2/4 - Control de Flujo (Bloqueos) ✅
 3/4 - (Pendiente)
 4/4 - (Pendiente)
 """
@@ -32,6 +32,12 @@ class RuleViolation(Enum):
     OPTIONS_WITHOUT_SUMMARY = "options_without_summary"
     TOO_MANY_FORMS = "too_many_forms"
     ADVANCE_ON_DOUBT = "advance_on_doubt"
+    
+    # Segmento 2/4 - Control de Flujo (Bloqueos)
+    SKIPPED_MANDATORY_STATE = "skipped_mandatory_state"
+    UNDERSTANDING_NOT_CONFIRMED = "understanding_not_confirmed"
+    INVALID_STATE_TRANSITION = "invalid_state_transition"
+    MISSING_REQUIRED_DATA = "missing_required_data"
     
     # Segmento 2/4 - Conversación vs Formularios
     FORM_WITHOUT_DIALOGUE = "form_without_dialogue"
@@ -298,7 +304,229 @@ class HardRulesGuardian:
         return RuleCheckResult(passed=True)
     
     # =========================================================================
-    # SEGMENTO 2/4 — CONVERSACIÓN VS FORMULARIOS
+    # SEGMENTO 2/4 — CONTROL DE FLUJO (BLOQUEOS)
+    # =========================================================================
+    
+    # Estados OBLIGATORIOS y BLOQUEANTES - en orden estricto
+    MANDATORY_STATES = [
+        "greeting",              # Empatía + contención
+        "deep_motivation",       # Por qué quiere migrar (MOTIVATION)
+        "who_migrates",          # Quiénes, edades, familia
+        "current_situation",     # Trabajo, dinero, situación real (CURRENT_CONTEXT)
+        "desired_life",          # Vida deseada en USA (DESIRED_LIFE_USA)
+        "real_constraints",      # Edad, idioma, dinero, estatus (CONSTRAINTS)
+        "understanding",         # Resumen en lenguaje humano (UNDERSTANDING_SUMMARY)
+        # CONFIRMATION está implícito en understanding con confirmed_by_user
+    ]
+    
+    # Estados que requieren understanding_confirmed = true
+    STATES_REQUIRING_CONFIRMATION = [
+        "options",
+        "plan_creation",
+        "visa_analysis",
+        "recommendations",
+    ]
+    
+    # Datos requeridos por cada estado para poder avanzar
+    STATE_REQUIRED_DATA = {
+        "deep_motivation": [],  # Solo necesita interacción
+        "who_migrates": ["deep_motivation"],
+        "current_situation": ["migrating_alone"],  # o family_members
+        "desired_life": ["current_profession"],
+        "real_constraints": ["desired_lifestyle"],
+        "understanding": ["available_savings"],  # o timeline_urgency
+    }
+    
+    def check_state_transition(
+        self,
+        current_state: str,
+        next_state: str,
+        context: Dict[str, Any]
+    ) -> RuleCheckResult:
+        """
+        Verificar que la transición de estado sea válida.
+        
+        REGLAS:
+        1. No se puede saltar estados obligatorios
+        2. Estados posteriores a CONFIRMATION requieren understanding_confirmed = true
+        """
+        
+        # Verificar si se está saltando un estado obligatorio
+        result = self._check_no_skipped_states(current_state, next_state)
+        if not result.passed:
+            return result
+        
+        # Verificar si el estado requiere confirmación
+        result = self._check_confirmation_required(next_state, context)
+        if not result.passed:
+            return result
+        
+        # Verificar datos requeridos para el estado
+        result = self._check_required_data_for_state(next_state, context)
+        if not result.passed:
+            return result
+        
+        return RuleCheckResult(passed=True)
+    
+    def _check_no_skipped_states(
+        self,
+        current_state: str,
+        next_state: str
+    ) -> RuleCheckResult:
+        """
+        Verificar que no se salten estados obligatorios.
+        """
+        if current_state not in self.MANDATORY_STATES:
+            return RuleCheckResult(passed=True)
+        
+        if next_state not in self.MANDATORY_STATES:
+            # Transición a estado no obligatorio (ej: options)
+            # Verificar que se hayan completado todos los obligatorios
+            current_idx = self.MANDATORY_STATES.index(current_state)
+            if current_idx < len(self.MANDATORY_STATES) - 1:
+                # No ha completado todos los estados obligatorios
+                next_required = self.MANDATORY_STATES[current_idx + 1]
+                self._log_violation(RuleViolation.SKIPPED_MANDATORY_STATE, next_state)
+                return RuleCheckResult(
+                    passed=False,
+                    violation=RuleViolation.SKIPPED_MANDATORY_STATE,
+                    message=f"Debe completar '{next_required}' antes de ir a '{next_state}'",
+                    should_rollback=True,
+                    rollback_to_phase=current_state
+                )
+            return RuleCheckResult(passed=True)
+        
+        current_idx = self.MANDATORY_STATES.index(current_state)
+        next_idx = self.MANDATORY_STATES.index(next_state)
+        
+        # Solo puede avanzar al siguiente estado o quedarse
+        if next_idx > current_idx + 1:
+            skipped = self.MANDATORY_STATES[current_idx + 1]
+            self._log_violation(RuleViolation.SKIPPED_MANDATORY_STATE, next_state)
+            return RuleCheckResult(
+                passed=False,
+                violation=RuleViolation.SKIPPED_MANDATORY_STATE,
+                message=f"No se puede saltar de '{current_state}' a '{next_state}'. Falta: '{skipped}'",
+                should_rollback=True,
+                rollback_to_phase=current_state
+            )
+        
+        return RuleCheckResult(passed=True)
+    
+    def _check_confirmation_required(
+        self,
+        next_state: str,
+        context: Dict[str, Any]
+    ) -> RuleCheckResult:
+        """
+        🚨 REGLA CRÍTICA: Ningún estado posterior puede ejecutarse sin:
+        understanding_confirmed = true
+        """
+        if next_state not in self.STATES_REQUIRING_CONFIRMATION:
+            return RuleCheckResult(passed=True)
+        
+        understanding = context.get("understanding", {})
+        confirmed = understanding.get("confirmed_by_user", False)
+        
+        if not confirmed:
+            self._log_violation(RuleViolation.UNDERSTANDING_NOT_CONFIRMED, next_state)
+            return RuleCheckResult(
+                passed=False,
+                violation=RuleViolation.UNDERSTANDING_NOT_CONFIRMED,
+                message=f"🚨 BLOQUEADO: '{next_state}' requiere understanding_confirmed = true",
+                should_rollback=True,
+                rollback_to_phase="understanding"
+            )
+        
+        return RuleCheckResult(passed=True)
+    
+    def _check_required_data_for_state(
+        self,
+        next_state: str,
+        context: Dict[str, Any]
+    ) -> RuleCheckResult:
+        """
+        Verificar que existan los datos requeridos para avanzar al estado.
+        """
+        required_fields = self.STATE_REQUIRED_DATA.get(next_state, [])
+        
+        if not required_fields:
+            return RuleCheckResult(passed=True)
+        
+        understanding = context.get("understanding", {})
+        
+        for field in required_fields:
+            value = understanding.get(field)
+            
+            # Caso especial: migrating_alone puede ser reemplazado por family_members
+            if field == "migrating_alone" and value is None:
+                if understanding.get("family_members"):
+                    continue
+            
+            # Caso especial: available_savings puede ser reemplazado por timeline_urgency
+            if field == "available_savings" and value is None:
+                if understanding.get("timeline_urgency"):
+                    continue
+            
+            if value is None or value == "" or value == []:
+                self._log_violation(RuleViolation.MISSING_REQUIRED_DATA, next_state)
+                return RuleCheckResult(
+                    passed=False,
+                    violation=RuleViolation.MISSING_REQUIRED_DATA,
+                    message=f"Falta dato requerido '{field}' para avanzar a '{next_state}'",
+                    should_rollback=False
+                )
+        
+        return RuleCheckResult(passed=True)
+    
+    def get_next_mandatory_state(self, current_state: str) -> Optional[str]:
+        """
+        Obtener el siguiente estado obligatorio.
+        """
+        if current_state not in self.MANDATORY_STATES:
+            return self.MANDATORY_STATES[0] if self.MANDATORY_STATES else None
+        
+        current_idx = self.MANDATORY_STATES.index(current_state)
+        
+        if current_idx < len(self.MANDATORY_STATES) - 1:
+            return self.MANDATORY_STATES[current_idx + 1]
+        
+        return None  # Ya completó todos los estados obligatorios
+    
+    def is_understanding_confirmed(self, context: Dict[str, Any]) -> bool:
+        """
+        Verificar si el entendimiento está confirmado.
+        """
+        understanding = context.get("understanding", {})
+        return understanding.get("confirmed_by_user", False)
+    
+    def get_completed_states(self, context: Dict[str, Any]) -> List[str]:
+        """
+        Obtener lista de estados completados.
+        """
+        topics = context.get("topics_discussed", [])
+        completed = []
+        
+        for state in self.MANDATORY_STATES:
+            # Mapear estados a topics
+            topic_map = {
+                "greeting": "greeting",
+                "deep_motivation": "motivation",
+                "who_migrates": "family",
+                "current_situation": "current_situation",
+                "desired_life": "desired_life",
+                "real_constraints": "constraints",
+                "understanding": "understanding",
+            }
+            
+            topic = topic_map.get(state, state)
+            if topic in topics or state in topics:
+                completed.append(state)
+        
+        return completed
+    
+    # =========================================================================
+    # CONVERSACIÓN VS FORMULARIOS (parte del Segmento 2/4)
     # =========================================================================
     
     def check_form_prerequisites(
