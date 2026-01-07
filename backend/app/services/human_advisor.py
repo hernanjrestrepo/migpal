@@ -401,16 +401,20 @@ class HumanAdvisor:
         
         # Dinero
         money_patterns = [
-            (r"(?:tengo|cuento con|dispongo de)\s*\$?([\d,]+)", "savings"),
-            (r"(?:gano|salario|sueldo)\s*\$?([\d,]+)", "income"),
-            (r"(?:ahorr[oa]d?[oa]?s?)\s*\$?([\d,]+)", "savings"),
+            (r"(?:tengo|cuento con|dispongo de)[^\d]*\$?([\d,]+)", "savings"),
+            (r"(?:gano|salario|sueldo)[^\d]*\$?([\d,]+)", "income"),
+            (r"(?:ahorr[oa]d?[oa]?s?)[^\d]*\$?([\d,]+)", "savings"),
         ]
         
         for pattern, money_type in money_patterns:
             match = re.search(pattern, text_lower)
-            if match:
-                amount = int(match.group(1).replace(",", ""))
-                extracted[money_type] = amount
+            if match and match.group(1):
+                amount_str = match.group(1).replace(",", "")
+                if amount_str:
+                    try:
+                        extracted[money_type] = int(amount_str)
+                    except ValueError:
+                        pass
         
         # Urgencia
         if any(w in text_lower for w in ["urgente", "pronto", "ya", "inmediato", "este año"]):
@@ -445,10 +449,11 @@ class HumanAdvisor:
             r"perdón,?\s*(es|era|quise)",
             r"no es así",
             r"me expresé mal",
+            r"no,?\s*espera",  # "no, espera" en cualquier parte
+            r"\.\.\.[^.]*espera",  # "... espera"
         ]
         
         doubt_patterns = [
-            r"^no,?\s*espera",  # "No, espera" al inicio
             r"déjame pensar",
             r"un momento",
             r"^espera$",  # Solo "espera"
