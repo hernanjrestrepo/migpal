@@ -12,7 +12,7 @@ Si hay conflicto código vs regla → LA REGLA PREVALECE.
 SEGMENTOS:
 1/4 - Principios Inviolables (Core) ✅
 2/4 - Control de Flujo (Bloqueos) ✅
-3/4 - (Pendiente)
+3/4 - Inteligencia Conversacional ✅
 4/4 - (Pendiente)
 """
 
@@ -44,6 +44,12 @@ class RuleViolation(Enum):
     CHECKLIST_QUESTIONS = "checklist_questions"
     IGNORED_USER_INPUT = "ignored_user_input"
     BOT_LIKE_BEHAVIOR = "bot_like_behavior"
+    
+    # Segmento 3/4 - Inteligencia Conversacional
+    CORRECTION_NOT_HANDLED = "correction_not_handled"
+    OFF_TOPIC_IGNORED = "off_topic_ignored"
+    AUDIO_NOT_CONFIRMED = "audio_not_confirmed"
+    NO_EXPLANATION_WHY = "no_explanation_why"
 
 
 @dataclass
@@ -579,6 +585,343 @@ class HardRulesGuardian:
                 passed=False,
                 violation=RuleViolation.CHECKLIST_QUESTIONS,
                 message="Demasiadas preguntas encadenadas (checklist)"
+            )
+        
+        return RuleCheckResult(passed=True)
+    
+    # =========================================================================
+    # SEGMENTO 3/4 — INTELIGENCIA CONVERSACIONAL
+    # =========================================================================
+    
+    # Patrones de corrección del usuario
+    CORRECTION_PATTERNS = [
+        r"no,?\s*(en realidad|quise decir|me equivoqué)",
+        r"corrijo",
+        r"no es así",
+        r"cambiar",
+        r"corregir",
+        r"no,?\s*es",
+        r"en realidad",
+        r"me equivoqué",
+        r"quería decir",
+        r"no,?\s*lo que",
+    ]
+    
+    # Patrones de respuesta fuera de tema
+    OFF_TOPIC_INDICATORS = [
+        r"otra cosa",
+        r"cambiando de tema",
+        r"por cierto",
+        r"antes de eso",
+        r"una pregunta",
+        r"tengo una duda",
+        r"\?",  # Pregunta del usuario
+    ]
+    
+    def detect_user_correction(self, user_text: str) -> Tuple[bool, Optional[str]]:
+        """
+        Detectar si el usuario está corrigiendo algo.
+        
+        REGLA: Si el usuario corrige algo, el sistema:
+        - NO avanza
+        - Reinterpreta
+        - Confirma nuevamente
+        
+        Returns:
+            (is_correction, correction_type)
+        """
+        import re
+        text_lower = user_text.lower()
+        
+        for pattern in self.CORRECTION_PATTERNS:
+            if re.search(pattern, text_lower):
+                # Determinar tipo de corrección basado en contenido
+                if any(w in text_lower for w in ["familia", "solo", "esposa", "hijos", "pareja"]):
+                    return True, "family_correction"
+                elif any(w in text_lower for w in ["trabajo", "profesión", "ingeniero", "contador", "abogado", "médico"]):
+                    return True, "profession_correction"
+                elif any(w in text_lower for w in ["dinero", "ahorro", "$", "dólares", "pesos"]):
+                    return True, "financial_correction"
+                else:
+                    return True, "general_correction"
+        
+        return False, None
+    
+    def detect_off_topic_response(
+        self,
+        user_text: str,
+        expected_topic: str
+    ) -> Tuple[bool, Optional[str]]:
+        """
+        Detectar si el usuario respondió algo fuera de la pregunta.
+        
+        REGLA: Si el usuario responde algo fuera de la pregunta:
+        - Interpretar intención
+        - Ajustar contexto
+        - NO ignorar el mensaje
+        
+        Returns:
+            (is_off_topic, detected_intention)
+        """
+        import re
+        text_lower = user_text.lower()
+        
+        # Detectar si es una pregunta del usuario
+        if "?" in user_text:
+            return True, "user_question"
+        
+        # Detectar cambio de tema explícito
+        for pattern in self.OFF_TOPIC_INDICATORS:
+            if re.search(pattern, text_lower):
+                return True, "topic_change"
+        
+        # Detectar si habla de algo diferente al tema esperado
+        topic_keywords = {
+            "motivation": ["quiero", "necesito", "busco", "sueño", "deseo"],
+            "family": ["familia", "esposa", "hijos", "solo", "pareja"],
+            "profession": ["trabajo", "profesión", "experiencia", "años"],
+            "lifestyle": ["vida", "vivir", "ciudad", "clima"],
+            "constraints": ["dinero", "ahorro", "tiempo", "urgencia"],
+        }
+        
+        expected_keywords = topic_keywords.get(expected_topic, [])
+        
+        # Si no menciona ninguna palabra clave del tema esperado
+        if expected_keywords and not any(kw in text_lower for kw in expected_keywords):
+            # Detectar qué tema sí mencionó
+            for topic, keywords in topic_keywords.items():
+                if topic != expected_topic and any(kw in text_lower for kw in keywords):
+                    return True, f"talking_about_{topic}"
+        
+        return False, None
+    
+    def handle_correction(
+        self,
+        user_text: str,
+        correction_type: str,
+        current_understanding: Dict[str, Any],
+        lang: str = "es"
+    ) -> Dict[str, Any]:
+        """
+        Manejar una corrección del usuario.
+        
+        Returns:
+            Dict con:
+            - response: Mensaje de confirmación
+            - should_reinterpret: True
+            - field_to_update: Campo a actualizar
+        """
+        if lang == "es":
+            responses = {
+                "family_correction": (
+                    "Entendido, gracias por la aclaración. 🙏\n\n"
+                    "Entonces, ¿me confirmas quiénes migrarían contigo?"
+                ),
+                "profession_correction": (
+                    "Gracias por corregirme. 📝\n\n"
+                    "¿Cuál es tu profesión o trabajo actual?"
+                ),
+                "financial_correction": (
+                    "Entiendo, actualizo esa información. 💰\n\n"
+                    "¿Con cuánto cuentas aproximadamente?"
+                ),
+                "general_correction": (
+                    "Gracias por la aclaración. 🙏\n\n"
+                    "Cuéntame más para asegurarme de entenderte bien."
+                ),
+            }
+        else:
+            responses = {
+                "family_correction": (
+                    "Understood, thanks for the clarification. 🙏\n\n"
+                    "So, can you confirm who would be migrating with you?"
+                ),
+                "general_correction": (
+                    "Thanks for the clarification. 🙏\n\n"
+                    "Tell me more so I can make sure I understand you correctly."
+                ),
+            }
+        
+        field_map = {
+            "family_correction": "family_members",
+            "profession_correction": "current_profession",
+            "financial_correction": "available_savings",
+            "general_correction": None,
+        }
+        
+        return {
+            "response": responses.get(correction_type, responses["general_correction"]),
+            "should_reinterpret": True,
+            "field_to_update": field_map.get(correction_type),
+            "should_advance": False,  # NUNCA avanzar en corrección
+        }
+    
+    def handle_off_topic(
+        self,
+        user_text: str,
+        detected_intention: str,
+        current_phase: str,
+        lang: str = "es"
+    ) -> Dict[str, Any]:
+        """
+        Manejar respuesta fuera de tema.
+        
+        REGLA: NO ignorar el mensaje, interpretar y ajustar.
+        """
+        if lang == "es":
+            if detected_intention == "user_question":
+                return {
+                    "response": (
+                        "Buena pregunta. 🤔\n\n"
+                        "Déjame responderla y luego continuamos."
+                    ),
+                    "should_answer_question": True,
+                    "should_advance": False,
+                }
+            elif detected_intention == "topic_change":
+                return {
+                    "response": (
+                        "Entiendo que quieres hablar de eso. 💬\n\n"
+                        "Cuéntame, te escucho."
+                    ),
+                    "should_adjust_context": True,
+                    "should_advance": False,
+                }
+            elif detected_intention.startswith("talking_about_"):
+                topic = detected_intention.replace("talking_about_", "")
+                return {
+                    "response": (
+                        f"Veo que mencionas algo sobre {topic}. 📝\n\n"
+                        "Eso es importante, lo tengo en cuenta."
+                    ),
+                    "should_store_info": True,
+                    "detected_topic": topic,
+                    "should_advance": False,
+                }
+        
+        return {
+            "response": "Entiendo. Cuéntame más.",
+            "should_advance": False,
+        }
+    
+    def handle_audio_message(
+        self,
+        transcription: str,
+        lang: str = "es"
+    ) -> Dict[str, Any]:
+        """
+        Manejar mensaje de audio.
+        
+        REGLA: Si llega audio:
+        - Transcribir
+        - Parafrasear
+        - Confirmar comprensión
+        """
+        # Parafrasear el contenido
+        paraphrase = self._paraphrase_text(transcription, lang)
+        
+        if lang == "es":
+            response = (
+                f"Escuché tu mensaje de voz. 🎤\n\n"
+                f"Entiendo que: *{paraphrase}*\n\n"
+                f"¿Es correcto o quieres que ajuste algo?"
+            )
+        else:
+            response = (
+                f"I heard your voice message. 🎤\n\n"
+                f"I understand that: *{paraphrase}*\n\n"
+                f"Is that correct or would you like me to adjust something?"
+            )
+        
+        return {
+            "response": response,
+            "transcription": transcription,
+            "paraphrase": paraphrase,
+            "requires_confirmation": True,
+            "should_advance": False,  # Esperar confirmación
+        }
+    
+    def _paraphrase_text(self, text: str, lang: str = "es") -> str:
+        """
+        Parafrasear texto para confirmar comprensión.
+        """
+        # Simplificar y resumir el texto
+        # Por ahora, una versión simple
+        text = text.strip()
+        
+        if len(text) > 100:
+            # Tomar las primeras oraciones
+            sentences = text.split(".")
+            if len(sentences) > 2:
+                text = ". ".join(sentences[:2]) + "..."
+        
+        return text
+    
+    def check_response_has_explanation(
+        self,
+        bot_response: str,
+        lang: str = "es"
+    ) -> RuleCheckResult:
+        """
+        REGLA: MigPAL DEBE explicar lo que hace y por qué pregunta.
+        
+        Verificar que la respuesta incluya contexto/explicación.
+        """
+        import re
+        response_lower = bot_response.lower()
+        
+        # Patrones que indican explicación
+        explanation_patterns_es = [
+            r"porque",
+            r"para (poder|entender|conocer|ayudarte)",
+            r"esto (me ayuda|es importante|sirve)",
+            r"así (puedo|podré)",
+            r"necesito (saber|entender|conocer)",
+            r"quiero (asegurarme|entender)",
+            r"es importante",
+            r"me ayuda a",
+        ]
+        
+        explanation_patterns_en = [
+            r"because",
+            r"so (i can|that i)",
+            r"this (helps|is important)",
+            r"i need to (know|understand)",
+            r"i want to (make sure|understand)",
+        ]
+        
+        patterns = explanation_patterns_es if lang == "es" else explanation_patterns_en
+        
+        # Verificar si hay alguna explicación
+        has_explanation = any(
+            re.search(pattern, response_lower)
+            for pattern in patterns
+        )
+        
+        # También es válido si es una respuesta empática o de confirmación
+        empathy_patterns = [
+            r"entiendo",
+            r"gracias por",
+            r"comprendo",
+            r"me cuentas",
+            r"cuéntame",
+        ]
+        
+        has_empathy = any(
+            re.search(pattern, response_lower)
+            for pattern in empathy_patterns
+        )
+        
+        if has_explanation or has_empathy:
+            return RuleCheckResult(passed=True)
+        
+        # Si es una pregunta directa sin contexto, es violación
+        if "?" in bot_response and not has_explanation and not has_empathy:
+            self._log_violation(RuleViolation.NO_EXPLANATION_WHY, "bot_response")
+            return RuleCheckResult(
+                passed=False,
+                violation=RuleViolation.NO_EXPLANATION_WHY,
+                message="Respuesta sin explicación del porqué se pregunta"
             )
         
         return RuleCheckResult(passed=True)

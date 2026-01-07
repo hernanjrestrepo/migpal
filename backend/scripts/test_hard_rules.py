@@ -346,6 +346,147 @@ def test_segment_2_state_transition():
     return all_passed
 
 
+def test_segment_3_correction_detection():
+    """
+    SEGMENTO 3/4: Detectar correcciones del usuario
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 3/4: Detección de Correcciones")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    test_cases = [
+        # (user_text, should_detect, expected_type)
+        ("No, en realidad viajo con mi esposa", True, "family_correction"),
+        ("Corrijo, soy ingeniero no contador", True, "profession_correction"),
+        ("Me equivoqué, tengo $30,000 no $20,000", True, "financial_correction"),
+        ("No es así, déjame explicarte", True, "general_correction"),
+        ("Sí, es correcto", False, None),
+        ("Perfecto, continuemos", False, None),
+        ("Quería decir que mi familia viene conmigo", True, "family_correction"),
+    ]
+    
+    all_passed = True
+    for text, should_detect, expected_type in test_cases:
+        is_correction, correction_type = guardian.detect_user_correction(text)
+        
+        passed = (is_correction == should_detect)
+        if should_detect and expected_type:
+            passed = passed and (correction_type == expected_type)
+        
+        status = "✅" if passed else "❌"
+        print(f"   {status} '{text[:35]}...' → {'CORRECCIÓN' if is_correction else 'normal'} ({correction_type})")
+        
+        if not passed:
+            all_passed = False
+    
+    return all_passed
+
+
+def test_segment_3_off_topic_detection():
+    """
+    SEGMENTO 3/4: Detectar respuestas fuera de tema
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 3/4: Detección Fuera de Tema")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    test_cases = [
+        # (user_text, expected_topic, should_detect, expected_intention)
+        ("¿Cuánto cuesta una visa?", "family", True, "user_question"),
+        ("Por cierto, tengo una duda", "profession", True, "topic_change"),
+        ("Soy ingeniero con 10 años", "profession", False, None),
+        ("Mi esposa y dos hijos", "family", False, None),
+        # Este caso es complejo - el usuario menciona dinero cuando se pregunta por familia
+        # Pero como no tiene ?, no se detecta como pregunta
+        ("Otra cosa, tengo $50,000 ahorrados", "family", True, "topic_change"),
+    ]
+    
+    all_passed = True
+    for text, topic, should_detect, expected_intention in test_cases:
+        is_off_topic, intention = guardian.detect_off_topic_response(text, topic)
+        
+        passed = (is_off_topic == should_detect)
+        if should_detect and expected_intention:
+            passed = passed and (intention == expected_intention)
+        
+        status = "✅" if passed else "❌"
+        result = f"OFF-TOPIC ({intention})" if is_off_topic else "on-topic"
+        print(f"   {status} '{text[:30]}...' (tema: {topic}) → {result}")
+        
+        if not passed:
+            all_passed = False
+    
+    return all_passed
+
+
+def test_segment_3_audio_handling():
+    """
+    SEGMENTO 3/4: Manejo de mensajes de audio
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 3/4: Manejo de Audio")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    transcription = "Quiero migrar porque mi país está muy difícil y busco mejores oportunidades para mi familia"
+    
+    result = guardian.handle_audio_message(transcription, "es")
+    
+    checks = [
+        ("response" in result, "Tiene respuesta"),
+        ("transcription" in result, "Guarda transcripción"),
+        ("paraphrase" in result, "Genera paráfrasis"),
+        (result.get("requires_confirmation", False), "Requiere confirmación"),
+        (not result.get("should_advance", True), "NO avanza automáticamente"),
+        ("¿Es correcto" in result.get("response", ""), "Pide confirmación"),
+    ]
+    
+    all_passed = True
+    for check, description in checks:
+        status = "✅" if check else "❌"
+        print(f"   {status} {description}")
+        if not check:
+            all_passed = False
+    
+    return all_passed
+
+
+def test_segment_3_explanation_required():
+    """
+    SEGMENTO 3/4: MigPAL DEBE explicar por qué pregunta
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 3/4: Explicación Requerida")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    test_cases = [
+        # (bot_response, should_pass, desc)
+        ("Para poder ayudarte mejor, ¿cuál es tu profesión?", True, "Con explicación"),
+        ("Entiendo tu situación. Cuéntame más.", True, "Con empatía"),
+        ("Gracias por compartir eso. ¿Quiénes migrarían contigo?", True, "Con agradecimiento"),
+        ("¿Cuál es tu nombre?", False, "Pregunta sin contexto"),
+        ("¿Cuántos años tienes?", False, "Pregunta directa"),
+        ("Necesito saber tu situación para darte opciones reales.", True, "Con necesidad explicada"),
+    ]
+    
+    all_passed = True
+    for response, should_pass, desc in test_cases:
+        result = guardian.check_response_has_explanation(response, "es")
+        status = "✅" if result.passed == should_pass else "❌"
+        print(f"   {status} {desc}: {'PASS' if result.passed else 'BLOCK'}")
+        if result.passed != should_pass:
+            all_passed = False
+    
+    return all_passed
+
+
 def test_convenience_functions():
     """Test funciones de conveniencia"""
     print("\n" + "=" * 70)
@@ -392,6 +533,12 @@ def main():
     results.append(("S2: No saltar estados", test_segment_2_no_skip_states()))
     results.append(("S2: 🚨 Confirmación requerida", test_segment_2_confirmation_required()))
     results.append(("S2: Transición de estado", test_segment_2_state_transition()))
+    
+    # SEGMENTO 3/4
+    results.append(("S3: Detección de correcciones", test_segment_3_correction_detection()))
+    results.append(("S3: Detección fuera de tema", test_segment_3_off_topic_detection()))
+    results.append(("S3: Manejo de audio", test_segment_3_audio_handling()))
+    results.append(("S3: Explicación requerida", test_segment_3_explanation_required()))
     
     results.append(("Funciones de conveniencia", test_convenience_functions()))
     
