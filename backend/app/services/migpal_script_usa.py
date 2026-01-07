@@ -878,6 +878,161 @@ And in terms of time: *is there any urgency or do you have flexibility?*"""
                 requires_confirmation=True
             )
     
+    # =========================================================================
+    # SEGMENTO 6: INTRODUCCIÓN AL SISTEMA MIGRATORIO USA (SIN RECOMENDAR)
+    # =========================================================================
+    
+    SEGMENT_6_INTRO = {
+        "es": """Perfecto. Gracias por confirmarlo. ✅
+
+Estados Unidos tiene muchos caminos migratorios, pero no todos sirven para todas las personas.
+
+⚠️ *Elegir mal una visa puede costar años y mucho dinero.*
+
+Por eso, primero analizamos tu perfil humano y profesional, y solo después vemos qué opciones migratorias tienen sentido *en la vida real*, no en teoría.
+
+👉 *¿Te parece si ahora revisamos, con calma, qué caminos podrían ser viables para ti en USA?*""",
+
+        "en": """Perfect. Thanks for confirming. ✅
+
+The United States has many immigration paths, but not all of them work for everyone.
+
+⚠️ *Choosing the wrong visa can cost years and a lot of money.*
+
+That's why we first analyze your human and professional profile, and only then look at what immigration options make sense *in real life*, not in theory.
+
+👉 *Would you like us to now review, calmly, what paths could be viable for you in the USA?*"""
+    }
+    
+    SEGMENT_6_RESPONSES = {
+        "es": {
+            "ready": (
+                "¡Excelente! Vamos a ello. 🚀\n\n"
+                "Basado en todo lo que me has contado, voy a analizar "
+                "las opciones que realmente podrían funcionar para ti.\n\n"
+                "Dame un momento mientras proceso tu perfil..."
+            ),
+            "not_ready": (
+                "Entiendo, no hay prisa. 🙏\n\n"
+                "Cuando estés listo/a para explorar las opciones, "
+                "solo dímelo. Estaré aquí.\n\n"
+                "¿Hay algo más que quieras contarme o preguntar antes?"
+            ),
+            "questions": (
+                "Claro, es normal tener preguntas antes de avanzar. 🤔\n\n"
+                "¿Qué te gustaría saber?"
+            ),
+        },
+        "en": {
+            "ready": (
+                "Excellent! Let's do it. 🚀\n\n"
+                "Based on everything you've told me, I'm going to analyze "
+                "the options that could really work for you.\n\n"
+                "Give me a moment while I process your profile..."
+            ),
+            "not_ready": (
+                "I understand, no rush. 🙏\n\n"
+                "When you're ready to explore the options, "
+                "just let me know. I'll be here.\n\n"
+                "Is there anything else you'd like to tell me or ask before?"
+            ),
+        }
+    }
+    
+    def get_segment_6_intro(self, lang: str = "es") -> ScriptResponse:
+        """
+        Obtener la introducción al sistema migratorio.
+        
+        Se muestra DESPUÉS de confirmar el resumen, ANTES de recomendar visas.
+        """
+        message = self.SEGMENT_6_INTRO.get(lang, self.SEGMENT_6_INTRO["es"])
+        
+        return ScriptResponse(
+            message=message,
+            segment=ScriptSegment.S8_OPCIONES_MIGRATORIAS,
+            can_advance=False,
+            requires_confirmation=True,  # Necesita consentimiento para analizar visas
+            buttons=[
+                ("✅ Sí, vamos a verlo", "start_visa_analysis"),
+                ("🤔 Tengo preguntas primero", "questions_first"),
+                ("⏸️ Prefiero esperar", "wait"),
+            ] if lang == "es" else [
+                ("✅ Yes, let's see it", "start_visa_analysis"),
+                ("🤔 I have questions first", "questions_first"),
+                ("⏸️ I prefer to wait", "wait"),
+            ]
+        )
+    
+    def process_segment_6(
+        self,
+        user_text: str,
+        lang: str = "es"
+    ) -> ScriptResponse:
+        """
+        Procesar respuesta del Segmento 6.
+        
+        REGLA: Solo con consentimiento se pasa a análisis de visas.
+        """
+        import re
+        
+        text_lower = user_text.lower()
+        responses = self.SEGMENT_6_RESPONSES.get(lang, self.SEGMENT_6_RESPONSES["es"])
+        
+        # Detectar si está listo para continuar
+        ready_patterns = [
+            r"sí|si|yes|vamos|dale|ok|claro|por supuesto|adelante",
+            r"quiero ver|muéstrame|análisis|opciones",
+        ]
+        
+        is_ready = any(
+            re.search(pattern, text_lower)
+            for pattern in ready_patterns
+        )
+        
+        # Detectar si tiene preguntas
+        question_patterns = [
+            r"pregunta|duda|\?|qué|cómo|cuál|cuánto",
+        ]
+        
+        has_questions = any(
+            re.search(pattern, text_lower)
+            for pattern in question_patterns
+        )
+        
+        # Detectar si prefiere esperar
+        wait_patterns = [
+            r"no|esperar|después|luego|todavía no|aún no",
+        ]
+        
+        wants_to_wait = any(
+            re.search(pattern, text_lower)
+            for pattern in wait_patterns
+        )
+        
+        if is_ready and not wants_to_wait:
+            # ¡Listo para análisis de visas!
+            return ScriptResponse(
+                message=responses["ready"],
+                segment=ScriptSegment.S8_OPCIONES_MIGRATORIAS,
+                can_advance=True,
+                requires_confirmation=False
+            )
+        elif has_questions:
+            return ScriptResponse(
+                message=responses.get("questions", responses["not_ready"]),
+                segment=ScriptSegment.S8_OPCIONES_MIGRATORIAS,
+                can_advance=False,
+                requires_confirmation=True
+            )
+        else:
+            # Prefiere esperar
+            return ScriptResponse(
+                message=responses["not_ready"],
+                segment=ScriptSegment.S8_OPCIONES_MIGRATORIAS,
+                can_advance=False,
+                requires_confirmation=True
+            )
+    
     def is_visa_talk_allowed(self) -> bool:
         """Verificar si se puede hablar de visas (solo después de S7)"""
         allowed_segments = [

@@ -963,14 +963,18 @@ class HumanAdvisor:
         self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
     ) -> Dict[str, Any]:
         """
-        SEGMENTO 8: Opciones migratorias
+        SEGMENTO 6 y 8: Introducción al sistema migratorio + Opciones
         
-        SOLO se llega aquí después de confirmar el resumen.
-        Ahora SÍ podemos hablar de visas, estados, ciudades.
+        FLUJO:
+        1. Primera vez: Mostrar Segmento 6 (introducción, pedir consentimiento)
+        2. Con consentimiento: Mostrar análisis de visas
+        
+        REGLA: Solo con consentimiento se pasa a análisis de visas.
         """
+        from app.services.migpal_script_usa import MigPALScriptUSA
+        
         # Verificar que el resumen fue confirmado
         if not ctx.understanding.confirmed_by_user:
-            # Esto no debería pasar, pero por seguridad
             if lang == "es":
                 return {
                     "response": "Antes de darte opciones, necesito confirmar que entendí bien tu situación. ¿Podemos revisar el resumen?",
@@ -980,37 +984,79 @@ class HumanAdvisor:
                     "needs_validation": True,
                 }
         
-        # Aquí iría la lógica de recomendaciones de visas
-        # Por ahora, mensaje placeholder
-        if lang == "es":
-            response = (
-                "🎯 *OPCIONES MIGRATORIAS PARA TI*\n\n"
-                "Basándome en tu perfil, estas son las opciones que más te convienen:\n\n"
-                "_(Análisis de visas en desarrollo...)_\n\n"
-                "Pronto te daré recomendaciones específicas de:\n"
-                "- Tipos de visa aplicables\n"
-                "- Estados/ciudades recomendados\n"
-                "- Pasos a seguir\n"
-                "- Costos estimados"
-            )
-        else:
-            response = (
-                "🎯 *MIGRATION OPTIONS FOR YOU*\n\n"
-                "Based on your profile, these are the options that suit you best:\n\n"
-                "_(Visa analysis in development...)_\n\n"
-                "Soon I'll give you specific recommendations for:\n"
-                "- Applicable visa types\n"
-                "- Recommended states/cities\n"
-                "- Steps to follow\n"
-                "- Estimated costs"
-            )
+        script = MigPALScriptUSA()
         
+        # Verificar si ya mostramos la introducción del Segmento 6
+        if "segment_6_shown" not in ctx.topics_discussed:
+            # Primera vez en esta fase: mostrar Segmento 6
+            ctx.topics_discussed.append("segment_6_shown")
+            intro = script.get_segment_6_intro(lang)
+            
+            return {
+                "response": intro.message,
+                "buttons": intro.buttons,
+                "extracted_data": extracted,
+                "phase_changed": False,
+                "needs_validation": True,
+            }
+        
+        # Ya mostramos la intro, procesar respuesta del usuario
+        script_response = script.process_segment_6(text, lang)
+        
+        # Si el usuario dio consentimiento, mostrar análisis
+        if script_response.can_advance:
+            ctx.topics_discussed.append("visa_analysis_started")
+            
+            # Aquí iría el análisis real de visas basado en el perfil
+            # Por ahora, mensaje de transición
+            if lang == "es":
+                analysis_intro = (
+                    "🚀 *ANALIZANDO TU PERFIL...*\n\n"
+                    "Basado en lo que me contaste:\n"
+                    f"- Profesión: {ctx.understanding.current_profession or 'No especificada'}\n"
+                    f"- Experiencia: {ctx.understanding.years_experience or '?'} años\n"
+                    f"- Familia: {'Solo/a' if ctx.understanding.migrating_alone else 'Con familia'}\n"
+                    f"- Recursos: ${ctx.understanding.available_savings:,}" if ctx.understanding.available_savings else "- Recursos: No especificados"
+                )
+                analysis_intro += "\n\n"
+                analysis_intro += (
+                    "🎯 *OPCIONES MIGRATORIAS VIABLES*\n\n"
+                    "_(Análisis detallado de visas en desarrollo...)_\n\n"
+                    "Pronto te mostraré:\n"
+                    "- Visas para las que calificas\n"
+                    "- Pros y contras de cada opción\n"
+                    "- Tiempos y costos estimados\n"
+                    "- Estados/ciudades recomendados"
+                )
+            else:
+                analysis_intro = (
+                    "🚀 *ANALYZING YOUR PROFILE...*\n\n"
+                    "Based on what you told me:\n"
+                    f"- Profession: {ctx.understanding.current_profession or 'Not specified'}\n"
+                    f"- Experience: {ctx.understanding.years_experience or '?'} years\n"
+                    f"- Family: {'Alone' if ctx.understanding.migrating_alone else 'With family'}\n"
+                )
+                analysis_intro += "\n\n"
+                analysis_intro += (
+                    "🎯 *VIABLE MIGRATION OPTIONS*\n\n"
+                    "_(Detailed visa analysis in development...)_"
+                )
+            
+            return {
+                "response": analysis_intro,
+                "buttons": None,
+                "extracted_data": extracted,
+                "phase_changed": False,
+                "needs_validation": False,
+            }
+        
+        # Usuario tiene preguntas o prefiere esperar
         return {
-            "response": response,
-            "buttons": None,
+            "response": script_response.message,
+            "buttons": script_response.buttons if script_response.requires_confirmation else None,
             "extracted_data": extracted,
             "phase_changed": False,
-            "needs_validation": False,
+            "needs_validation": script_response.requires_confirmation,
         }
     
     def _create_validation_summary(self, extracted: Dict, lang: str) -> Optional[str]:
