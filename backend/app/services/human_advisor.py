@@ -580,46 +580,50 @@ class HumanAdvisor:
     async def _phase_greeting(
         self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
     ) -> Dict[str, Any]:
-        """Fase de saludo - transición a motivación profunda"""
+        """
+        SEGMENTO 1: Inicio humano y contención
         
-        # Actualizar datos si hay
-        if extracted.get("motivation_type"):
-            ctx.understanding.deep_motivation = extracted["motivation_type"]
+        GUIÓN OFICIAL:
+        - Escuchar sin pedir datos
+        - No avanzar hasta que el usuario haya compartido
+        - Respuestas empáticas según estado emocional
+        """
+        from app.services.migpal_script_usa import get_migpal_script_usa
         
-        # Respuesta empática según emoción
-        emotional_responses = {
-            EmotionalState.ANXIOUS: "Noto que hay algo de ansiedad, y es completamente normal. ",
-            EmotionalState.EXCITED: "¡Me encanta tu entusiasmo! ",
-            EmotionalState.FEARFUL: "Entiendo que puede dar un poco de miedo. Estoy aquí para ayudarte. ",
-            EmotionalState.CONFUSED: "Sé que hay mucha información y puede ser abrumador. ",
-        }
+        script = get_migpal_script_usa()
         
-        emotional_prefix = emotional_responses.get(ctx.emotional_state, "")
+        # Si es la primera interacción, dar el saludo oficial
+        if ctx.interaction_count <= 1:
+            greeting = script.get_greeting(lang)
+            return {
+                "response": greeting.message,
+                "buttons": None,
+                "extracted_data": extracted,
+                "phase_changed": False,
+                "needs_validation": False,
+            }
         
-        if lang == "es":
-            response = (
-                f"{emotional_prefix}\n\n"
-                "Antes de hablar de visas o países, me gustaría conocerte mejor. 🤝\n\n"
-                "Cuéntame... ¿qué es lo que realmente te motiva a considerar migrar? "
-                "No me refiero solo a 'mejor trabajo' o 'mejor vida', sino... "
-                "¿qué hay detrás de eso? ¿Qué sueñas lograr?"
-            )
-        else:
-            response = (
-                f"{emotional_prefix}\n\n"
-                "Before talking about visas or countries, I'd like to get to know you better. 🤝\n\n"
-                "Tell me... what really motivates you to consider migrating? "
-                "I don't mean just 'better job' or 'better life', but... "
-                "what's behind that? What do you dream of achieving?"
-            )
+        # Procesar respuesta del usuario en Segmento 1
+        emotional_state = ctx.emotional_state.value
+        script_response = script.process_segment_1(text, emotional_state, lang)
         
-        ctx.phase = ExplorationPhase.DEEP_MOTIVATION
+        # Si el guion indica transición a Segmento 2, cambiar fase
+        if script_response.segment.value == "s2_escucha_profunda":
+            ctx.phase = ExplorationPhase.DEEP_MOTIVATION
+            return {
+                "response": script_response.message,
+                "buttons": None,
+                "extracted_data": extracted,
+                "phase_changed": True,
+                "needs_validation": False,
+            }
         
+        # Seguir en Segmento 1 - escuchando
         return {
-            "response": response,
+            "response": script_response.message,
             "buttons": None,
             "extracted_data": extracted,
-            "phase_changed": True,
+            "phase_changed": False,
             "needs_validation": False,
         }
     
