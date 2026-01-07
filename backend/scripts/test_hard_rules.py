@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from app.services.hard_rules import (
     HardRulesGuardian,
     RuleViolation,
+    RuleCheckResult,
     can_advance_phase,
     can_show_visa_options,
     should_rollback_on_doubt,
@@ -734,6 +735,175 @@ def test_segment_4_full_validation():
     return all_passed
 
 
+def test_segment_5_summary_validation():
+    """
+    SEGMENTO 5/5: UNDERSTANDING_SUMMARY debe:
+    - Parafrasear al usuario
+    - Incluir familia, motivación y restricciones
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 5/5: Validación de Resumen")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    # Resumen completo
+    complete_summary = """
+    Entiendo que quieres migrar a USA porque buscas mejores oportunidades.
+    Viajarías con tu esposa y dos hijos.
+    Tienes un presupuesto de $50,000 y necesitas hacerlo en 2 años.
+    """
+    
+    # Resumen sin paráfrasis
+    no_paraphrase = """
+    Familia: esposa y dos hijos.
+    Presupuesto: $50,000.
+    Plazo: 2 años.
+    """
+    
+    # Resumen sin motivación
+    no_motivation = """
+    Entiendo que viajarías con tu esposa y dos hijos.
+    Tienes un presupuesto de $50,000.
+    """
+    
+    context = {
+        "understanding": {
+            "family_members": [{"type": "spouse"}, {"type": "child"}],
+            "available_savings": 50000,
+        }
+    }
+    
+    test_cases = [
+        (complete_summary, context, True, "Resumen completo"),
+        (no_paraphrase, context, False, "Sin paráfrasis"),
+        (no_motivation, context, False, "Sin motivación"),
+    ]
+    
+    all_passed = True
+    for summary, ctx, should_pass, desc in test_cases:
+        result = guardian.validate_understanding_summary(summary, ctx, "es")
+        status = "✅" if result.passed == should_pass else "❌"
+        print(f"   {status} {desc}: {'PASS' if result.passed else 'BLOCK'}")
+        if result.passed != should_pass:
+            all_passed = False
+    
+    return all_passed
+
+
+def test_segment_5_confirmation_required():
+    """
+    SEGMENTO 5/5: Resumen debe ser confirmado explícitamente
+    Si no hay confirmación: No avanzar, Reiterar con lenguaje humano
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 5/5: Confirmación Explícita")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    confirmed_context = {"understanding": {"confirmed_by_user": True}}
+    unconfirmed_context = {"understanding": {"confirmed_by_user": False}}
+    
+    test_cases = [
+        (confirmed_context, True, "Con confirmación"),
+        (unconfirmed_context, False, "🚨 Sin confirmación"),
+    ]
+    
+    all_passed = True
+    for context, should_pass, desc in test_cases:
+        result = guardian.check_summary_confirmed(context)
+        status = "✅" if result.passed == should_pass else "❌"
+        print(f"   {status} {desc}: {'PASS' if result.passed else 'BLOQUEADO'}")
+        if result.passed != should_pass:
+            all_passed = False
+    
+    # Verificar mensaje de reiteración
+    reiteration = guardian.get_reiteration_message("es")
+    has_reiteration = "no capturé todo" in reiteration and "intentar de nuevo" in reiteration
+    status = "✅" if has_reiteration else "❌"
+    print(f"   {status} Mensaje de reiteración disponible")
+    if not has_reiteration:
+        all_passed = False
+    
+    return all_passed
+
+
+def test_segment_5_bypass_detection():
+    """
+    SEGMENTO 5/5: ⚠️ Estas reglas NO se pueden bypassear con hardcode ni shortcuts
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 5/5: ⚠️ Detección de Bypass")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    confirmed_context = {"understanding": {"confirmed_by_user": True}}
+    unconfirmed_context = {"understanding": {"confirmed_by_user": False}}
+    
+    test_cases = [
+        ("show_visa_options", unconfirmed_context, False, "⚠️ show_visa_options sin confirmar"),
+        ("show_visa_options", confirmed_context, True, "show_visa_options con confirmar"),
+        ("recommend_visa", unconfirmed_context, False, "⚠️ recommend_visa sin confirmar"),
+        ("create_plan", unconfirmed_context, False, "⚠️ create_plan sin confirmar"),
+        ("skip_to_options", unconfirmed_context, False, "⚠️ skip_to_options sin confirmar"),
+        ("greeting", unconfirmed_context, True, "greeting no requiere confirmación"),
+    ]
+    
+    all_passed = True
+    for action, context, should_pass, desc in test_cases:
+        result = guardian.detect_bypass_attempt(action, context)
+        status = "✅" if result.passed == should_pass else "❌"
+        print(f"   {status} {desc}: {'PASS' if result.passed else 'BLOQUEADO'}")
+        if result.passed != should_pass:
+            all_passed = False
+    
+    return all_passed
+
+
+def test_segment_5_logging():
+    """
+    SEGMENTO 5/5: Logs deben marcar regla aplicada, bloqueante, motivo
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 5/5: Logging Completo")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    # Limpiar logs anteriores
+    guardian.violations_log = []
+    
+    # Provocar una violación
+    guardian._log_violation(RuleViolation.BYPASS_ATTEMPT, "test_action")
+    
+    # Verificar que el log tiene todos los campos requeridos
+    checks = []
+    if guardian.violations_log:
+        log = guardian.violations_log[-1]
+        checks = [
+            ("timestamp" in log, "Tiene timestamp"),
+            ("violation" in log, "Tiene violation"),
+            ("context" in log, "Tiene context"),
+            ("rule_applied" in log, "Tiene rule_applied"),
+            ("is_blocking" in log, "Tiene is_blocking"),
+            ("reason" in log, "Tiene reason"),
+            (log.get("is_blocking") == True, "is_blocking = True"),
+        ]
+    else:
+        checks = [(False, "Log no creado")]
+    
+    all_passed = True
+    for check, description in checks:
+        status = "✅" if check else "❌"
+        print(f"   {status} {description}")
+        if not check:
+            all_passed = False
+    
+    return all_passed
+
+
 def test_convenience_functions():
     """Test funciones de conveniencia"""
     print("\n" + "=" * 70)
@@ -794,6 +964,12 @@ def main():
     results.append(("S4: Visa = camino posible, NO respuesta", test_segment_4_visa_as_path()))
     results.append(("S4: Exige + No Garantiza + Riesgos", test_segment_4_recommendation_elements()))
     results.append(("S4: Validación completa Visas USA", test_segment_4_full_validation()))
+    
+    # SEGMENTO 5/5 - Control y Validación
+    results.append(("S5: Resumen: paráfrasis+familia+motivación+restricciones", test_segment_5_summary_validation()))
+    results.append(("S5: Confirmación explícita requerida", test_segment_5_confirmation_required()))
+    results.append(("S5: ⚠️ Detección de bypass", test_segment_5_bypass_detection()))
+    results.append(("S5: Logging completo", test_segment_5_logging()))
     
     results.append(("Funciones de conveniencia", test_convenience_functions()))
     

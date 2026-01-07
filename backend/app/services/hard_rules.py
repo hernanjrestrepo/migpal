@@ -15,7 +15,9 @@ SEGMENTOS:
 2/5 - Flujo Obligatorio (General → Particular) ✅
 3/5 - Comportamiento Conversacional (IA Real) ✅
 4/5 - Visas USA (Restricción Crítica) ✅
-5/5 - (Pendiente)
+5/5 - Control y Validación ✅
+
+⚠️ ESTAS REGLAS NO SE PUEDEN BYPASSEAR CON HARDCODE NI SHORTCUTS.
 
 IDENTIDAD:
 MigPAL NO es un bot de formularios.
@@ -59,12 +61,20 @@ class RuleViolation(Enum):
     AUDIO_NOT_CONFIRMED = "audio_not_confirmed"
     NO_EXPLANATION_WHY = "no_explanation_why"
     
-    # Segmento 4/4 - Visas USA (Restricción Crítica)
+    # Segmento 4/5 - Visas USA (Restricción Crítica)
     VISA_NAME_BEFORE_SUMMARY = "visa_name_before_summary"
     VISA_WITHOUT_CONTEXT = "visa_without_context"
     VISA_AS_ANSWER_NOT_PATH = "visa_as_answer_not_path"
     RECOMMENDATION_WITHOUT_RISKS = "recommendation_without_risks"
     INSUFFICIENT_CONTEXT_FOR_VISA = "insufficient_context_for_visa"
+    
+    # Segmento 5/5 - Control y Validación
+    SUMMARY_MISSING_PARAPHRASE = "summary_missing_paraphrase"
+    SUMMARY_MISSING_FAMILY = "summary_missing_family"
+    SUMMARY_MISSING_MOTIVATION = "summary_missing_motivation"
+    SUMMARY_MISSING_CONSTRAINTS = "summary_missing_constraints"
+    SUMMARY_NOT_CONFIRMED = "summary_not_confirmed"
+    BYPASS_ATTEMPT = "bypass_attempt"
 
 
 @dataclass
@@ -1394,15 +1404,228 @@ class HardRulesGuardian:
                 "next_steps": "If you want to explore this option, the next steps would be:",
             }
     
+    # =========================================================================
+    # SEGMENTO 5/5 — CONTROL Y VALIDACIÓN
+    # =========================================================================
+    #
+    # VALIDACIONES OBLIGATORIAS:
+    #
+    # UNDERSTANDING_SUMMARY debe:
+    #    - Parafrasear al usuario
+    #    - Incluir familia, motivación y restricciones
+    #    - Ser confirmado explícitamente
+    #
+    # Si no hay confirmación:
+    #    - No avanzar
+    #    - Reiterar con lenguaje humano
+    #
+    # Logs deben marcar:
+    #    - Regla aplicada
+    #    - Regla bloqueante activada
+    #    - Motivo del bloqueo
+    #
+    # ⚠️ ESTAS REGLAS NO SE PUEDEN BYPASSEAR CON HARDCODE NI SHORTCUTS.
+    #
+    # =========================================================================
+    
+    # Elementos obligatorios en UNDERSTANDING_SUMMARY
+    SUMMARY_REQUIRED_ELEMENTS = [
+        "paraphrase",      # Parafrasear al usuario
+        "family",          # Incluir familia
+        "motivation",      # Incluir motivación
+        "constraints",     # Incluir restricciones
+    ]
+    
+    def validate_understanding_summary(
+        self,
+        summary_text: str,
+        context: Dict[str, Any],
+        lang: str = "es"
+    ) -> RuleCheckResult:
+        """
+        Validar que UNDERSTANDING_SUMMARY cumpla todos los requisitos.
+        
+        DEBE:
+        - Parafrasear al usuario
+        - Incluir familia, motivación y restricciones
+        - Ser confirmado explícitamente
+        """
+        import re
+        summary_lower = summary_text.lower()
+        understanding = context.get("understanding", {})
+        
+        missing = []
+        
+        # 1. Verificar paráfrasis (debe mencionar lo que el usuario dijo)
+        paraphrase_patterns = [
+            r"(me cuentas|me dices|mencionas|comentas) que",
+            r"entiendo que",
+            r"según (lo que|me)",
+            r"por lo que (me cuentas|entiendo)",
+            r"tu (situación|caso|historia)",
+        ]
+        has_paraphrase = any(re.search(p, summary_lower) for p in paraphrase_patterns)
+        if not has_paraphrase:
+            missing.append("paraphrase")
+        
+        # 2. Verificar mención de familia
+        family_patterns = [
+            r"(familia|esposa|esposo|hijos?|pareja|solo|sola)",
+            r"(migrarían?|viajarían?|irían?) (contigo|juntos)",
+            r"(acompañad[oa]|solo|sola)",
+        ]
+        has_family = any(re.search(p, summary_lower) for p in family_patterns)
+        if not has_family and understanding.get("family_members"):
+            missing.append("family")
+        
+        # 3. Verificar mención de motivación
+        motivation_patterns = [
+            r"(quieres|buscas|deseas|necesitas)",
+            r"(motivación|razón|motivo)",
+            r"(mejor vida|oportunidades|futuro)",
+            r"(por qué|porque)",
+        ]
+        has_motivation = any(re.search(p, summary_lower) for p in motivation_patterns)
+        if not has_motivation:
+            missing.append("motivation")
+        
+        # 4. Verificar mención de restricciones
+        constraints_patterns = [
+            r"(restricción|limitación|obstáculo)",
+            r"(presupuesto|ahorro|dinero|recursos)",
+            r"(tiempo|urgencia|plazo)",
+            r"(idioma|inglés)",
+            r"(edad|años)",
+        ]
+        has_constraints = any(re.search(p, summary_lower) for p in constraints_patterns)
+        if not has_constraints and understanding.get("available_savings"):
+            missing.append("constraints")
+        
+        if missing:
+            violation = RuleViolation.SUMMARY_MISSING_PARAPHRASE
+            if "family" in missing:
+                violation = RuleViolation.SUMMARY_MISSING_FAMILY
+            elif "motivation" in missing:
+                violation = RuleViolation.SUMMARY_MISSING_MOTIVATION
+            elif "constraints" in missing:
+                violation = RuleViolation.SUMMARY_MISSING_CONSTRAINTS
+            
+            self._log_violation(violation, str(missing))
+            return RuleCheckResult(
+                passed=False,
+                violation=violation,
+                message=f"Resumen incompleto. Falta: {', '.join(missing)}"
+            )
+        
+        return RuleCheckResult(passed=True)
+    
+    def check_summary_confirmed(
+        self,
+        context: Dict[str, Any]
+    ) -> RuleCheckResult:
+        """
+        Verificar que el resumen fue confirmado explícitamente.
+        
+        Si no hay confirmación:
+        - No avanzar
+        - Reiterar con lenguaje humano
+        """
+        understanding = context.get("understanding", {})
+        confirmed = understanding.get("confirmed_by_user", False)
+        
+        if not confirmed:
+            self._log_violation(RuleViolation.SUMMARY_NOT_CONFIRMED, "understanding")
+            return RuleCheckResult(
+                passed=False,
+                violation=RuleViolation.SUMMARY_NOT_CONFIRMED,
+                message="🚨 Resumen NO confirmado. No se puede avanzar.",
+                should_rollback=True,
+                rollback_to_phase="understanding"
+            )
+        
+        return RuleCheckResult(passed=True)
+    
+    def get_reiteration_message(self, lang: str = "es") -> str:
+        """
+        Obtener mensaje de reiteración en lenguaje humano.
+        
+        Se usa cuando el usuario no confirma el resumen.
+        """
+        if lang == "es":
+            return (
+                "Entiendo que quizás no capturé todo correctamente. 🤔\n\n"
+                "Déjame intentar de nuevo:\n"
+                "- ¿Qué parte no es correcta?\n"
+                "- ¿Qué me faltó mencionar?\n\n"
+                "Quiero asegurarme de entenderte bien antes de continuar."
+            )
+        else:
+            return (
+                "I understand I might not have captured everything correctly. 🤔\n\n"
+                "Let me try again:\n"
+                "- What part is not correct?\n"
+                "- What did I miss?\n\n"
+                "I want to make sure I understand you well before continuing."
+            )
+    
+    def detect_bypass_attempt(
+        self,
+        action: str,
+        context: Dict[str, Any]
+    ) -> RuleCheckResult:
+        """
+        Detectar intentos de bypassear las reglas duras.
+        
+        ⚠️ ESTAS REGLAS NO SE PUEDEN BYPASSEAR CON HARDCODE NI SHORTCUTS.
+        """
+        understanding = context.get("understanding", {})
+        confirmed = understanding.get("confirmed_by_user", False)
+        
+        # Acciones que requieren confirmación
+        protected_actions = [
+            "show_visa_options",
+            "recommend_visa",
+            "create_plan",
+            "next_steps",
+            "skip_to_options",
+        ]
+        
+        if action in protected_actions and not confirmed:
+            self._log_violation(RuleViolation.BYPASS_ATTEMPT, action)
+            return RuleCheckResult(
+                passed=False,
+                violation=RuleViolation.BYPASS_ATTEMPT,
+                message=f"⚠️ BYPASS DETECTADO: '{action}' sin confirmación. BLOQUEADO.",
+                should_rollback=True,
+                rollback_to_phase="understanding"
+            )
+        
+        return RuleCheckResult(passed=True)
+    
     def _log_violation(self, violation: RuleViolation, context: str):
-        """Registrar violación para análisis"""
+        """
+        Registrar violación para análisis.
+        
+        SEGMENTO 5/5 - Logs deben marcar:
+        - Regla aplicada
+        - Regla bloqueante activada
+        - Motivo del bloqueo
+        """
         from datetime import datetime
-        self.violations_log.append({
+        log_entry = {
             "timestamp": datetime.now().isoformat(),
             "violation": violation.value,
-            "context": context
-        })
-        logger.warning(f"🔒 REGLA VIOLADA: {violation.value} en {context}")
+            "context": context,
+            "rule_applied": violation.name,
+            "is_blocking": True,
+            "reason": f"Violación de regla dura: {violation.value}"
+        }
+        self.violations_log.append(log_entry)
+        logger.warning(
+            f"🔒 REGLA VIOLADA: {violation.value} | "
+            f"Contexto: {context} | "
+            f"Bloqueante: Sí"
+        )
     
     def get_violations_summary(self) -> Dict[str, int]:
         """Obtener resumen de violaciones"""
