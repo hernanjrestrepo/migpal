@@ -197,6 +197,20 @@ TRANSLATIONS = {
             "🤗 No estás solo/a en esto. Millones de migrantes han pasado por lo mismo.",
             "🌈 Después de la tormenta siempre sale el sol. ¡No te rindas!",
         ],
+        
+        # UX Improvements v3.0.3
+        "generic_error": "⚠️ Ocurrió un error inesperado. Por favor intenta de nuevo o escribe /start para reiniciar.",
+        "stall_reminder": "👋 ¡Hola! Noté que llevas un rato sin avanzar. ¿Necesitas ayuda con algo?",
+        "restart_phase": "🔄 Reiniciar esta fase",
+        "continue_where_left": "▶️ Continuar donde estaba",
+        "progress_title": "📊 *Tu Progreso*",
+        "missing_fields": "⏳ *Falta:*",
+        "overall_progress": "📈 *Progreso total:*",
+        "name_skip_confirm": "✅ Nombre guardado: *{name}*",
+        "name_1click_confirm": "✅ *{name}*\n\n¿Es correcto?",
+        "phase_complete": "✅ *¡Fase completada!*",
+        "next_phase": "Siguiente fase: {phase}",
+        "error_logged": "El error ha sido registrado. Nuestro equipo lo revisará.",
     },
     
     # ===== ENGLISH =====
@@ -352,6 +366,20 @@ TRANSLATIONS = {
             "🤗 You're not alone in this. Millions of migrants have been through the same.",
             "🌈 After the storm, the sun always comes out. Don't give up!",
         ],
+        
+        # UX Improvements v3.0.3
+        "generic_error": "⚠️ An unexpected error occurred. Please try again or type /start to restart.",
+        "stall_reminder": "👋 Hi! I noticed you haven't made progress in a while. Do you need help with something?",
+        "restart_phase": "🔄 Restart this phase",
+        "continue_where_left": "▶️ Continue where I was",
+        "progress_title": "📊 *Your Progress*",
+        "missing_fields": "⏳ *Missing:*",
+        "overall_progress": "📈 *Overall progress:*",
+        "name_skip_confirm": "✅ Name saved: *{name}*",
+        "name_1click_confirm": "✅ *{name}*\n\nIs this correct?",
+        "phase_complete": "✅ *Phase completed!*",
+        "next_phase": "Next phase: {phase}",
+        "error_logged": "The error has been logged. Our team will review it.",
     },
     
     # ===== PORTUGUESE =====

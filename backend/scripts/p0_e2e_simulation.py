@@ -727,13 +727,13 @@ FORM_STATES = [
 async def main():
     """Función principal"""
     print("=" * 60)
-    print("🚀 P0 E2E SIMULATION - MigPAL Bot")
+    print("🚀 V3.0.3 E2E SIMULATION - MigPAL Bot")
     print("=" * 60)
     
     simulator = E2ESimulator()
     
-    # Ejecutar 20 simulaciones
-    report = await simulator.run_all_simulations(num_simulations=20)
+    # Ejecutar 30 simulaciones (v3.0.3 requirement)
+    report = await simulator.run_all_simulations(num_simulations=30)
     
     # Generar reporte
     markdown_report = simulator.generate_report_markdown()

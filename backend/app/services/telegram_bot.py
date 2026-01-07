@@ -191,6 +191,16 @@ from app.services.city_comparator import (
     get_city_image_url
 )
 
+# V3.0.3 - Import UX improvements module
+from app.services.ux_improvements import (
+    StartupValidator, GlobalExceptionHandler, StallDetector,
+    ProgressTracker, TransitionLogger, NameValidator,
+    get_exception_handler, get_stall_detector, get_progress_tracker,
+    get_transition_logger, get_startup_validator,
+    global_error_handler, enhanced_set_state, check_and_handle_stall,
+    PHASES, FIELD_LABELS, ERROR_MESSAGES
+)
+
 # V2.2 - Import housing scraper (Zillow, Apartments.com)
 from app.services.housing_scraper import (
     housing_scraper, search_rentals, HousingListing
@@ -345,7 +355,59 @@ class MigPALBot:
             logger.error("python-telegram-bot not installed")
             return
         
+        # V3.0.3 - Startup Self-Check: Validate all state constants exist
+        logger.info("🔍 Running startup self-check...")
+        
+        # Define FORM_STATES for validation (same as in _handle_message)
+        FORM_STATES_CHECK = [
+            STATE_NAME, "confirm_name", STATE_BIRTH_DATE, STATE_CURRENT_CITY, STATE_EMAIL, STATE_PHONE,
+            STATE_EDUCATION_CAREER, STATE_PROFESSION, STATE_LINKEDIN,
+            STATE_TIMELINE, STATE_BUDGET_INITIAL, STATE_SAVINGS,
+            STATE_FAMILY_MEMBER_NAME, STATE_FAMILY_MEMBER_BIRTH
+        ]
+        
+        # Get module globals for validation
+        module_globals = globals()
+        
+        # Run startup validation
+        validator = get_startup_validator()
+        if not validator.run_startup_check(module_globals, FORM_STATES_CHECK):
+            logger.error("❌ STARTUP ABORTED: State validation failed")
+            raise RuntimeError("Bot startup aborted due to state validation failure")
+        
+        logger.info("✅ Startup self-check passed")
+        
         self.application = Application.builder().token(self.token).build()
+        
+        # V3.0.3 - Add global error handler
+        async def error_handler(update, context):
+            """Global error handler for all exceptions"""
+            user_id = 0
+            state = "unknown"
+            lang = "en"
+            
+            if update and update.effective_user:
+                user_id = update.effective_user.id
+                try:
+                    state = get_state(user_id)
+                    user = get_user_data(user_id)
+                    lang = user.get("language", "en")
+                except:
+                    pass
+            
+            # Log the error
+            handler = get_exception_handler()
+            handler.log_error(user_id, state, context.error, "global_handler")
+            
+            # Send fallback message
+            try:
+                fallback_msg = handler.get_fallback_message(lang)
+                if update and update.effective_message:
+                    await update.effective_message.reply_text(fallback_msg)
+            except Exception as e:
+                logger.error(f"Failed to send error fallback: {e}")
+        
+        self.application.add_error_handler(error_handler)
         
         # Handlers
         self.application.add_handler(CommandHandler("start", self._cmd_start))
@@ -1766,6 +1828,7 @@ class MigPALBot:
     
     # ============== CALLBACK HANDLER ==============
     
+    @global_error_handler
     async def _handle_callback(self, update, context):
         query = update.callback_query
         await query.answer()
@@ -1774,10 +1837,40 @@ class MigPALBot:
         data = query.data
         state = get_state(user_id)
         user = get_user_data(user_id)
+        lang = user.get("language", "en")
         
         # Anti-spam: solo procesar si pasó suficiente tiempo desde el último click
         if not should_process_click(user_id):
             logger.debug(f"Ignoring spam click from {user_id}")
+            return
+        
+        # V3.0.3 - Enhanced logging
+        transition_logger = get_transition_logger()
+        transition_logger.log_callback_received(user_id, state, data)
+        
+        # V3.0.3 - Record activity for stall detection
+        stall_detector = get_stall_detector()
+        stall_detector.record_activity(user_id, state, data)
+        
+        # V3.0.3 - Handle stall callbacks
+        if data == "stall_continue":
+            # User wants to continue - just acknowledge
+            await query.edit_message_text(
+                get_text("continue_where_left", lang) if lang != "en" else "▶️ Continuing...",
+                parse_mode='Markdown'
+            )
+            return
+        elif data == "stall_restart":
+            # User wants to restart current phase
+            current_phase = ProgressTracker.get_current_phase(state)
+            if current_phase and current_phase in PHASES:
+                first_state = PHASES[current_phase]["states"][0]
+                set_state(user_id, first_state)
+                await query.edit_message_text(
+                    f"🔄 {get_text('restart_phase', lang)}\n\n" +
+                    ProgressTracker.format_progress_header(user, first_state, lang),
+                    parse_mode='Markdown'
+                )
             return
         
         logger.info(f"CB: {user_id} | {state} | {data}")
@@ -2431,6 +2524,11 @@ class MigPALBot:
                     encrypted_data = encrypt_user_data(user)
                     save_user_data(user_id, encrypted_data)
                     
+                    # V3.0.3 - Enhanced logging
+                    get_transition_logger().log_transition(
+                        user_id, "confirm_name", STATE_START,
+                        "name_confirmed", {"name": pending_name}
+                    )
                     logger.info(f"Name confirmed for user {user_id}: {pending_name}")
                     
                     # Mensaje de bienvenida traducido y avance inmediato
@@ -4789,31 +4887,63 @@ class MigPALBot:
         try:
             # === NAME ===
             if state == STATE_NAME:
-                # VALIDACIÓN: trim whitespace
-                name = text.strip()
+                # V3.0.3 - Use NameValidator for improved validation
+                is_valid, result = NameValidator.is_valid_name(text)
                 
-                # VALIDACIÓN: nombre muy corto
-                if len(name) < 2:
-                    await update.message.reply_text(get_text("name_too_short", lang))
+                if not is_valid:
+                    if result == "too_short":
+                        await update.message.reply_text(get_text("name_too_short", lang))
+                    elif result == "empty":
+                        await update.message.reply_text(get_text("name_too_short", lang))
+                    else:
+                        await update.message.reply_text(get_text("name_too_short", lang))
                     return True
                 
-                # VALIDACIÓN: titlecase si todo mayúsculas o minúsculas
-                if name.isupper() or name.islower():
-                    name = name.title()
+                name = result  # Cleaned name
                 
-                # VALIDACIÓN: dedupe - verificar si ya existe este nombre
+                # V3.0.3 - DEDUPE: Check if same name already exists
                 existing_name = user.get("profile", {}).get("personal", {}).get("name", "")
-                if existing_name and existing_name.lower() == name.lower():
-                    # Mismo nombre, continuar sin preguntar
-                    pass
+                if NameValidator.is_duplicate(name, existing_name):
+                    # Same name, skip confirmation and continue
+                    await update.message.reply_text(
+                        get_text("name_skip_confirm", lang).format(name=name),
+                        parse_mode='Markdown'
+                    )
+                    # Continue to next step
+                    set_state(user_id, STATE_BIRTH_DATE)
+                    await update.message.reply_text(get_text("ask_birthdate_full", lang))
+                    return True
+                
+                # V3.0.3 - SIMPLIFIED 1-CLICK CONFIRMATION
+                # Skip confirmation if name looks well-formatted
+                if NameValidator.should_skip_confirmation(name):
+                    # Auto-confirm well-formatted names
+                    user["profile"]["personal"]["name"] = name
+                    encrypted_data = encrypt_user_data(user)
+                    save_user_data(user_id, encrypted_data)
+                    
+                    # Log transition
+                    get_transition_logger().log_transition(
+                        user_id, STATE_NAME, STATE_BIRTH_DATE, 
+                        "name_auto_confirmed", {"name": name}
+                    )
+                    
+                    # Show confirmation and continue
+                    await update.message.reply_text(
+                        get_text("name_skip_confirm", lang).format(name=name),
+                        parse_mode='Markdown'
+                    )
+                    set_state(user_id, STATE_BIRTH_DATE)
+                    await update.message.reply_text(get_text("ask_birthdate_full", lang))
+                    return True
                 
                 # Guardar nombre pendiente para confirmación
                 user["_pending_name"] = name
                 encrypted_data = encrypt_user_data(user)
                 save_user_data(user_id, encrypted_data)
                 
-                # CONFIRMACIÓN EXPLÍCITA
-                confirm_text = get_text("confirm_name", lang).format(name=name)
+                # V3.0.3 - SIMPLIFIED 1-CLICK CONFIRMATION with inline buttons
+                confirm_text = get_text("name_1click_confirm", lang).format(name=name)
                 yes_text = get_text("yes_correct", lang)
                 no_text = get_text("no_change", lang)
                 
@@ -4821,8 +4951,7 @@ class MigPALBot:
                     confirm_text,
                     parse_mode='Markdown',
                     reply_markup=self._kb([
-                        [(yes_text, "confirm_name_yes")],
-                        [(no_text, "confirm_name_no")]
+                        [(yes_text, "confirm_name_yes"), (no_text, "confirm_name_no")]
                     ])
                 )
                 set_state(user_id, "confirm_name")
@@ -4970,12 +5099,33 @@ class MigPALBot:
     
     # ============== MESSAGE HANDLER ==============
     
+    @global_error_handler
     async def _handle_message(self, update, context):
         """Handler principal de mensajes - COMANDOS INVISIBLES + IA"""
         user_id = update.effective_user.id
         text = update.message.text.strip()
         state = get_state(user_id)
         user = get_user_data(user_id)
+        lang = user.get("language", "en")
+        
+        # V3.0.3 - Enhanced logging
+        transition_logger = get_transition_logger()
+        transition_logger.log_message_received(user_id, state, "text", text)
+        
+        # V3.0.3 - Record activity for stall detection
+        stall_detector = get_stall_detector()
+        stall_detector.record_activity(user_id, state, text)
+        
+        # V3.0.3 - Check for stall and send reminder if needed
+        stall_result = check_and_handle_stall(user_id, lang)
+        if stall_result:
+            stall_msg, stall_buttons = stall_result
+            await update.message.reply_text(
+                stall_msg,
+                parse_mode='Markdown',
+                reply_markup=self._kb(stall_buttons)
+            )
+            return
         
         logger.info(f"MSG: {user_id} | {state} | {text[:50]}")
         
