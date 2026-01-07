@@ -2964,7 +2964,7 @@ class MigPALBot:
                 # Procesar respuesta del flujo
                 ctx = flow_engine.get_context(user_id)
                 next_state, error_msg = flow_engine.process_response(
-                    user_id, action, options=[action]
+                    user_id, action, selected_options=[action]
                 )
                 
                 if error_msg:

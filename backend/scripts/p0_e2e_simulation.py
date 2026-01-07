@@ -732,8 +732,8 @@ async def main():
     
     simulator = E2ESimulator()
     
-    # Ejecutar 30 simulaciones (v3.0.3 requirement)
-    report = await simulator.run_all_simulations(num_simulations=30)
+    # Ejecutar 50 simulaciones (v3.0.4 requirement)
+    report = await simulator.run_all_simulations(num_simulations=50)
     
     # Generar reporte
     markdown_report = simulator.generate_report_markdown()
