@@ -539,42 +539,59 @@ class MigPALBot:
     
     @safe_async_handler
     async def _cmd_start(self, update, context):
+        """v3.0.6 - Onboarding conversacional. NO inicia formularios."""
         if not await self._check_rate_limit(update):
             return
         
         user_id = update.effective_user.id
         user_data[user_id] = get_user_data(user_id)
-        user_data[user_id]["state"] = STATE_START
         user_data[user_id]["profile"]["personal"]["telegram_name"] = sanitize_input(update.effective_user.first_name or "")
         
         log_user_action(user_id, "start", "Started bot")
         
-        # Get user's language or default to showing language selection
-        lang = user_data[user_id].get("language", "en")
+        # Verificar si ya tiene idioma seleccionado
+        lang = user_data[user_id].get("language")
         
-        await update.message.reply_text(
-            "🌍 *Welcome to MigPAL!* / *¡Bienvenido a MigPAL!*\n\n"
-            "Your GLOBAL migration assistant.\n"
-            "Tu asistente de migración GLOBAL.\n\n"
-            "🌐 We help migrants from ALL OVER THE WORLD\n"
-            "🌐 Ayudamos a migrantes de TODO EL MUNDO\n\n"
-            "I will guide you step by step to:\n"
-            "Te guiaré paso a paso para:\n\n"
-            "✅ Evaluate your options / Evaluar tus opciones\n"
-            "✅ Plan your process / Planificar tu proceso\n"
-            "✅ Manage documents / Gestionar documentos\n\n"
-            "_First, select your language:_\n"
-            "_Primero, selecciona tu idioma:_",
-            parse_mode='Markdown',
-            reply_markup=self._kb([
-                [("🇬🇧 English", "lang_en"), ("🇪🇸 Español", "lang_es")],
-                [("🇧🇷 Português", "lang_pt"), ("🇫🇷 Français", "lang_fr")],
-                [("🇩🇪 Deutsch", "lang_de"), ("🇨🇳 中文", "lang_zh")],
-                [("🇯🇵 日本語", "lang_ja"), ("🇰🇷 한국어", "lang_ko")],
-                [("🇷🇺 Русский", "lang_ru"), ("🇸🇦 العربية", "lang_ar")],
-                [("🌐 More languages / Más idiomas", "lang_more")]
-            ])
-        )
+        if not lang:
+            # Primer contacto: mostrar selección de idioma con mensaje cálido
+            user_data[user_id]["state"] = STATE_START
+            save_user_data(user_id, user_data[user_id])
+            
+            await update.message.reply_text(
+                "🌍 ¡Hola! / Hi! / Olá!\n\n"
+                "Antes de empezar, ¿cuál es tu idioma preferido?\n"
+                "Before we start, what's your preferred language?\n"
+                "Antes de começar, qual é o seu idioma preferido?",
+                reply_markup=self._kb([
+                    [("🇪🇸 Español", "lang_es"), ("🇬🇧 English", "lang_en")],
+                    [("🇧🇷 Português", "lang_pt"), ("🇫🇷 Français", "lang_fr")],
+                    [("🌐 Más / More", "lang_more")]
+                ])
+            )
+        else:
+            # Ya tiene idioma: iniciar onboarding conversacional
+            from app.services.onboarding_v306 import get_onboarding_engine, OnboardingState
+            
+            engine = get_onboarding_engine()
+            
+            # Establecer estado de onboarding
+            user_data[user_id]["state"] = OnboardingState.WELCOME.value
+            save_user_data(user_id, user_data[user_id])
+            
+            # PASO 1: Presentación empática
+            welcome_msg = engine.get_welcome_message(lang)
+            await update.message.reply_text(welcome_msg)
+            
+            # Pequeña pausa para que se sienta natural
+            import asyncio
+            await asyncio.sleep(1.5)
+            
+            # PASO 2: Pregunta abierta
+            user_data[user_id]["state"] = OnboardingState.OPEN_QUESTION.value
+            save_user_data(user_id, user_data[user_id])
+            
+            open_question = engine.get_open_question(lang)
+            await update.message.reply_text(open_question)
     
     async def _cmd_help(self, update, context):
         user_id = update.effective_user.id
@@ -1904,6 +1921,31 @@ class MigPALBot:
             return
         
         logger.info(f"CB: {user_id} | {state} | {data}")
+        
+        # ===== v3.0.6: ONBOARDING CALLBACKS =====
+        if data.startswith("onboarding_"):
+            from app.services.onboarding_v306 import get_onboarding_engine, OnboardingState
+            engine = get_onboarding_engine()
+            
+            if data == "onboarding_yes":
+                # Usuario acepta empezar - PASO 6: Pedir nombre
+                set_state(user_id, OnboardingState.NAME_REQUEST.value)
+                name_request = engine.get_name_request(lang)
+                await query.edit_message_text(name_request)
+                return
+            
+            elif data == "onboarding_questions":
+                # Usuario tiene más preguntas
+                set_state(user_id, OnboardingState.LISTENING.value)
+                response = engine.get_more_questions_response(lang)
+                await query.edit_message_text(response)
+                return
+            
+            elif data == "onboarding_later":
+                # Usuario quiere continuar después
+                response = engine.get_later_response(lang)
+                await query.edit_message_text(response)
+                return
         
         # ===== MULTI-SELECT HANDLERS =====
         if data.startswith("ms_"):
@@ -3241,23 +3283,35 @@ class MigPALBot:
                 lang_info = SUPPORTED_LANGUAGES.get(lang, {})
                 lang_name = lang_info.get("native", lang)
                 
-                # Continue to profile after language selection
-                set_state(user_id, STATE_NAME)
-                
-                # Get translated text - ALL messages must use get_text()
-                welcome_text = get_text("welcome", lang)
-                phase1_text = get_text("phase1_profile", lang)
-                ask_name = get_text("ask_name", lang)
-                
                 logger.info(f"Language set to {lang} for user {user_id}, persisted to disk")
                 
+                # v3.0.6: Iniciar ONBOARDING CONVERSACIONAL (no formulario)
+                from app.services.onboarding_v306 import get_onboarding_engine, OnboardingState
+                
+                engine = get_onboarding_engine()
+                
+                # Confirmar idioma brevemente
                 await query.edit_message_text(
-                    f"✅ {lang_info.get('flag', '')} {lang_name}\n\n"
-                    f"{welcome_text}\n\n"
-                    f"📝 *{phase1_text}*\n\n"
-                    f"{ask_name}",
-                    parse_mode='Markdown'
+                    f"✅ {lang_info.get('flag', '')} {lang_name}"
                 )
+                
+                # Establecer estado de onboarding
+                set_state(user_id, OnboardingState.WELCOME.value)
+                
+                # Pequeña pausa
+                import asyncio
+                await asyncio.sleep(0.8)
+                
+                # PASO 1: Presentación empática
+                welcome_msg = engine.get_welcome_message(lang)
+                await query.message.reply_text(welcome_msg)
+                
+                await asyncio.sleep(1.5)
+                
+                # PASO 2: Pregunta abierta
+                set_state(user_id, OnboardingState.OPEN_QUESTION.value)
+                open_question = engine.get_open_question(lang)
+                await query.message.reply_text(open_question)
         
         # Notification callbacks
         elif data.startswith("notif_"):
@@ -5253,6 +5307,74 @@ class MigPALBot:
                     return
         except Exception as e:
             logger.warning(f"Error en NLU de corrección: {e}")
+        
+        # === v3.0.6: ONBOARDING CONVERSACIONAL ===
+        # Manejar estados de onboarding ANTES de formularios
+        from app.services.onboarding_v306 import (
+            get_onboarding_engine, OnboardingState, ONBOARDING_STATES
+        )
+        
+        if state in ONBOARDING_STATES:
+            engine = get_onboarding_engine()
+            
+            if state == OnboardingState.OPEN_QUESTION.value:
+                # Usuario respondió a la pregunta abierta
+                # PASO 3: Respuesta empática
+                empathic_response = engine.get_empathic_response(text, lang)
+                await update.message.reply_text(empathic_response)
+                
+                import asyncio
+                await asyncio.sleep(1.5)
+                
+                # PASO 4: Explicación del proceso
+                set_state(user_id, OnboardingState.PROCESS_EXPLAIN.value)
+                process_explanation = engine.get_process_explanation(lang)
+                await update.message.reply_text(process_explanation, parse_mode='Markdown')
+                
+                await asyncio.sleep(1)
+                
+                # PASO 5: Pedir consentimiento
+                set_state(user_id, OnboardingState.CONSENT.value)
+                consent_text, consent_buttons = engine.get_consent_request(lang)
+                await update.message.reply_text(
+                    consent_text,
+                    reply_markup=self._kb(consent_buttons)
+                )
+                return
+            
+            elif state == OnboardingState.LISTENING.value:
+                # Usuario sigue escribiendo, escuchar y responder
+                empathic_response = engine.get_empathic_response(text, lang)
+                await update.message.reply_text(empathic_response)
+                return
+            
+            elif state == OnboardingState.NAME_REQUEST.value:
+                # Usuario dio su nombre después del consentimiento
+                # Guardar nombre y continuar al flujo normal
+                name = sanitize_input(text)
+                if len(name) >= 2:
+                    user["profile"]["personal"]["name"] = name
+                    save_user_data(user_id, user)
+                    
+                    # Confirmar nombre con 1-click
+                    set_state(user_id, "confirm_name")
+                    
+                    confirm_msg = f"¡Mucho gusto, {name}! 😊" if lang == "es" else f"Nice to meet you, {name}! 😊"
+                    confirm_q = "¿Está bien escrito?" if lang == "es" else "Is that spelled correctly?"
+                    
+                    await update.message.reply_text(
+                        f"{confirm_msg}\n\n{confirm_q}",
+                        reply_markup=self._kb([
+                            [("✅ Sí, correcto" if lang == "es" else "✅ Yes, correct", "confirm_name_yes")],
+                            [("✏️ Corregir" if lang == "es" else "✏️ Edit", "confirm_name_no")]
+                        ])
+                    )
+                    return
+                else:
+                    # Nombre muy corto
+                    retry_msg = "Por favor, escribe tu nombre completo." if lang == "es" else "Please write your full name."
+                    await update.message.reply_text(retry_msg)
+                    return
         
         # === PRIMERO: Verificar si estamos en un estado de FORMULARIO ===
         # Si el usuario está en un estado de formulario, procesar directamente
