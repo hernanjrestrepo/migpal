@@ -14,7 +14,7 @@ SEGMENTOS:
 1/5 - Identidad y Principios Inviolables ✅
 2/5 - Flujo Obligatorio (General → Particular) ✅
 3/5 - Comportamiento Conversacional (IA Real) ✅
-4/5 - (Pendiente)
+4/5 - Visas USA (Restricción Crítica) ✅
 5/5 - (Pendiente)
 
 IDENTIDAD:
@@ -1046,7 +1046,31 @@ class HardRulesGuardian:
         return RuleCheckResult(passed=True)
     
     # =========================================================================
-    # SEGMENTO 4/4 — VISAS USA (RESTRICCIÓN CRÍTICA)
+    # SEGMENTO 4/5 — VISAS USA (RESTRICCIÓN CRÍTICA)
+    # =========================================================================
+    #
+    # REGLAS ESPECÍFICAS:
+    #
+    # ❌ Prohibido mencionar tipos de visa (O-1, EB-2, etc.)
+    #    hasta que understanding_confirmed = true
+    #
+    # PRIMERO se habla de:
+    #    - Tipo de vida en USA
+    #    - Tipo de trabajo
+    #    - Tipo de ingresos
+    #    - Tipo de familia
+    #    - Riesgos reales
+    #
+    # Las visas se presentan como "CAMINOS POSIBLES",
+    # NUNCA como respuestas finales.
+    #
+    # TODA opción debe explicar:
+    #    - Qué EXIGE
+    #    - Qué NO GARANTIZA
+    #    - Qué RIESGOS tiene
+    #
+    # Sin contexto suficiente → NO recomendar nada.
+    #
     # =========================================================================
     
     # Nombres de visas que NO se pueden mencionar antes del resumen confirmado

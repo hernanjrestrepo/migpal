@@ -534,10 +534,11 @@ def test_segment_3_explanation_required():
 
 def test_segment_4_no_visa_before_summary():
     """
-    SEGMENTO 4/4: ❌ No mencionar visas antes del resumen confirmado
+    SEGMENTO 4/5: ❌ Prohibido mencionar tipos de visa (O-1, EB-2, etc.)
+    hasta que understanding_confirmed = true
     """
     print("\n" + "=" * 70)
-    print("🔒 TEST SEGMENTO 4/4: No Visa Antes de Resumen")
+    print("🔒 TEST SEGMENTO 4/5: ❌ No Visa Antes de Confirmación")
     print("=" * 70)
     
     guardian = HardRulesGuardian()
@@ -565,10 +566,11 @@ def test_segment_4_no_visa_before_summary():
 
 def test_segment_4_visa_context_sufficient():
     """
-    SEGMENTO 4/4: Contexto suficiente antes de recomendar visas
+    SEGMENTO 4/5: Primero hablar de vida, trabajo, ingresos, familia, riesgos
+    Sin contexto suficiente → NO recomendar nada
     """
     print("\n" + "=" * 70)
-    print("🔒 TEST SEGMENTO 4/4: Contexto Suficiente")
+    print("🔒 TEST SEGMENTO 4/5: Contexto Suficiente")
     print("=" * 70)
     
     guardian = HardRulesGuardian()
@@ -610,10 +612,11 @@ def test_segment_4_visa_context_sufficient():
 
 def test_segment_4_visa_as_path():
     """
-    SEGMENTO 4/4: Visas como "caminos posibles", no "respuestas"
+    SEGMENTO 4/5: Las visas se presentan como "CAMINOS POSIBLES",
+    NUNCA como respuestas finales
     """
     print("\n" + "=" * 70)
-    print("🔒 TEST SEGMENTO 4/4: Visa como Camino")
+    print("🔒 TEST SEGMENTO 4/5: Visa = Camino Posible, NO Respuesta")
     print("=" * 70)
     
     guardian = HardRulesGuardian()
@@ -641,10 +644,13 @@ def test_segment_4_visa_as_path():
 
 def test_segment_4_recommendation_elements():
     """
-    SEGMENTO 4/4: Recomendación debe incluir requisitos, no-garantías, riesgos
+    SEGMENTO 4/5: TODA opción debe explicar:
+    - Qué EXIGE
+    - Qué NO GARANTIZA
+    - Qué RIESGOS tiene
     """
     print("\n" + "=" * 70)
-    print("🔒 TEST SEGMENTO 4/4: Elementos de Recomendación")
+    print("🔒 TEST SEGMENTO 4/5: Exige + No Garantiza + Riesgos")
     print("=" * 70)
     
     guardian = HardRulesGuardian()
@@ -685,10 +691,10 @@ def test_segment_4_recommendation_elements():
 
 def test_segment_4_full_validation():
     """
-    SEGMENTO 4/4: Validación completa de recomendación
+    SEGMENTO 4/5: Validación completa de todas las reglas de Visas USA
     """
     print("\n" + "=" * 70)
-    print("🔒 TEST SEGMENTO 4/4: Validación Completa")
+    print("🔒 TEST SEGMENTO 4/5: Validación Completa Visas USA")
     print("=" * 70)
     
     guardian = HardRulesGuardian()
@@ -782,12 +788,12 @@ def main():
     results.append(("S3: Audio → Transcribir + Parafrasear + Confirmar", test_segment_3_audio_handling()))
     results.append(("S3: Explicar POR QUÉ pregunta", test_segment_3_explanation_required()))
     
-    # SEGMENTO 4/4
-    results.append(("S4: ❌ No visa antes de resumen", test_segment_4_no_visa_before_summary()))
-    results.append(("S4: Contexto suficiente", test_segment_4_visa_context_sufficient()))
-    results.append(("S4: Visa como camino", test_segment_4_visa_as_path()))
-    results.append(("S4: Elementos de recomendación", test_segment_4_recommendation_elements()))
-    results.append(("S4: Validación completa", test_segment_4_full_validation()))
+    # SEGMENTO 4/5 - Visas USA (Restricción Crítica)
+    results.append(("S4: ❌ No visa hasta confirmed=true", test_segment_4_no_visa_before_summary()))
+    results.append(("S4: Primero vida/trabajo/ingresos/familia", test_segment_4_visa_context_sufficient()))
+    results.append(("S4: Visa = camino posible, NO respuesta", test_segment_4_visa_as_path()))
+    results.append(("S4: Exige + No Garantiza + Riesgos", test_segment_4_recommendation_elements()))
+    results.append(("S4: Validación completa Visas USA", test_segment_4_full_validation()))
     
     results.append(("Funciones de conveniencia", test_convenience_functions()))
     
