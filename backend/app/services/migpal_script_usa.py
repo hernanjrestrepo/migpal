@@ -625,6 +625,259 @@ And in terms of time: *is there any urgency or do you have flexibility?*"""
             requires_confirmation=False
         )
     
+    # =========================================================================
+    # SEGMENTO 5: RESTRICCIONES REALES + RESUMEN OBLIGATORIO
+    # =========================================================================
+    
+    SEGMENT_5_RESOURCES_QUESTION = {
+        "es": """¿Con cuánto dinero cuentas aproximadamente para este proyecto? 💰
+
+(Ahorros, posibles préstamos, apoyo familiar... no necesito cifras exactas, solo un rango)
+
+Y en términos de tiempo: *¿hay alguna urgencia o tienes flexibilidad?*""",
+
+        "en": """Approximately how much money do you have for this project? 💰
+
+(Savings, possible loans, family support... I don't need exact figures, just a range)
+
+And in terms of time: *is there any urgency or do you have flexibility?*"""
+    }
+    
+    SEGMENT_5_SUMMARY_INTRO = {
+        "es": """Gracias. Ahora déjame detenerme un momento. 📝
+
+📌 *RESUMEN DE LO QUE ENTIENDO HASTA AHORA:*""",
+
+        "en": """Thank you. Now let me stop for a moment. 📝
+
+📌 *SUMMARY OF WHAT I UNDERSTAND SO FAR:*"""
+    }
+    
+    SEGMENT_5_CONFIRMATION_QUESTION = {
+        "es": """
+
+👉 *¿Esto refleja bien tu situación o cambiarías algo importante?*""",
+
+        "en": """
+
+👉 *Does this reflect your situation well or would you change something important?*"""
+    }
+    
+    # Respuestas para confirmación/corrección del resumen
+    SEGMENT_5_RESPONSES = {
+        "es": {
+            "confirmed": (
+                "¡Perfecto! Ahora sí puedo darte recomendaciones personalizadas. 🎯\n\n"
+                "Basándome en tu perfil, voy a analizar las mejores opciones para ti.\n\n"
+                "Dame un momento..."
+            ),
+            "correction": (
+                "Entendido, gracias por la aclaración. 🙏\n\n"
+                "Es importante que tenga la información correcta.\n\n"
+                "¿Qué parte te gustaría corregir o agregar?"
+            ),
+            "partial": (
+                "Ok, veo que hay algo que ajustar. 📝\n\n"
+                "Cuéntame qué cambiarías y actualizo mi entendimiento."
+            ),
+        },
+        "en": {
+            "confirmed": (
+                "Perfect! Now I can give you personalized recommendations. 🎯\n\n"
+                "Based on your profile, I'll analyze the best options for you.\n\n"
+                "Give me a moment..."
+            ),
+            "correction": (
+                "Understood, thanks for the clarification. 🙏\n\n"
+                "It's important that I have the correct information.\n\n"
+                "What part would you like to correct or add?"
+            ),
+        }
+    }
+    
+    def generate_understanding_summary(
+        self,
+        understanding: dict,
+        lang: str = "es"
+    ) -> str:
+        """
+        Generar el resumen de entendimiento obligatorio.
+        
+        REGLA: NO avanzar hasta que el usuario confirme o corrija.
+        """
+        intro = self.SEGMENT_5_SUMMARY_INTRO.get(lang, self.SEGMENT_5_SUMMARY_INTRO["es"])
+        question = self.SEGMENT_5_CONFIRMATION_QUESTION.get(lang, self.SEGMENT_5_CONFIRMATION_QUESTION["es"])
+        
+        # Construir resumen dinámico
+        summary_parts = []
+        
+        # 1. Por qué quieres irte
+        motivation = understanding.get("deep_motivation", "")
+        if motivation:
+            if lang == "es":
+                summary_parts.append(f"🎯 *Por qué quieres irte:* {motivation[:100]}..." if len(motivation) > 100 else f"🎯 *Por qué quieres irte:* {motivation}")
+            else:
+                summary_parts.append(f"🎯 *Why you want to leave:* {motivation[:100]}..." if len(motivation) > 100 else f"🎯 *Why you want to leave:* {motivation}")
+        
+        # 2. Quiénes migrarían
+        family = understanding.get("family_members", [])
+        migrating_alone = understanding.get("migrating_alone", None)
+        if migrating_alone:
+            if lang == "es":
+                summary_parts.append("👤 *Quiénes migran:* Solo/a")
+            else:
+                summary_parts.append("👤 *Who migrates:* Alone")
+        elif family:
+            family_desc = ", ".join([f"{m.get('type', 'familiar')} ({m.get('age', '?')} años)" for m in family])
+            if lang == "es":
+                summary_parts.append(f"👨‍👩‍👧 *Quiénes migran:* Con familia - {family_desc}")
+            else:
+                summary_parts.append(f"👨‍👩‍👧 *Who migrates:* With family - {family_desc}")
+        
+        # 3. Situación actual
+        profession = understanding.get("current_profession", "")
+        years = understanding.get("years_experience", "")
+        if profession:
+            prof_text = f"{profession}"
+            if years:
+                prof_text += f" ({years} años exp.)"
+            if lang == "es":
+                summary_parts.append(f"💼 *Profesión:* {prof_text}")
+            else:
+                summary_parts.append(f"💼 *Profession:* {prof_text}")
+        
+        # 4. Vida deseada
+        lifestyle = understanding.get("desired_lifestyle", "")
+        if lifestyle:
+            if lang == "es":
+                summary_parts.append(f"✨ *Vida deseada:* {lifestyle[:80]}..." if len(lifestyle) > 80 else f"✨ *Vida deseada:* {lifestyle}")
+            else:
+                summary_parts.append(f"✨ *Desired life:* {lifestyle[:80]}..." if len(lifestyle) > 80 else f"✨ *Desired life:* {lifestyle}")
+        
+        # 5. Recursos y restricciones
+        savings = understanding.get("available_savings", "")
+        urgency = understanding.get("timeline_urgency", "")
+        if savings or urgency:
+            constraints = []
+            if savings:
+                constraints.append(f"${savings:,}" if isinstance(savings, int) else str(savings))
+            if urgency:
+                urgency_text = {
+                    "urgent": "urgente" if lang == "es" else "urgent",
+                    "flexible": "flexible",
+                    "no_rush": "sin prisa" if lang == "es" else "no rush"
+                }.get(urgency, urgency)
+                constraints.append(urgency_text)
+            if lang == "es":
+                summary_parts.append(f"💰 *Recursos/Tiempo:* {', '.join(constraints)}")
+            else:
+                summary_parts.append(f"💰 *Resources/Time:* {', '.join(constraints)}")
+        
+        # Construir mensaje completo
+        summary_body = "\n".join(summary_parts) if summary_parts else ("(Información pendiente)" if lang == "es" else "(Information pending)")
+        
+        return f"{intro}\n\n{summary_body}{question}"
+    
+    def process_segment_5(
+        self,
+        user_text: str,
+        understanding: dict,
+        is_confirmation_phase: bool,
+        lang: str = "es"
+    ) -> ScriptResponse:
+        """
+        Procesar Segmento 5: Restricciones + Resumen Obligatorio
+        
+        REGLA CRÍTICA: NO avanzar hasta que el usuario confirme o corrija.
+        """
+        import re
+        
+        text_lower = user_text.lower()
+        
+        # Si estamos en fase de confirmación del resumen
+        if is_confirmation_phase:
+            return self._process_summary_confirmation(text_lower, lang)
+        
+        # Si no, estamos recopilando restricciones
+        # Generar el resumen obligatorio
+        summary = self.generate_understanding_summary(understanding, lang)
+        
+        return ScriptResponse(
+            message=summary,
+            segment=ScriptSegment.S7_RESUMEN_ENTENDIMIENTO,
+            can_advance=False,  # BLOQUEANTE hasta confirmación
+            requires_confirmation=True,
+            buttons=[
+                ("✅ Sí, es correcto", "confirm_summary"),
+                ("✏️ Quiero corregir algo", "correct_summary"),
+                ("➕ Quiero agregar algo", "add_to_summary"),
+            ] if lang == "es" else [
+                ("✅ Yes, it's correct", "confirm_summary"),
+                ("✏️ I want to correct something", "correct_summary"),
+                ("➕ I want to add something", "add_to_summary"),
+            ]
+        )
+    
+    def _process_summary_confirmation(
+        self,
+        text: str,
+        lang: str
+    ) -> ScriptResponse:
+        """
+        Procesar la confirmación/corrección del resumen.
+        
+        REGLA: Solo avanzar si el usuario confirma explícitamente.
+        """
+        responses = self.SEGMENT_5_RESPONSES.get(lang, self.SEGMENT_5_RESPONSES["es"])
+        
+        # Detectar confirmación
+        confirmation_patterns = [
+            r"sí|si|yes|correcto|exacto|perfecto|bien|ok|está bien",
+            r"confirm",
+            r"así es|eso es|exactamente",
+        ]
+        
+        is_confirmed = any(
+            __import__('re').search(pattern, text)
+            for pattern in confirmation_patterns
+        )
+        
+        # Detectar corrección
+        correction_patterns = [
+            r"no|cambiar|corregir|agregar|falta|incorrecto",
+            r"en realidad|pero|aunque",
+        ]
+        
+        is_correction = any(
+            __import__('re').search(pattern, text)
+            for pattern in correction_patterns
+        )
+        
+        if is_confirmed and not is_correction:
+            # ¡CONFIRMADO! Ahora sí podemos avanzar
+            return ScriptResponse(
+                message=responses["confirmed"],
+                segment=ScriptSegment.S8_OPCIONES_MIGRATORIAS,
+                can_advance=True,
+                requires_confirmation=False
+            )
+        elif is_correction:
+            # Necesita corrección - NO avanzar
+            return ScriptResponse(
+                message=responses["correction"],
+                segment=ScriptSegment.S7_RESUMEN_ENTENDIMIENTO,
+                can_advance=False,
+                requires_confirmation=True
+            )
+        else:
+            # Respuesta ambigua - pedir clarificación
+            return ScriptResponse(
+                message=responses.get("partial", responses["correction"]),
+                segment=ScriptSegment.S7_RESUMEN_ENTENDIMIENTO,
+                can_advance=False,
+                requires_confirmation=True
+            )
+    
     def is_visa_talk_allowed(self) -> bool:
         """Verificar si se puede hablar de visas (solo después de S7)"""
         allowed_segments = [

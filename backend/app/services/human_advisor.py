@@ -830,7 +830,16 @@ class HumanAdvisor:
     async def _phase_real_constraints(
         self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
     ) -> Dict[str, Any]:
-        """Fase de restricciones reales"""
+        """
+        SEGMENTO 5: Restricciones reales + RESUMEN OBLIGATORIO
+        
+        GUIÓN OFICIAL:
+        - Gracias. Ahora déjame detenerme un momento.
+        - 📌 Resumen de lo que entiendo hasta ahora
+        - ¿Esto refleja bien tu situación o cambiarías algo importante?
+        - ⚠️ NO avanzar hasta que el usuario confirme o corrija.
+        """
+        from app.services.migpal_script_usa import MigPALScriptUSA
         
         # Guardar restricciones
         if extracted.get("savings"):
@@ -840,148 +849,166 @@ class HumanAdvisor:
         
         ctx.topics_discussed.append("constraints")
         
-        # Crear resumen de entendimiento
-        return await self._create_understanding_summary(ctx, lang)
-    
-    async def _create_understanding_summary(
-        self, ctx: ConversationContext, lang: str
-    ) -> Dict[str, Any]:
-        """Crear resumen de entendimiento para confirmación"""
+        # Usar el guion del Segmento 5 para generar el resumen
+        script = MigPALScriptUSA()
         
-        u = ctx.understanding
+        # Convertir understanding a dict para el guion
+        understanding_dict = {
+            "deep_motivation": ctx.understanding.deep_motivation,
+            "family_members": ctx.understanding.family_members,
+            "migrating_alone": ctx.understanding.migrating_alone,
+            "current_profession": ctx.understanding.current_profession,
+            "years_experience": ctx.understanding.years_experience,
+            "desired_lifestyle": ctx.understanding.desired_lifestyle,
+            "available_savings": ctx.understanding.available_savings,
+            "timeline_urgency": ctx.understanding.timeline_urgency,
+        }
         
-        if lang == "es":
-            summary = "📋 *RESUMEN DE ENTENDIMIENTO*\n\n"
-            summary += "Antes de darte recomendaciones, quiero asegurarme de que te entendí bien:\n\n"
-            
-            if u.deep_motivation:
-                summary += f"🎯 *Motivación:* {u.deep_motivation}\n\n"
-            
-            if u.migrating_alone is not None:
-                family = "solo/a" if u.migrating_alone else "con familia"
-                summary += f"👨‍👩‍👧 *Quiénes migran:* {family}\n"
-                if u.family_members:
-                    for member in u.family_members:
-                        summary += f"   - {member.get('type', 'familiar')}: {member.get('age', '?')} años\n"
-                summary += "\n"
-            
-            if u.current_profession:
-                exp = f" ({u.years_experience} años exp.)" if u.years_experience else ""
-                summary += f"💼 *Profesión:* {u.current_profession}{exp}\n\n"
-            
-            if u.desired_lifestyle:
-                summary += f"✨ *Vida deseada:* {u.desired_lifestyle[:100]}...\n\n"
-            
-            if u.available_savings:
-                summary += f"💰 *Recursos:* ${u.available_savings:,}\n"
-            if u.timeline_urgency:
-                urgency_text = {"urgent": "Urgente", "flexible": "Flexible", "no_rush": "Sin prisa"}
-                summary += f"⏰ *Tiempo:* {urgency_text.get(u.timeline_urgency, u.timeline_urgency)}\n"
-            
-            summary += "\n¿Es correcto? ¿Hay algo que quieras corregir o agregar?"
-            
-            buttons = [
-                ("✅ Sí, es correcto", "understanding_confirmed"),
-                ("✏️ Quiero corregir algo", "understanding_correct"),
-                ("➕ Quiero agregar algo", "understanding_add"),
-            ]
-        else:
-            summary = "📋 *UNDERSTANDING SUMMARY*\n\n"
-            summary += "Before giving you recommendations, I want to make sure I understood you correctly:\n\n"
-            # ... (versión en inglés similar)
-            
-            buttons = [
-                ("✅ Yes, that's correct", "understanding_confirmed"),
-                ("✏️ I want to correct something", "understanding_correct"),
-                ("➕ I want to add something", "understanding_add"),
-            ]
+        # Generar resumen con el guion oficial
+        script_response = script.process_segment_5(
+            text, understanding_dict, is_confirmation_phase=False, lang=lang
+        )
         
         ctx.phase = ExplorationPhase.UNDERSTANDING_SUMMARY
         
         return {
-            "response": summary,
-            "buttons": buttons,
-            "extracted_data": {},
+            "response": script_response.message,
+            "buttons": script_response.buttons,
+            "extracted_data": extracted,
             "phase_changed": True,
             "needs_validation": True,
-            "validation_summary": summary,
         }
     
     async def _phase_understanding_summary(
         self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
     ) -> Dict[str, Any]:
-        """Fase de confirmación del resumen"""
+        """
+        SEGMENTO 5 (continuación): Confirmación del resumen
         
-        # Si el usuario confirma, marcar como confirmado y avanzar
-        if any(w in text.lower() for w in ["sí", "si", "correcto", "yes", "correct"]):
+        REGLA CRÍTICA: ⚠️ NO avanzar hasta que el usuario confirme o corrija.
+        """
+        from app.services.migpal_script_usa import MigPALScriptUSA
+        
+        script = MigPALScriptUSA()
+        
+        # Procesar confirmación/corrección
+        script_response = script._process_summary_confirmation(text.lower(), lang)
+        
+        # Si el usuario confirmó, marcar y avanzar
+        if script_response.segment.value == "s8_opciones":
             ctx.understanding.confirmed_by_user = True
             ctx.phase = ExplorationPhase.OPTIONS_EXPLORATION
             
-            if lang == "es":
-                response = (
-                    "¡Perfecto! Ahora sí puedo darte recomendaciones personalizadas. 🎯\n\n"
-                    "Basándome en tu perfil, voy a analizar las mejores opciones para ti.\n\n"
-                    "Dame un momento..."
-                )
-            else:
-                response = (
-                    "Perfect! Now I can give you personalized recommendations. 🎯\n\n"
-                    "Based on your profile, I'm going to analyze the best options for you.\n\n"
-                    "Give me a moment..."
-                )
-            
             return {
-                "response": response,
+                "response": script_response.message,
                 "buttons": None,
-                "extracted_data": {},
+                "extracted_data": extracted,
                 "phase_changed": True,
                 "needs_validation": False,
             }
         
-        # Si quiere corregir, volver a la fase apropiada
-        return await self._handle_correction_or_doubt(text, ctx, lang)
-    
-    async def _phase_options(
-        self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
-    ) -> Dict[str, Any]:
-        """Fase de exploración de opciones - SOLO después de confirmación"""
-        
-        can_recommend, reason = ctx.can_recommend()
-        
-        if not can_recommend:
+        # Si necesita corrección, quedarse en esta fase
+        # Regenerar el resumen si el usuario quiere corregir
+        if "corregir" in text.lower() or "agregar" in text.lower() or "cambiar" in text.lower():
             if lang == "es":
-                response = f"Antes de continuar, {reason}. ¿Me ayudas con eso?"
+                response = (
+                    "Entendido, gracias por la aclaración. 🙏\n\n"
+                    "Es importante que tenga la información correcta.\n\n"
+                    "¿Qué parte te gustaría corregir o agregar?"
+                )
             else:
-                response = f"Before continuing, {reason}. Can you help me with that?"
+                response = (
+                    "Understood, thanks for the clarification. 🙏\n\n"
+                    "It's important that I have the correct information.\n\n"
+                    "What part would you like to correct or add?"
+                )
             
             return {
                 "response": response,
                 "buttons": None,
-                "extracted_data": {},
+                "extracted_data": extracted,
                 "phase_changed": False,
-                "needs_validation": False,
+                "needs_validation": True,
             }
         
-        # Aquí iría la lógica de recomendaciones personalizadas
-        # basadas en el entendimiento confirmado
-        
+        # Respuesta ambigua - pedir clarificación
         if lang == "es":
             response = (
-                "🗺️ *OPCIONES PARA TI*\n\n"
+                "Necesito que me confirmes si el resumen es correcto. 📝\n\n"
+                "¿Está bien así o hay algo que cambiar?"
+            )
+            buttons = [
+                ("✅ Sí, es correcto", "confirm_summary"),
+                ("✏️ Quiero corregir algo", "correct_summary"),
+            ]
+        else:
+            response = (
+                "I need you to confirm if the summary is correct. 📝\n\n"
+                "Is it okay or is there something to change?"
+            )
+            buttons = [
+                ("✅ Yes, it's correct", "confirm_summary"),
+                ("✏️ I want to correct something", "correct_summary"),
+            ]
+        
+        return {
+            "response": response,
+            "buttons": buttons,
+            "extracted_data": extracted,
+            "phase_changed": False,
+            "needs_validation": True,
+        }
+    
+    async def _phase_options(
+        self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
+    ) -> Dict[str, Any]:
+        """
+        SEGMENTO 8: Opciones migratorias
+        
+        SOLO se llega aquí después de confirmar el resumen.
+        Ahora SÍ podemos hablar de visas, estados, ciudades.
+        """
+        # Verificar que el resumen fue confirmado
+        if not ctx.understanding.confirmed_by_user:
+            # Esto no debería pasar, pero por seguridad
+            if lang == "es":
+                return {
+                    "response": "Antes de darte opciones, necesito confirmar que entendí bien tu situación. ¿Podemos revisar el resumen?",
+                    "buttons": None,
+                    "extracted_data": extracted,
+                    "phase_changed": False,
+                    "needs_validation": True,
+                }
+        
+        # Aquí iría la lógica de recomendaciones de visas
+        # Por ahora, mensaje placeholder
+        if lang == "es":
+            response = (
+                "🎯 *OPCIONES MIGRATORIAS PARA TI*\n\n"
                 "Basándome en tu perfil, estas son las opciones que más te convienen:\n\n"
-                "... (recomendaciones personalizadas)"
+                "_(Análisis de visas en desarrollo...)_\n\n"
+                "Pronto te daré recomendaciones específicas de:\n"
+                "- Tipos de visa aplicables\n"
+                "- Estados/ciudades recomendados\n"
+                "- Pasos a seguir\n"
+                "- Costos estimados"
             )
         else:
             response = (
-                "🗺️ *OPTIONS FOR YOU*\n\n"
+                "🎯 *MIGRATION OPTIONS FOR YOU*\n\n"
                 "Based on your profile, these are the options that suit you best:\n\n"
-                "... (personalized recommendations)"
+                "_(Visa analysis in development...)_\n\n"
+                "Soon I'll give you specific recommendations for:\n"
+                "- Applicable visa types\n"
+                "- Recommended states/cities\n"
+                "- Steps to follow\n"
+                "- Estimated costs"
             )
         
         return {
             "response": response,
             "buttons": None,
-            "extracted_data": {},
+            "extracted_data": extracted,
             "phase_changed": False,
             "needs_validation": False,
         }
