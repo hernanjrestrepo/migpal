@@ -583,7 +583,6 @@ class MigPALBot:
             await update.message.reply_text(welcome_msg)
             
             # Pequeña pausa para que se sienta natural
-            import asyncio
             await asyncio.sleep(1.5)
             
             # PASO 2: Pregunta abierta
@@ -3304,7 +3303,6 @@ class MigPALBot:
                 set_state(user_id, OnboardingState.WELCOME.value)
                 
                 # Pequeña pausa
-                import asyncio
                 await asyncio.sleep(0.8)
                 
                 # PASO 1: Presentación empática
@@ -5328,7 +5326,7 @@ class MigPALBot:
                 empathic_response = engine.get_empathic_response(text, lang)
                 await update.message.reply_text(empathic_response)
                 
-                import asyncio
+                # asyncio ya está importado globalmente
                 await asyncio.sleep(1.5)
                 
                 # PASO 4: Explicación del proceso
@@ -5476,7 +5474,35 @@ class MigPALBot:
                 await thinking_msg.delete()
             except:
                 pass
-            await update.message.reply_text("⚠️ Hubo un error. Inténtalo de nuevo.")
+            
+            # v3.0.8: NUNCA mostrar error - usar IA conversacional
+            try:
+                from app.services.conversational_ai import get_conversational_ai
+                conv_ai = get_conversational_ai()
+                response = await conv_ai.process_free_text(text, user, state, lang)
+                
+                if response.suggested_actions:
+                    await update.message.reply_text(
+                        response.message,
+                        parse_mode='Markdown',
+                        reply_markup=self._kb(response.suggested_actions)
+                    )
+                else:
+                    await update.message.reply_text(response.message, parse_mode='Markdown')
+            except Exception as ai_error:
+                logger.error(f"Conversational AI error: {ai_error}")
+                # Fallback amigable - NUNCA mostrar "error"
+                name = user.get("profile", {}).get("personal", {}).get("name", "amigo/a")
+                fallback_msg = (
+                    f"Gracias por compartir eso, {name}. 😊\n\n"
+                    "Cuéntame más sobre lo que necesitas. "
+                    "Estoy aquí para ayudarte."
+                ) if lang == "es" else (
+                    f"Thanks for sharing that, {name}. 😊\n\n"
+                    "Tell me more about what you need. "
+                    "I'm here to help you."
+                )
+                await update.message.reply_text(fallback_msg)
         
         # Si estamos en un estado de formulario Y la IA extrajo datos, guardarlos
         # Pero la IA ya respondió al usuario de forma natural
