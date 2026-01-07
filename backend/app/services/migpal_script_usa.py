@@ -452,6 +452,179 @@ Now, to understand where you're starting from:
             requires_confirmation=False
         )
     
+    # =========================================================================
+    # SEGMENTO 4: VIDA DESEADA EN USA (ANTES QUE VISA)
+    # =========================================================================
+    
+    SEGMENT_4_INITIAL = {
+        "es": """Antes de hablar de visas, pensemos en la vida. ✨
+
+Imagináte dentro de 3 a 5 años en Estados Unidos y que las cosas salieron bien.
+
+👉 *¿Cómo te gustaría que fuera tu día a día allí?*
+
+Por ejemplo:
+– tipo de trabajo o actividad
+– ciudad grande vs. ciudad mediana
+– comunidad latina importante o no
+– estabilidad vs. crecimiento
+– clima y ritmo de vida
+
+Respóndeme como te salga. Yo luego lo organizo.""",
+
+        "en": """Before talking about visas, let's think about life. ✨
+
+Imagine yourself 3 to 5 years from now in the United States, and things worked out well.
+
+👉 *What would you like your day-to-day life to be like there?*
+
+For example:
+– type of work or activity
+– big city vs. medium city
+– important Latino community or not
+– stability vs. growth
+– climate and pace of life
+
+Answer however it comes to you. I'll organize it later."""
+    }
+    
+    # Respuestas empáticas para Segmento 4
+    SEGMENT_4_RESPONSES = {
+        "es": {
+            "career_focused": (
+                "Me encanta esa visión profesional. 💼\n\n"
+                "Quieres crecer en tu carrera y eso es muy valioso. "
+                "USA tiene muchas oportunidades para eso.\n\n"
+                "{transition}"
+            ),
+            "family_focused": (
+                "Eso es hermoso. 👨‍👩‍👧\n\n"
+                "Priorizar la familia y su bienestar es una motivación muy poderosa. "
+                "Hay lugares en USA perfectos para eso.\n\n"
+                "{transition}"
+            ),
+            "stability_focused": (
+                "La estabilidad es fundamental. 🏠\n\n"
+                "Después de tanta incertidumbre, querer paz y seguridad "
+                "es completamente válido.\n\n"
+                "{transition}"
+            ),
+            "adventure_focused": (
+                "¡Me gusta ese espíritu! 🚀\n\n"
+                "Quieres crecer, explorar, y aprovechar al máximo la experiencia. "
+                "USA tiene mucho que ofrecer.\n\n"
+                "{transition}"
+            ),
+            "balanced": (
+                "Un equilibrio entre trabajo y vida personal. ⚖️\n\n"
+                "Eso es sabio. No todo es trabajar, también hay que vivir.\n\n"
+                "{transition}"
+            ),
+            "default": (
+                "Gracias por compartir esa visión. 🙏\n\n"
+                "Cada sueño es único y eso me ayuda a entender qué opciones "
+                "realmente te servirían.\n\n"
+                "{transition}"
+            ),
+        },
+        "en": {
+            "default": (
+                "Thank you for sharing that vision. 🙏\n\n"
+                "Every dream is unique and this helps me understand what options "
+                "would really work for you.\n\n"
+                "{transition}"
+            ),
+        }
+    }
+    
+    SEGMENT_4_TRANSITION = {
+        "es": """Ahora, para ser realistas, hablemos de recursos. 💰
+
+👉 *¿Con cuánto dinero cuentas aproximadamente para este proyecto?*
+
+(Ahorros, posibles préstamos, apoyo familiar... no necesito cifras exactas, solo un rango)
+
+Y en términos de tiempo: *¿hay alguna urgencia o tienes flexibilidad?*""",
+
+        "en": """Now, to be realistic, let's talk about resources. 💰
+
+👉 *Approximately how much money do you have for this project?*
+
+(Savings, possible loans, family support... I don't need exact figures, just a range)
+
+And in terms of time: *is there any urgency or do you have flexibility?*"""
+    }
+    
+    def process_segment_4(
+        self,
+        user_text: str,
+        extracted_data: dict,
+        lang: str = "es"
+    ) -> ScriptResponse:
+        """
+        Procesar Segmento 4: Vida deseada en USA
+        
+        REGLA: Antes de hablar de visas, pensemos en la vida.
+        """
+        import re
+        
+        self.segment_interactions += 1
+        text_lower = user_text.lower()
+        
+        # Detectar tipo de vida deseada
+        life_type = self._detect_life_type(text_lower)
+        
+        # Obtener respuesta apropiada
+        responses = self.SEGMENT_4_RESPONSES.get(lang, self.SEGMENT_4_RESPONSES["es"])
+        response_template = responses.get(life_type, responses["default"])
+        
+        # Transición al Segmento 5 (Restricciones)
+        transition = self.SEGMENT_4_TRANSITION.get(lang, self.SEGMENT_4_TRANSITION["es"])
+        response_text = response_template.format(transition=transition)
+        
+        return ScriptResponse(
+            message=response_text,
+            segment=ScriptSegment.S5_VIDA_DESEADA,
+            can_advance=True,
+            requires_confirmation=False
+        )
+    
+    def _detect_life_type(self, text: str) -> str:
+        """Detectar tipo de vida deseada"""
+        import re
+        
+        # Patrones para detectar enfoque de vida
+        if re.search(r"carrera|profesional|crecer|empresa|negocio|emprender|startup", text):
+            return "career_focused"
+        
+        if re.search(r"familia|hijos|escuela|segur[oa]|tranquil[oa]|niños", text):
+            return "family_focused"
+        
+        if re.search(r"estable|estabilidad|paz|calm[oa]|sin estrés", text):
+            return "stability_focused"
+        
+        if re.search(r"aventura|explorar|viajar|conocer|experiencia|nuevo", text):
+            return "adventure_focused"
+        
+        if re.search(r"equilibrio|balance|trabajo.*vida|vida.*trabajo", text):
+            return "balanced"
+        
+        return "default"
+    
+    def _transition_to_segment_5(self, lang: str) -> ScriptResponse:
+        """Transición al Segmento 5: Restricciones"""
+        self.current_segment = ScriptSegment.S5_VIDA_DESEADA
+        self.segment_interactions = 0
+        
+        message = self.SEGMENT_4_TRANSITION.get(lang, self.SEGMENT_4_TRANSITION["es"])
+        
+        return ScriptResponse(
+            message=message,
+            segment=ScriptSegment.S5_VIDA_DESEADA,
+            can_advance=False,
+            requires_confirmation=False
+        )
+    
     def is_visa_talk_allowed(self) -> bool:
         """Verificar si se puede hablar de visas (solo después de S7)"""
         allowed_segments = [

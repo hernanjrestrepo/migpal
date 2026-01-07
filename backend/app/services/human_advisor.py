@@ -738,7 +738,12 @@ class HumanAdvisor:
     async def _phase_current_situation(
         self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
     ) -> Dict[str, Any]:
-        """Fase de situación actual"""
+        """
+        Fase de situación actual - Transición a Segmento 4
+        
+        Después de conocer la situación actual, pasamos a vida deseada.
+        """
+        from app.services.migpal_script_usa import MigPALScriptUSA
         
         # Guardar datos
         if extracted.get("profession"):
@@ -748,28 +753,35 @@ class HumanAdvisor:
         if extracted.get("income"):
             ctx.understanding.current_income = extracted["income"]
         
+        # Detectar profesión del texto si no se extrajo
+        import re
+        if not ctx.understanding.current_profession:
+            prof_match = re.search(r'soy\s+(\w+)', text.lower())
+            if prof_match:
+                ctx.understanding.current_profession = prof_match.group(1)
+        
         # Parafrasear
-        profession = extracted.get("profession", "tu profesión")
-        years = extracted.get("years_experience", "")
+        profession = ctx.understanding.current_profession or "profesional"
+        years = ctx.understanding.years_experience
         years_text = f" con {years} años de experiencia" if years else ""
+        
+        # Usar el guion del Segmento 4
+        script = MigPALScriptUSA()
+        segment_4_intro = script.SEGMENT_4_INITIAL.get(lang, script.SEGMENT_4_INITIAL["es"])
         
         if lang == "es":
             response = (
                 f"¡Excelente! Eres {profession}{years_text}. 💼\n\n"
-                "Eso es un gran activo.\n\n"
-                "Ahora, hablemos de tus sueños. "
-                "Si pudieras diseñar tu vida ideal después de migrar, "
-                "¿cómo sería? ¿Qué tipo de trabajo te gustaría? "
-                "¿En qué tipo de lugar te imaginas viviendo?"
+                f"Eso es un gran activo para migrar.\n\n"
+                f"---\n\n"
+                f"{segment_4_intro}"
             )
         else:
             response = (
                 f"Excellent! You're a {profession}{years_text}. 💼\n\n"
-                "That's a great asset.\n\n"
-                "Now, let's talk about your dreams. "
-                "If you could design your ideal life after migrating, "
-                "what would it look like? What kind of work would you like? "
-                "What kind of place do you imagine living in?"
+                f"That's a great asset for migrating.\n\n"
+                f"---\n\n"
+                f"{segment_4_intro}"
             )
         
         ctx.phase = ExplorationPhase.DESIRED_LIFE
@@ -786,35 +798,29 @@ class HumanAdvisor:
     async def _phase_desired_life(
         self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
     ) -> Dict[str, Any]:
-        """Fase de vida deseada"""
+        """
+        SEGMENTO 4: Vida deseada en USA (antes que visa)
+        
+        GUIÓN OFICIAL:
+        - Antes de hablar de visas, pensemos en la vida
+        - Imagináte dentro de 3 a 5 años en USA
+        - ¿Cómo te gustaría que fuera tu día a día?
+        - Respóndeme como te salga. Yo luego lo organizo.
+        """
+        from app.services.migpal_script_usa import MigPALScriptUSA
         
         # Guardar sueños
         ctx.understanding.desired_lifestyle = text[:300]
         
-        if lang == "es":
-            response = (
-                "Me encanta esa visión. ✨\n\n"
-                "Ahora, hablemos de algo práctico pero importante: los recursos.\n\n"
-                "¿Con cuánto dinero cuentas aproximadamente para este proyecto? "
-                "(ahorros, posibles préstamos, apoyo familiar)\n\n"
-                "Y en términos de tiempo, ¿hay alguna urgencia? "
-                "¿O tienes flexibilidad para planificar con calma?"
-            )
-        else:
-            response = (
-                "I love that vision. ✨\n\n"
-                "Now, let's talk about something practical but important: resources.\n\n"
-                "Approximately how much money do you have for this project? "
-                "(savings, possible loans, family support)\n\n"
-                "And in terms of time, is there any urgency? "
-                "Or do you have flexibility to plan calmly?"
-            )
+        # Procesar con el guion del Segmento 4
+        script = MigPALScriptUSA()
+        script_response = script.process_segment_4(text, extracted, lang)
         
         ctx.phase = ExplorationPhase.REAL_CONSTRAINTS
         ctx.topics_discussed.append("desired_life")
         
         return {
-            "response": response,
+            "response": script_response.message,
             "buttons": None,
             "extracted_data": extracted,
             "phase_changed": True,
