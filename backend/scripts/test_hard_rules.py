@@ -21,9 +21,44 @@ from app.services.hard_rules import (
 )
 
 
+def test_rule_0_no_form_or_phases_start():
+    """
+    SEGMENTO 1/5 - REGLA 0: ❌ Prohibido iniciar con formularios o "FASES".
+    MigPAL NO es un bot de formularios.
+    """
+    print("\n" + "=" * 70)
+    print("🔒 TEST SEGMENTO 1/5: No Formularios ni FASES al Inicio")
+    print("=" * 70)
+    
+    guardian = HardRulesGuardian()
+    
+    test_cases = [
+        # (bot_response, interaction_count, should_pass, desc)
+        ("Hola, cuéntame qué te motiva a migrar", 1, True, "Saludo conversacional"),
+        ("Paso 1: Completa tus datos", 1, False, "Inicia con Paso 1"),
+        ("Fase 1: Información personal", 1, False, "Inicia con Fase 1"),
+        ("Completa el formulario de registro", 1, False, "Pide formulario"),
+        ("Ingresa tu nombre completo", 1, False, "Pide ingresar datos"),
+        ("Entiendo tu situación, cuéntame más", 2, True, "Respuesta empática"),
+        ("Primera fase del proceso", 2, False, "Menciona fases"),
+        ("Gracias por compartir eso", 3, True, "Agradecimiento"),
+        ("Paso 2: Siguiente etapa", 5, True, "Después de 3 interacciones OK"),
+    ]
+    
+    all_passed = True
+    for response, count, should_pass, desc in test_cases:
+        result = guardian._check_no_form_or_phases_start(response, count)
+        status = "✅" if result.passed == should_pass else "❌"
+        print(f"   {status} {desc}: {'PASS' if result.passed else 'BLOCK'}")
+        if result.passed != should_pass:
+            all_passed = False
+    
+    return all_passed
+
+
 def test_rule_1_no_personal_data_early():
     """
-    REGLA 1: ❌ Prohibido pedir datos personales en los primeros mensajes.
+    SEGMENTO 1/5 - REGLA 1: ❌ Prohibido pedir datos personales sin contexto previo.
     """
     print("\n" + "=" * 70)
     print("🔒 TEST REGLA 1: No datos personales en fases tempranas")
@@ -717,12 +752,13 @@ def main():
     
     results = []
     
-    # SEGMENTO 1/4
-    results.append(("S1 R1: No datos personales temprano", test_rule_1_no_personal_data_early()))
-    results.append(("S1 R2: No visa sin perfil", test_rule_2_no_visa_without_profile()))
-    results.append(("S1 R3: No opciones sin resumen", test_rule_3_no_options_without_summary()))
-    results.append(("S1 R4: Límite de formularios", test_rule_4_form_limit()))
-    results.append(("S1 R5: No avanzar con duda", test_rule_5_no_advance_on_doubt()))
+    # SEGMENTO 1/5 - Identidad y Principios Inviolables
+    results.append(("S1 R0: ❌ No formularios/FASES al inicio", test_rule_0_no_form_or_phases_start()))
+    results.append(("S1 R1: ❌ No datos personales sin contexto", test_rule_1_no_personal_data_early()))
+    results.append(("S1 R2: ❌ No visa sin perfil", test_rule_2_no_visa_without_profile()))
+    results.append(("S1 R3: ❌ No opciones sin resumen", test_rule_3_no_options_without_summary()))
+    results.append(("S1 R4: ❌ Máx 1 formulario/5 interacciones", test_rule_4_form_limit()))
+    results.append(("S1 R5: ❌ No avanzar con duda/corrección", test_rule_5_no_advance_on_doubt()))
     
     # SEGMENTO 2/4
     results.append(("S2: Estados obligatorios", test_segment_2_mandatory_states()))

@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
 """
-🔒 REGLAS DURAS DE SISTEMA - MigPAL USA
-=======================================
+🔒 REGLAS DURAS DE SISTEMA - MigPAL USA (MVP)
+=============================================
 
 Este módulo contiene las RESTRICCIONES OBLIGATORIAS del motor conversacional.
-NO son sugerencias ni UX. Son reglas inviolables.
+NO son sugerencias, UX ni copy. Son reglas inviolables.
 
 Si una regla se viola → el flujo NO puede avanzar.
 Si hay conflicto código vs regla → LA REGLA PREVALECE.
+Estas reglas tienen PRIORIDAD sobre cualquier lógica existente.
 
 SEGMENTOS:
-1/4 - Principios Inviolables (Core) ✅
-2/4 - Control de Flujo (Bloqueos) ✅
-3/4 - Inteligencia Conversacional ✅
-4/4 - Visas USA (Restricción Crítica) ✅
+1/5 - Identidad y Principios Inviolables ✅
+2/5 - (Pendiente)
+3/5 - (Pendiente)
+4/5 - (Pendiente)
+5/5 - (Pendiente)
+
+IDENTIDAD:
+MigPAL NO es un bot de formularios.
+MigPAL actúa como ASESOR HUMANO MIGRATORIO para USA.
 """
 
 import logging
@@ -26,12 +32,14 @@ logger = logging.getLogger(__name__)
 
 class RuleViolation(Enum):
     """Tipos de violaciones de reglas duras"""
-    # Segmento 1/4 - Principios Inviolables
-    PERSONAL_DATA_TOO_EARLY = "personal_data_too_early"
-    VISA_WITHOUT_PROFILE = "visa_without_profile"
+    # Segmento 1/5 - Identidad y Principios Inviolables
+    STARTED_WITH_FORM = "started_with_form"  # ❌ Prohibido iniciar con formularios
+    STARTED_WITH_PHASES = "started_with_phases"  # ❌ Prohibido iniciar con "FASES"
+    PERSONAL_DATA_TOO_EARLY = "personal_data_too_early"  # ❌ Sin contexto previo
+    VISA_WITHOUT_PROFILE = "visa_without_profile"  # ❌ Sin perfil completo
     OPTIONS_WITHOUT_SUMMARY = "options_without_summary"
-    TOO_MANY_FORMS = "too_many_forms"
-    ADVANCE_ON_DOUBT = "advance_on_doubt"
+    TOO_MANY_FORMS = "too_many_forms"  # ❌ Máx 1 cada 5 interacciones
+    ADVANCE_ON_DOUBT = "advance_on_doubt"  # ❌ Duda/corrección/confusión
     
     # Segmento 2/4 - Control de Flujo (Bloqueos)
     SKIPPED_MANDATORY_STATE = "skipped_mandatory_state"
@@ -112,11 +120,20 @@ class HardRulesGuardian:
         """
         Verificar TODAS las reglas duras antes de permitir avance.
         
+        SEGMENTO 1/5 - IDENTIDAD Y PRINCIPIOS INVIOLABLES:
+        MigPAL NO es un bot de formularios.
+        MigPAL actúa como ASESOR HUMANO MIGRATORIO para USA.
+        
         Returns:
             RuleCheckResult con passed=False si alguna regla se viola
         """
         
-        # REGLA 1: ❌ Prohibido pedir datos personales en primeros mensajes
+        # REGLA 0: ❌ Prohibido iniciar con formularios o "FASES"
+        result = self._check_no_form_or_phases_start(bot_response, interaction_count)
+        if not result.passed:
+            return result
+        
+        # REGLA 1: ❌ Prohibido pedir datos personales sin contexto previo
         result = self._check_no_personal_data_early(current_phase, bot_response)
         if not result.passed:
             return result
@@ -142,6 +159,67 @@ class HardRulesGuardian:
             return result
         
         return RuleCheckResult(passed=True, message="Todas las reglas cumplidas")
+    
+    def _check_no_form_or_phases_start(
+        self,
+        bot_response: str,
+        interaction_count: int
+    ) -> RuleCheckResult:
+        """
+        REGLA 0: ❌ Prohibido iniciar con formularios o "FASES".
+        
+        MigPAL NO es un bot de formularios.
+        """
+        import re
+        
+        # Solo verificar en las primeras interacciones
+        if interaction_count > 3:
+            return RuleCheckResult(passed=True)
+        
+        response_lower = bot_response.lower()
+        
+        # Patrones de formularios al inicio
+        form_patterns = [
+            r"^(paso|step)\s*\d",
+            r"^fase\s*\d",
+            r"^etapa\s*\d",
+            r"completa (el|este|la) formulario",
+            r"llena (el|este|los) campos",
+            r"ingresa (tu|tus|el|la)",
+            r"selecciona (una|tu)",
+        ]
+        
+        for pattern in form_patterns:
+            if re.search(pattern, response_lower):
+                self._log_violation(RuleViolation.STARTED_WITH_FORM, pattern)
+                return RuleCheckResult(
+                    passed=False,
+                    violation=RuleViolation.STARTED_WITH_FORM,
+                    message="❌ PROHIBIDO: Iniciar con formularios. MigPAL es asesor humano.",
+                    should_rollback=True,
+                    rollback_to_phase="greeting"
+                )
+        
+        # Patrones de "FASES" explícitas
+        phases_patterns = [
+            r"fase\s*(1|2|3|uno|dos|tres)",
+            r"(primera|segunda|tercera)\s*fase",
+            r"etapa\s*(1|2|3)",
+            r"step\s*(1|2|3)",
+        ]
+        
+        for pattern in phases_patterns:
+            if re.search(pattern, response_lower):
+                self._log_violation(RuleViolation.STARTED_WITH_PHASES, pattern)
+                return RuleCheckResult(
+                    passed=False,
+                    violation=RuleViolation.STARTED_WITH_PHASES,
+                    message="❌ PROHIBIDO: Mencionar 'FASES'. MigPAL es conversacional.",
+                    should_rollback=True,
+                    rollback_to_phase="greeting"
+                )
+        
+        return RuleCheckResult(passed=True)
     
     def _check_no_personal_data_early(
         self, 
