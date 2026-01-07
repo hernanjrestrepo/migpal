@@ -12,7 +12,7 @@ Estas reglas tienen PRIORIDAD sobre cualquier lógica existente.
 
 SEGMENTOS:
 1/5 - Identidad y Principios Inviolables ✅
-2/5 - (Pendiente)
+2/5 - Flujo Obligatorio (General → Particular) ✅
 3/5 - (Pendiente)
 4/5 - (Pendiente)
 5/5 - (Pendiente)
@@ -395,27 +395,30 @@ class HardRulesGuardian:
         return RuleCheckResult(passed=True)
     
     # =========================================================================
-    # SEGMENTO 2/4 — CONTROL DE FLUJO (BLOQUEOS)
+    # SEGMENTO 2/5 — FLUJO OBLIGATORIO (GENERAL → PARTICULAR)
     # =========================================================================
     
-    # Estados OBLIGATORIOS y BLOQUEANTES - en orden estricto
+    # Estados OBLIGATORIOS y SECUENCIALES - en orden estricto
+    # 🚨 NO se puede saltar ningún estado
     MANDATORY_STATES = [
-        "greeting",              # Empatía + contención
-        "deep_motivation",       # Por qué quiere migrar (MOTIVATION)
-        "who_migrates",          # Quiénes, edades, familia
-        "current_situation",     # Trabajo, dinero, situación real (CURRENT_CONTEXT)
-        "desired_life",          # Vida deseada en USA (DESIRED_LIFE_USA)
-        "real_constraints",      # Edad, idioma, dinero, estatus (CONSTRAINTS)
-        "understanding",         # Resumen en lenguaje humano (UNDERSTANDING_SUMMARY)
-        # CONFIRMATION está implícito en understanding con confirmed_by_user
+        "greeting",              # 1. GREETING — empatía + contención humana
+        "deep_motivation",       # 2. MOTIVATION — por qué quiere migrar a USA
+        "who_migrates",          # 3. WHO_MIGRATES — quiénes migran (familia, edades)
+        "current_situation",     # 4. CURRENT_SITUATION — trabajo, dinero, realidad actual
+        "desired_life",          # 5. DESIRED_LIFE_USA — vida deseada en EE. UU.
+        "real_constraints",      # 6. CONSTRAINTS — edad, idioma, dinero, estatus, riesgos
+        "understanding",         # 7. UNDERSTANDING_SUMMARY — resumen en lenguaje humano
+        "confirmation",          # 8. CONFIRMATION — "¿entendí bien?"
     ]
     
-    # Estados que requieren understanding_confirmed = true
+    # 🚨 REGLA CRÍTICA: No se puede pasar a opciones si understanding_confirmed != true
     STATES_REQUIRING_CONFIRMATION = [
         "options",
         "plan_creation",
         "visa_analysis",
         "recommendations",
+        "visa_options",
+        "next_steps",
     ]
     
     # Datos requeridos por cada estado para poder avanzar
