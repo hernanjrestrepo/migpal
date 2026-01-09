@@ -1,0 +1,406 @@
+{
+  "summary": {
+    "total_simulations": 20,
+    "successful": 20,
+    "failed": 0,
+    "success_rate": "100.0%",
+    "total_frictions": 0,
+    "critical_frictions": 0
+  },
+  "metrics": {
+    "avg_turns_per_conversation": 9.8,
+    "avg_micro_checks": 3.0,
+    "avg_forms_shown": 0.0,
+    "gating_compliance": "100.0%"
+  },
+  "frictions_by_type": {},
+  "frictions_by_severity": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0
+  },
+  "rule_violations": [],
+  "recommendations": [
+    "✅ No se detectaron problemas críticos"
+  ],
+  "detailed_results": [
+    {
+      "profile": "Carlos Mendoza",
+      "type": "E-2",
+      "success": true,
+      "turns": 11,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "negocio",
+        "barrio",
+        "vivienda",
+        "colegios",
+        "plan"
+      ]
+    },
+    {
+      "profile": "María García",
+      "type": "E-2",
+      "success": true,
+      "turns": 11,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "negocio",
+        "barrio",
+        "vivienda",
+        "colegios",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Roberto Sánchez",
+      "type": "E-2",
+      "success": true,
+      "turns": 10,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "negocio",
+        "barrio",
+        "vivienda",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Ana Rodríguez",
+      "type": "E-2",
+      "success": true,
+      "turns": 10,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "negocio",
+        "barrio",
+        "vivienda",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Pedro Martínez",
+      "type": "E-2",
+      "success": true,
+      "turns": 11,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "negocio",
+        "barrio",
+        "vivienda",
+        "colegios",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Luis Fernández",
+      "type": "L-1",
+      "success": true,
+      "turns": 10,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "colegios",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Carmen López",
+      "type": "L-1",
+      "success": true,
+      "turns": 9,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Jorge Ramírez",
+      "type": "L-1",
+      "success": true,
+      "turns": 10,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "colegios",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Patricia Gómez",
+      "type": "L-1",
+      "success": true,
+      "turns": 9,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Miguel Torres",
+      "type": "L-1",
+      "success": true,
+      "turns": 10,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "colegios",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Dr. Alejandro Ruiz",
+      "type": "EB-2_NIW",
+      "success": true,
+      "turns": 10,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "colegios",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Dra. Isabella Moreno",
+      "type": "EB-2_NIW",
+      "success": true,
+      "turns": 9,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Dr. Fernando Castro",
+      "type": "EB-2_NIW",
+      "success": true,
+      "turns": 10,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "colegios",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Dra. Valentina Herrera",
+      "type": "EB-2_NIW",
+      "success": true,
+      "turns": 9,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Dr. Ricardo Vargas",
+      "type": "EB-2_NIW",
+      "success": true,
+      "turns": 10,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "colegios",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Sofía Delgado",
+      "type": "MIXED",
+      "success": true,
+      "turns": 9,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Diego Navarro",
+      "type": "MIXED",
+      "success": true,
+      "turns": 10,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "colegios",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Lucía Reyes",
+      "type": "MIXED",
+      "success": true,
+      "turns": 10,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "colegios",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Andrés Molina",
+      "type": "MIXED",
+      "success": true,
+      "turns": 9,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "plan"
+      ]
+    },
+    {
+      "profile": "Gabriela Ortiz",
+      "type": "MIXED",
+      "success": true,
+      "turns": 10,
+      "frictions": 0,
+      "phases": [
+        "registro",
+        "diagnostico",
+        "perfilamiento",
+        "visa",
+        "estado",
+        "ciudad",
+        "barrio",
+        "vivienda",
+        "colegios",
+        "plan"
+      ]
+    }
+  ]
+}

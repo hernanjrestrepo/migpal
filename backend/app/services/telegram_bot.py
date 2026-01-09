@@ -201,6 +201,46 @@ from app.services.ux_improvements import (
     PHASES, FIELD_LABELS, ERROR_MESSAGES
 )
 
+# SEGMENTO 1/3 - Availability Watchdog: GARANTIZA que MigPAL SIEMPRE responda
+from app.services.availability_watchdog import (
+    ResponseWatchdog, EmpathicFallback, DeadStateDetector, ResponseTracker,
+    get_watchdog, get_empathic_fallback, get_dead_state_detector, get_response_tracker,
+    guaranteed_response, ensure_response,
+    EMPATHIC_FALLBACKS, STATE_TO_PHASE,
+    WATCHDOG_TIMEOUT_SECONDS, MAX_RESPONSE_TIME_SECONDS
+)
+
+# SEGMENTO 2/3 - Flow Governor: La conversación manda, no los formularios
+from app.services.flow_governor import (
+    FormThrottler, InputInterpreter, UnderstandingGatekeeper, 
+    VisaRecommendationGuard, ConversationDirector,
+    get_form_throttler, get_input_interpreter, get_understanding_gatekeeper,
+    get_visa_guard, get_conversation_director,
+    should_show_form, interpret_user_input, can_recommend_visa, get_next_visa_question,
+    InputType, InterpretedInput, UnderstandingLevel
+)
+
+# SEGMENTO 3/3 - Memory Profiler: Extracción ≠ decisión
+from app.services.memory_profiler import (
+    DataMemory, ProfileValidator, UnderstandingSummarizer,
+    CorrectionTracker, LifeGoalExtractor, DecisionGate,
+    get_data_memory, get_profile_validator, get_understanding_summarizer,
+    get_correction_tracker, get_life_goal_extractor, get_decision_gate,
+    store_user_input, validate_profile, generate_understanding_summary,
+    detect_correction, can_make_decision, get_next_life_question,
+    ProfileCompleteness, ProfileValidationResult
+)
+
+# SEGMENTO 2/4 - NeverSilent: El bot NUNCA se queda callado
+from app.services.never_silent import (
+    NeverSilentWrapper, ProcessingWatchdog, AntiMultipleInstances, HealthCheck,
+    get_never_silent, get_watchdog as get_processing_watchdog,
+    get_anti_multi, get_health_check,
+    never_silent, never_silent_callback, with_watchdog,
+    full_protection, full_protection_callback,
+    WATCHDOG_TIMEOUT
+)
+
 # V2.2 - Import housing scraper (Zillow, Apartments.com)
 from app.services.housing_scraper import (
     housing_scraper, search_rentals, HousingListing
@@ -217,6 +257,50 @@ from app.services.visual_generator import (
 from app.services.pdf_report_generator import (
     pdf_generator, generate_diagnostic_pdf, generate_city_pdf,
     generate_comparison_pdf, generate_migration_plan_pdf
+)
+
+# V3.1.0 - Import Understanding Summary: Resumen de Entendimiento antes de recomendar visa
+from app.services.understanding_summary import (
+    get_summary_manager, UnderstandingSummaryManager, ConfirmationStatus,
+    can_recommend_visa as can_recommend_visa_with_summary,
+    generate_understanding_summary as generate_summary_text,
+    mark_summary_confirmed, mark_summary_shown, should_show_summary,
+    get_visa_blocking_message
+)
+
+# V3.2.0 - Import Profile Validator: Prohibido "basado en tu perfil" sin confirmación
+from app.services.profile_validator import (
+    get_profile_validator, get_profile_based_intro, is_profile_confirmed,
+    PriorityIntentHandler, get_priority_intent_handler
+)
+
+# V3.2.1 - Conversation Recorder: Instrumentación y auditoría
+from app.services.conversation_recorder import (
+    ConversationRecorder, FrictionDetector, FrictionTag,
+    get_conversation_recorder, get_friction_detector,
+    export_case, export_day
+)
+
+# V4.0 - MigPAL USA Standard Middleware
+# Feature flag: MIGPAL_USA_STANDARD_V4=1 (default enabled)
+from app.services.migpal_v4_middleware import (
+    MIGPAL_USA_STANDARD_V4, is_v4_enabled,
+    pre_process_message as v4_pre_process,
+    post_process_response as v4_post_process,
+    check_visa_gating as v4_check_gating,
+    get_progress_indicator as v4_get_progress,
+    evaluate_states as v4_evaluate_states,
+    evaluate_cities as v4_evaluate_cities,
+    evaluate_businesses as v4_evaluate_businesses,
+    mark_profile_complete as v4_mark_profile_complete,
+    mark_summary_confirmed as v4_mark_summary_confirmed,
+    advance_phase as v4_advance_phase,
+    get_document_checklist as v4_get_doc_checklist,
+    get_installation_checklist as v4_get_install_checklist,
+    get_interview_prep as v4_get_interview_prep,
+    should_add_micro_check as v4_should_micro_check,
+    get_micro_check as v4_get_micro_check,
+    V4ResponseFormatter, V4GatingEnforcer
 )
 
 # In-memory cache (loaded from disk)
@@ -414,6 +498,7 @@ class MigPALBot:
         self.application.add_handler(CommandHandler("help", self._cmd_help))
         self.application.add_handler(CommandHandler("nuevo", self._cmd_new))
         self.application.add_handler(CommandHandler("perfil", self._cmd_profile))
+        self.application.add_handler(CommandHandler("resumen", self._cmd_resumen))  # SEGMENTO 3/3
         self.application.add_handler(CommandHandler("estado", self._cmd_status))
         self.application.add_handler(CommandHandler("listo", self._cmd_done_docs))
         self.application.add_handler(CommandHandler("sos", self._cmd_sos))
@@ -428,6 +513,9 @@ class MigPALBot:
         self.application.add_handler(CommandHandler("guia", self._cmd_guide))
         self.application.add_handler(CommandHandler("motivacion", self._cmd_motivation))
         self.application.add_handler(CommandHandler("reporte", self._cmd_report))
+        # V3.2.1 - Export commands for auditing
+        self.application.add_handler(CommandHandler("export_case", self._cmd_export_case))
+        self.application.add_handler(CommandHandler("export_day", self._cmd_export_day))
         self.application.add_handler(CommandHandler("idioma", self._cmd_language))
         self.application.add_handler(CommandHandler("notificaciones", self._cmd_notifications))
         # Gamification & Payment commands
@@ -671,6 +759,37 @@ class MigPALBot:
             text += f"\n📎 Documentos: {len(docs)} archivo(s)\n"
         
         await update.message.reply_text(text, parse_mode='Markdown')
+    
+    async def _cmd_resumen(self, update, context):
+        """
+        V3.1.0: Muestra Resumen de Entendimiento y pide confirmación.
+        REGLA CRÍTICA: Sin confirmación de este resumen, NO se puede recomendar visa.
+        """
+        user_id = update.effective_user.id
+        user = get_user_data(user_id)
+        lang = user.get("language", "es")
+        
+        # Validar perfil
+        validation = validate_profile(user)
+        
+        # Generar resumen usando el nuevo módulo
+        summary_manager = get_summary_manager()
+        summary_text, summary_buttons = summary_manager.generate_summary_text(user, lang)
+        
+        # Marcar que se mostró el resumen (para tracking)
+        mark_summary_shown(user_id)
+        
+        # Agregar información de completitud
+        completeness_msg = f"\n\n📊 *Completitud:* {validation.percentage:.0f}%"
+        if validation.missing_required:
+            missing_count = len(validation.missing_required)
+            completeness_msg += f"\n⚠️ Faltan {missing_count} dato(s) requeridos"
+        
+        await update.message.reply_text(
+            summary_text + completeness_msg,
+            parse_mode='Markdown',
+            reply_markup=self._kb(summary_buttons)
+        )
     
     async def _cmd_status(self, update, context):
         user_id = update.effective_user.id
@@ -1283,6 +1402,97 @@ class MigPALBot:
             parse_mode='Markdown'
         )
     
+    async def _cmd_export_case(self, update, context):
+        """
+        V3.2.1 - Export conversation case for a user.
+        Usage: /export_case <user_id>
+        Admin only command.
+        """
+        user_id = update.effective_user.id
+        
+        # Check if admin (you can customize this list)
+        ADMIN_IDS = [123456789]  # Add your admin user IDs here
+        
+        # For testing, allow any user to export their own data
+        args = context.args if context.args else []
+        
+        if args:
+            target_user_id = int(args[0])
+            # Only admins can export other users' data
+            if target_user_id != user_id and user_id not in ADMIN_IDS:
+                await update.message.reply_text(
+                    "⚠️ Solo puedes exportar tus propios datos.\n"
+                    "Usa: /export_case (sin argumentos)"
+                )
+                return
+        else:
+            target_user_id = user_id
+        
+        try:
+            md_path, json_path = export_case(target_user_id)
+            await update.message.reply_text(
+                f"✅ *Caso exportado*\n\n"
+                f"📄 MD: `{md_path}`\n"
+                f"📊 JSON: `{json_path}`\n\n"
+                f"_User ID: {target_user_id}_",
+                parse_mode='Markdown'
+            )
+        except ValueError as e:
+            await update.message.reply_text(
+                f"❌ Error: {str(e)}\n\n"
+                "No se encontraron conversaciones para este usuario."
+            )
+        except Exception as e:
+            logger.error(f"Export case error: {e}")
+            await update.message.reply_text(
+                f"❌ Error al exportar: {str(e)}"
+            )
+    
+    async def _cmd_export_day(self, update, context):
+        """
+        V3.2.1 - Export all conversations from a specific day.
+        Usage: /export_day YYYY-MM-DD
+        Admin only command.
+        """
+        user_id = update.effective_user.id
+        
+        # Check if admin
+        ADMIN_IDS = [123456789]  # Add your admin user IDs here
+        
+        if user_id not in ADMIN_IDS:
+            await update.message.reply_text(
+                "⚠️ Este comando es solo para administradores."
+            )
+            return
+        
+        args = context.args if context.args else []
+        
+        if not args:
+            # Default to today
+            from datetime import datetime
+            date_str = datetime.now().strftime('%Y-%m-%d')
+        else:
+            date_str = args[0]
+        
+        try:
+            md_path, json_path = export_day(date_str)
+            await update.message.reply_text(
+                f"✅ *Día exportado: {date_str}*\n\n"
+                f"📄 MD: `{md_path}`\n"
+                f"📊 JSON: `{json_path}`",
+                parse_mode='Markdown'
+            )
+        except ValueError as e:
+            await update.message.reply_text(
+                f"❌ Error: {str(e)}\n\n"
+                f"No se encontraron conversaciones para {date_str}."
+            )
+        except Exception as e:
+            logger.error(f"Export day error: {e}")
+            await update.message.reply_text(
+                f"❌ Error al exportar: {str(e)}"
+            )
+    
     async def _cmd_language(self, update, context):
         """Change bot language - supports 25+ languages globally"""
         # Get all available languages
@@ -1876,18 +2086,43 @@ class MigPALBot:
     
     @global_error_handler
     async def _handle_callback(self, update, context):
+        # ============== SEGMENTO 2/4: NEVER SILENT WRAPPER ==============
+        # REGLA: El bot NUNCA se queda callado. SIEMPRE responde.
+        never_silent_wrapper = get_never_silent()
+        health_check = get_health_check()
+        health_check.record_update()  # Registrar actividad para healthcheck
+        
         query = update.callback_query
         await query.answer()
         
         user_id = query.from_user.id
-        data = query.data
+        data = query.data if query.data else ""
         state = get_state(user_id)
         user = get_user_data(user_id)
-        lang = user.get("language", "en")
+        lang = user.get("language", "es")  # Default español para MigPAL
+        
+        # ============== SEGMENTO 1/3: DISPONIBILIDAD GARANTIZADA ==============
+        # REGLA: Todo callback DEBE generar respuesta. NUNCA quedarse callado.
+        
+        # 1. Registrar input para tracking de respuesta
+        response_tracker = get_response_tracker()
+        response_tracker.record_input(user_id, "callback", data[:50])
+        
+        # 2. Iniciar watchdog de 3 segundos
+        watchdog = get_watchdog()
+        
+        async def send_watchdog_message(msg: str):
+            try:
+                await query.message.reply_text(msg)
+            except Exception as e:
+                logger.error(f"Watchdog send failed: {e}")
+        
+        await watchdog.start_watchdog(user_id, send_watchdog_message, lang)
         
         # Anti-spam: solo procesar si pasó suficiente tiempo desde el último click
         if not should_process_click(user_id):
             logger.debug(f"Ignoring spam click from {user_id}")
+            watchdog.mark_response_sent(user_id)
             return
         
         # V3.0.3 - Enhanced logging
@@ -1905,6 +2140,8 @@ class MigPALBot:
                 get_text("continue_where_left", lang) if lang != "en" else "▶️ Continuing...",
                 parse_mode='Markdown'
             )
+            watchdog.mark_response_sent(user_id)
+            response_tracker.record_response(user_id)
             return
         elif data == "stall_restart":
             # User wants to restart current phase
@@ -1917,6 +2154,8 @@ class MigPALBot:
                     ProgressTracker.format_progress_header(user, first_state, lang),
                     parse_mode='Markdown'
                 )
+            watchdog.mark_response_sent(user_id)
+            response_tracker.record_response(user_id)
             return
         
         logger.info(f"CB: {user_id} | {state} | {data}")
@@ -1931,6 +2170,7 @@ class MigPALBot:
                 set_state(user_id, OnboardingState.NAME_REQUEST.value)
                 name_request = engine.get_name_request(lang)
                 await query.edit_message_text(name_request)
+                watchdog.mark_response_sent(user_id)
                 return
             
             elif data == "onboarding_questions":
@@ -1938,43 +2178,147 @@ class MigPALBot:
                 set_state(user_id, OnboardingState.LISTENING.value)
                 response = engine.get_more_questions_response(lang)
                 await query.edit_message_text(response)
+                watchdog.mark_response_sent(user_id)
                 return
             
             elif data == "onboarding_later":
                 # Usuario quiere continuar después
                 response = engine.get_later_response(lang)
                 await query.edit_message_text(response)
+                watchdog.mark_response_sent(user_id)
                 return
         
         # ===== MULTI-SELECT HANDLERS =====
         if data.startswith("ms_"):
             await self._handle_multi_select(query, user_id, data, user)
+            watchdog.mark_response_sent(user_id)
             return
         
         # ===== EXPERTISE MULTI-SELECT =====
         if data.startswith("exp_"):
             await self._handle_expertise_select(query, user_id, data, user)
+            watchdog.mark_response_sent(user_id)
             return
         
         # ===== LOGROS MULTI-SELECT =====
         if data.startswith("logro_"):
             await self._handle_logros_select(query, user_id, data, user)
+            watchdog.mark_response_sent(user_id)
             return
         
         # ===== PLAN DE MIGRACIÓN =====
         if data.startswith("plan_"):
             await self._handle_migration_plan(query, user_id, data, user)
+            watchdog.mark_response_sent(user_id)
             return
         
         # ===== CIUDAD SELECCIONADA =====
         if data.startswith("city_"):
             await self._handle_city_selection(query, user_id, data, user)
+            watchdog.mark_response_sent(user_id)
             return
         
         # ===== INVESTIGACIÓN (VIVIENDAS, EMPLEOS, COLEGIOS, NEGOCIOS) =====
         if data.startswith("research_"):
             await self._handle_research(query, user_id, data, user)
+            watchdog.mark_response_sent(user_id)
             return
+        
+        # ===== SEGMENTO 3/3: HANDLERS DE CONFIRMACIÓN DE RESUMEN =====
+        if data.startswith("confirm_summary_"):
+            action = data.replace("confirm_summary_", "")
+            
+            if action == "yes":
+                # Usuario confirmó el resumen - marcar perfil como validado
+                if "confirmations" not in user:
+                    user["confirmations"] = []
+                user["confirmations"].append({
+                    "summary_type": "profile",
+                    "confirmed": True,
+                    "timestamp": datetime.now().isoformat()
+                })
+                save_user_data(user_id, user)
+                
+                # Confirmar correcciones pendientes
+                correction_tracker = get_correction_tracker()
+                correction_tracker.confirm_corrections(user_id)
+                
+                await query.edit_message_text(
+                    "✅ *¡Perfecto!* Información confirmada.\n\n"
+                    "Ahora puedo darte recomendaciones personalizadas.\n\n"
+                    "¿Qué te gustaría explorar?",
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("🎯 Ver recomendación de visa", "show_visa_recommendation")],
+                        [("🏙️ Explorar ciudades", "explore_cities")],
+                        [("💼 Buscar empleos", "cmd_jobs")],
+                        [("🏠 Buscar viviendas", "cmd_housing")]
+                    ])
+                )
+                watchdog.mark_response_sent(user_id)
+                return
+            
+            elif action == "no":
+                # Usuario quiere corregir algo
+                await query.edit_message_text(
+                    "✏️ *¿Qué necesitas corregir?*\n\n"
+                    "Escríbeme qué información está incorrecta y la actualizo.",
+                    parse_mode='Markdown'
+                )
+                watchdog.mark_response_sent(user_id)
+                return
+            
+            elif action == "add":
+                # Usuario quiere agregar más información
+                # Obtener siguiente pregunta de vida deseada
+                next_question = get_next_life_question(user, lang)
+                if next_question:
+                    await query.edit_message_text(
+                        f"🌟 *Entendamos mejor tu sueño*\n\n{next_question}",
+                        parse_mode='Markdown'
+                    )
+                else:
+                    await query.edit_message_text(
+                        "Cuéntame más sobre ti o tus planes. ¿Qué más te gustaría que supiera?",
+                        parse_mode='Markdown'
+                    )
+                watchdog.mark_response_sent(user_id)
+                return
+        
+        # ===== SHOW UNDERSTANDING SUMMARY =====
+        if data == "show_summary" or data == "show_understanding":
+            summary_text, summary_buttons = generate_understanding_summary(user, lang)
+            await query.edit_message_text(
+                summary_text,
+                parse_mode='Markdown',
+                reply_markup=self._kb(summary_buttons)
+            )
+            watchdog.mark_response_sent(user_id)
+            return
+        
+        # ===== SHOW VISA RECOMMENDATION (con validación) =====
+        if data == "show_visa_recommendation":
+            # SEGMENTO 3/3: Verificar si se puede tomar esta decisión
+            can_decide, reason, next_action = can_make_decision(user, "visa_recommendation")
+            
+            if not can_decide:
+                if next_action == "show_summary":
+                    summary_text, summary_buttons = generate_understanding_summary(user, lang)
+                    await query.edit_message_text(
+                        f"⚠️ {reason}\n\n{summary_text}",
+                        parse_mode='Markdown',
+                        reply_markup=self._kb(summary_buttons)
+                    )
+                else:
+                    await query.edit_message_text(
+                        f"⚠️ {reason}",
+                        parse_mode='Markdown'
+                    )
+                watchdog.mark_response_sent(user_id)
+                return
+            
+            # Perfil validado - mostrar recomendación
+            # (continuar con el flujo normal de visa)
         
         # ===== START =====
         if data == "begin":
@@ -2346,8 +2690,9 @@ class MigPALBot:
             
             # Then show selection buttons
             visas = self._get_visas(data)
+            profile_intro = get_profile_based_intro(user_id, user, lang)
             await query.message.reply_text(
-                "👆 Basado en tu perfil, ¿cuál te interesa explorar?",
+                f"👆 {profile_intro}, ¿cuál te interesa explorar?",
                 reply_markup=self._kb(visas)
             )
         
@@ -2635,6 +2980,91 @@ class MigPALBot:
                 retry_text = get_text("name_retry", lang)
                 await query.edit_message_text(retry_text)
                 set_state(user_id, STATE_NAME)
+        
+        # V3.1.0 - Summary confirmation callbacks (Resumen de Entendimiento)
+        elif data.startswith("summary_"):
+            action = data.replace("summary_", "")
+            
+            if action == "confirm":
+                # Usuario confirmó que el resumen es correcto
+                mark_summary_confirmed(user_id)
+                
+                if lang == "es":
+                    await query.edit_message_text(
+                        "✅ *¡Perfecto!* He guardado tu confirmación.\n\n"
+                        "Ahora puedo darte recomendaciones personalizadas basadas en tu perfil.\n\n"
+                        "¿Qué te gustaría hacer ahora?",
+                        parse_mode='Markdown',
+                        reply_markup=self._kb([
+                            [("📝 Ver recomendación de visa", "flow_continue_visa")],
+                            [("🗺️ Explorar ciudades", "cmd_explore")],
+                            [("💼 Buscar empleos", "cmd_jobs")],
+                        ])
+                    )
+                else:
+                    await query.edit_message_text(
+                        "✅ *Perfect!* I've saved your confirmation.\n\n"
+                        "Now I can give you personalized recommendations based on your profile.\n\n"
+                        "What would you like to do now?",
+                        parse_mode='Markdown',
+                        reply_markup=self._kb([
+                            [("📝 See visa recommendation", "flow_continue_visa")],
+                            [("🗺️ Explore cities", "cmd_explore")],
+                            [("💼 Search jobs", "cmd_jobs")],
+                        ])
+                    )
+                logger.info(f"✅ SUMMARY CONFIRMED | user={user_id}")
+            
+            elif action == "correct":
+                # Usuario quiere corregir algo
+                summary_manager = get_summary_manager()
+                summary_manager.mark_needs_correction(user_id)
+                
+                if lang == "es":
+                    await query.edit_message_text(
+                        "✏️ *Entendido, vamos a corregir.*\n\n"
+                        "¿Qué información necesitas cambiar?\n\n"
+                        "Puedes decirme directamente qué quieres corregir, por ejemplo:\n"
+                        "\"Mi nombre es Juan\" o \"Soy ingeniero, no contador\"",
+                        parse_mode='Markdown'
+                    )
+                else:
+                    await query.edit_message_text(
+                        "✏️ *Got it, let's correct that.*\n\n"
+                        "What information do you need to change?\n\n"
+                        "You can tell me directly what you want to correct, for example:\n"
+                        "\"My name is John\" or \"I'm an engineer, not an accountant\"",
+                        parse_mode='Markdown'
+                    )
+            
+            elif action == "add_info":
+                # Usuario quiere agregar información faltante
+                if lang == "es":
+                    await query.edit_message_text(
+                        "➕ *Agreguemos más información.*\n\n"
+                        "Cuéntame qué más te gustaría que sepa sobre ti.\n\n"
+                        "Por ejemplo:\n"
+                        "• Tu profesión y experiencia\n"
+                        "• Tu situación familiar\n"
+                        "• Por qué quieres migrar\n"
+                        "• Tu presupuesto aproximado",
+                        parse_mode='Markdown'
+                    )
+                else:
+                    await query.edit_message_text(
+                        "➕ *Let's add more information.*\n\n"
+                        "Tell me what else you'd like me to know about you.\n\n"
+                        "For example:\n"
+                        "• Your profession and experience\n"
+                        "• Your family situation\n"
+                        "• Why you want to migrate\n"
+                        "• Your approximate budget",
+                        parse_mode='Markdown'
+                    )
+            
+            watchdog.mark_response_sent(user_id)
+            response_tracker.record_response(user_id)
+            return
         
         # Flow callbacks
         elif data.startswith("flow_"):
@@ -3053,6 +3483,54 @@ class MigPALBot:
             
             # === HANDLERS DE VISA ===
             elif action.startswith("visa_"):
+                # ============== V4.0: GATING DE VISA ==============
+                # Verificar con el estándar v4.0 primero (si está habilitado)
+                if is_v4_enabled():
+                    try:
+                        v4_can_recommend, v4_blocking_msg = v4_check_gating(user_id, user)
+                        if not v4_can_recommend and v4_blocking_msg:
+                            await query.edit_message_text(
+                                f"⚠️ {v4_blocking_msg}\n\n"
+                                f"¿Quieres que continuemos con tu perfil?",
+                                parse_mode='Markdown',
+                                reply_markup=self._kb([
+                                    [("✅ Sí, continuar", "flow_continue_profile")],
+                                    [("📋 Ver mi perfil", "cmd_profile")],
+                                ])
+                            )
+                            watchdog.mark_response_sent(user_id)
+                            return
+                    except Exception as e:
+                        logger.warning(f"V4 gating check error (fallback to legacy): {e}")
+                
+                # V3.1.0: Verificar confirmación de Resumen de Entendimiento
+                summary_confirmed, summary_reason = can_recommend_visa_with_summary(user_id)
+                if not summary_confirmed:
+                    # No se ha confirmado el resumen - mostrar mensaje y pedir confirmación
+                    blocking_msg = get_visa_blocking_message(summary_reason, lang)
+                    await query.edit_message_text(
+                        blocking_msg,
+                        parse_mode='Markdown',
+                        reply_markup=self._kb([
+                            [("📋 Ver resumen", "cmd_resumen")],
+                        ])
+                    )
+                    watchdog.mark_response_sent(user_id)
+                    return
+                
+                # SEGMENTO 2/3: Verificar datos mínimos antes de recomendar visa
+                can_recommend, visa_message = can_recommend_visa(user)
+                
+                if not can_recommend:
+                    # Faltan datos - pedir información requerida
+                    next_question = get_next_visa_question(user, lang)
+                    await query.edit_message_text(
+                        f"⚠️ {visa_message}\n\n{next_question}",
+                        parse_mode='Markdown'
+                    )
+                    watchdog.mark_response_sent(user_id)
+                    return
+                
                 visa_type = action[5:]  # job_offer, investor, student, family, none
                 
                 visa_recommendations = {
@@ -3519,6 +3997,7 @@ class MigPALBot:
                     "✅ Devolución cancelada.\n\n"
                     "Continuamos con tu proceso. Usa /nivel para ver tu progreso."
                 )
+                watchdog.mark_response_sent(user_id)
     
     async def _handle_multi_select(self, query, user_id: int, data: str, user: dict):
         """Maneja selección múltiple con botón enviar"""
@@ -5035,6 +5514,20 @@ class MigPALBot:
                         await update.message.reply_text(get_text("name_too_short", lang))
                     elif result == "empty":
                         await update.message.reply_text(get_text("name_too_short", lang))
+                    elif result == "not_a_name":
+                        # V3.0.9 - ANTI-LOOP: Texto que no parece un nombre
+                        if lang == "es":
+                            await update.message.reply_text(
+                                "🙏 Por favor, escribe tu nombre completo.\n\n"
+                                "Ejemplo: *Juan Carlos Pérez*",
+                                parse_mode='Markdown'
+                            )
+                        else:
+                            await update.message.reply_text(
+                                "🙏 Please write your full name.\n\n"
+                                "Example: *John Michael Smith*",
+                                parse_mode='Markdown'
+                            )
                     else:
                         await update.message.reply_text(get_text("name_too_short", lang))
                     return True
@@ -5099,7 +5592,50 @@ class MigPALBot:
             
             # === CONFIRM NAME (nuevo estado) ===
             elif state == "confirm_name":
-                # Si el usuario escribe algo en lugar de usar botones, tratar como nuevo nombre
+                # V3.0.9 - ANTI-LOOP: Detectar si el texto es una pregunta/confusión
+                # en lugar de un nombre real
+                text_lower = text.lower().strip()
+                
+                # Patrones que indican confusión, no un nombre
+                confusion_patterns = [
+                    '?', 'qué', 'que', 'cual', 'como', 'por qué', 'porque',
+                    'ajá', 'aja', 'hola', 'si', 'no', 'ok', 'vale', 'bueno',
+                    'entiendo', 'explica', 'dime', 'cuál', 'cómo', 'what',
+                    'why', 'how', 'yes', 'hello', 'hi', 'perfil', 'visa'
+                ]
+                
+                is_confusion = any(p in text_lower for p in confusion_patterns)
+                is_too_short = len(text.strip()) < 3
+                is_single_word_question = text_lower.endswith('?')
+                
+                if is_confusion or is_too_short or is_single_word_question:
+                    # El usuario está confundido, recordarle que use los botones
+                    pending_name = user.get("_pending_name", "")
+                    if not pending_name:
+                        pending_name = user.get("profile", {}).get("personal", {}).get("name", "")
+                    
+                    if pending_name:
+                        # Mostrar de nuevo la confirmación con botones
+                        yes_text = get_text("yes_correct", lang)
+                        no_text = get_text("no_change", lang)
+                        
+                        await update.message.reply_text(
+                            f"👆 Por favor usa los botones de arriba.\n\n"
+                            f"¿Tu nombre es *{pending_name}*?",
+                            parse_mode='Markdown',
+                            reply_markup=self._kb([
+                                [(yes_text, "confirm_name_yes"), (no_text, "confirm_name_no")]
+                            ])
+                        )
+                    else:
+                        # No hay nombre pendiente, pedir nombre de nuevo
+                        set_state(user_id, STATE_NAME)
+                        await update.message.reply_text(
+                            get_text("ask_name", lang)
+                        )
+                    return True
+                
+                # Si parece un nombre real, procesarlo como nuevo nombre
                 return await self._handle_form_state(update, user_id, user, STATE_NAME, text)
             
             # === BIRTH DATE ===
@@ -5242,11 +5778,78 @@ class MigPALBot:
     @global_error_handler
     async def _handle_message(self, update, context):
         """Handler principal de mensajes - COMANDOS INVISIBLES + IA"""
+        # ============== SEGMENTO 2/4: NEVER SILENT WRAPPER ==============
+        # REGLA: El bot NUNCA se queda callado. SIEMPRE responde.
+        never_silent_wrapper = get_never_silent()
+        health_check = get_health_check()
+        health_check.record_update()  # Registrar actividad para healthcheck
+        
         user_id = update.effective_user.id
-        text = update.message.text.strip()
+        text = update.message.text.strip() if update.message.text else ""
         state = get_state(user_id)
         user = get_user_data(user_id)
-        lang = user.get("language", "en")
+        lang = user.get("language", "es")  # Default español para MigPAL
+        
+        # ============== V4.0: MIGPAL USA STANDARD MIDDLEWARE ==============
+        # Feature flag: MIGPAL_USA_STANDARD_V4=1 (default enabled)
+        v4_info = None
+        if is_v4_enabled():
+            try:
+                v4_info = v4_pre_process(user_id, text, state, user)
+                if v4_info:
+                    logger.debug(f"V4 pre-process: phase={v4_info.get('current_phase')}, turn={v4_info.get('turn_count')}")
+            except Exception as e:
+                logger.warning(f"V4 middleware pre-process error (fallback to legacy): {e}")
+        
+        # ============== V3.2.1: CONVERSATION RECORDER ==============
+        # Grabar TODOS los mensajes para auditoría
+        conversation_recorder = get_conversation_recorder()
+        
+        # Detectar fricción y determinar si bloquear datos
+        friction_tags, should_block_data = conversation_recorder.record_user_message(
+            user_id=user_id,
+            text=text,
+            state=state,
+            intent="",  # Se actualizará después de detectar intent
+            extracted_fields={},  # Se actualizará después de extraer
+            warnings=[],
+            metadata={"lang": lang}
+        )
+        
+        # REGLA CRÍTICA: Si loop/confusion 2 veces seguidas, forzar clarify_question
+        if should_block_data:
+            clarify_msg = conversation_recorder.get_clarify_question(user_id, lang)
+            await update.message.reply_text(clarify_msg, parse_mode='Markdown')
+            
+            # Grabar respuesta del bot
+            conversation_recorder.record_bot_message(
+                user_id=user_id,
+                text=clarify_msg,
+                state=state,
+                intent="clarify_forced",
+                warnings=["Data blocked due to consecutive friction"]
+            )
+            
+            logger.warning(f"🚫 DATA_BLOCKED | user={user_id} | friction={[t.value for t in friction_tags]}")
+            return  # NO continuar procesando, NO guardar datos
+        
+        # ============== SEGMENTO 1/3: DISPONIBILIDAD GARANTIZADA ==============
+        # REGLA: Todo input DEBE generar respuesta. NUNCA quedarse callado.
+        
+        # 1. Registrar input para tracking de respuesta
+        response_tracker = get_response_tracker()
+        response_tracker.record_input(user_id, "message", text[:50])
+        
+        # 2. Iniciar watchdog de 3 segundos
+        watchdog = get_watchdog()
+        
+        async def send_watchdog_message(msg: str):
+            try:
+                await update.message.reply_text(msg)
+            except Exception as e:
+                logger.error(f"Watchdog send failed: {e}")
+        
+        await watchdog.start_watchdog(user_id, send_watchdog_message, lang)
         
         # V3.0.3 - Enhanced logging
         transition_logger = get_transition_logger()
@@ -5265,9 +5868,60 @@ class MigPALBot:
                 parse_mode='Markdown',
                 reply_markup=self._kb(stall_buttons)
             )
+            watchdog.mark_response_sent(user_id)
+            response_tracker.record_response(user_id)
             return
         
         logger.info(f"MSG: {user_id} | {state} | {text[:50]}")
+        
+        # ============== V3.2.0: PRIORIZACIÓN DE INTENTS ==============
+        # REGLA CRÍTICA: Las preguntas, confusión, preocupaciones y reclamos del usuario
+        # tienen PRIORIDAD ABSOLUTA sobre cualquier flujo interno del bot.
+        # Esto debe ejecutarse ANTES de cualquier otro procesamiento.
+        
+        priority_handler = get_priority_intent_handler()
+        should_interrupt, intent_type, empathic_response = priority_handler.should_interrupt_flow(text)
+        
+        if should_interrupt:
+            logger.info(f"🚨 PRIORITY INTENT | user={user_id} | type={intent_type} | text={text[:50]}")
+            
+            # 1. Responder empáticamente primero
+            await update.message.reply_text(empathic_response)
+            watchdog.mark_response_sent(user_id)
+            
+            # 2. Si es pregunta o confusión, intentar responder con IA
+            if intent_type in ["question", "confusion"]:
+                try:
+                    ai_response = await self._process_with_ai_brain(text, user, state)
+                    if ai_response:
+                        await update.message.reply_text(ai_response, parse_mode='Markdown')
+                except Exception as e:
+                    logger.warning(f"AI response failed for priority intent: {e}")
+                    # Fallback: ofrecer ayuda
+                    fallback = (
+                        "¿Hay algo específico que te gustaría que te explique mejor? 🤔"
+                        if lang == "es" else
+                        "Is there something specific you'd like me to explain better? 🤔"
+                    )
+                    await update.message.reply_text(fallback)
+            
+            # 3. Si es frustración o queja, ofrecer opciones de ayuda
+            elif intent_type in ["frustration", "complaint"]:
+                help_options = (
+                    "¿Cómo puedo ayudarte mejor?\n\n"
+                    "• Escribe tu pregunta y te respondo\n"
+                    "• Usa /ayuda para ver opciones\n"
+                    "• Usa /reiniciar si quieres empezar de nuevo"
+                ) if lang == "es" else (
+                    "How can I help you better?\n\n"
+                    "• Type your question and I'll answer\n"
+                    "• Use /help to see options\n"
+                    "• Use /restart if you want to start over"
+                )
+                await update.message.reply_text(help_options)
+            
+            response_tracker.record_response(user_id)
+            return  # IMPORTANTE: No continuar con el flujo normal
         
         # === V3.0.5: NLU DE CORRECCIÓN ===
         # Detectar si el usuario quiere corregir un campo mientras está en otro prompt
@@ -5379,8 +6033,116 @@ class MigPALBot:
                     await update.message.reply_text(retry_msg)
                     return
         
-        # === PRIMERO: Verificar si estamos en un estado de FORMULARIO ===
-        # Si el usuario está en un estado de formulario, procesar directamente
+        # ============== SEGMENTO 2/3: GOBIERNO DEL FLUJO (ANTI-BOT) ==============
+        # La conversación manda, no los formularios ni los states.
+        
+        # 1. INTERPRETAR el input del usuario (NUNCA ignorar)
+        interpreted = interpret_user_input(text, state)
+        logger.info(f"INTERPRETED | type={interpreted.input_type.value} | conf={interpreted.confidence:.2f} | data={interpreted.extracted_data}")
+        
+        # ============== SEGMENTO 3/3: MEMORIA, PERFILADO Y DECISIÓN ==============
+        # Extracción ≠ decisión. Todo dato se guarda y se reutiliza.
+        
+        # 1. GUARDAR TODO lo que dice el usuario (memoria persistente)
+        data_memory = get_data_memory()
+        data_memory.store_raw_input(user_id, text, context=state)
+        
+        # 2. EXTRAER datos del texto y guardarlos en el perfil
+        extracted_data = store_user_input(user_id, text, user)
+        if extracted_data:
+            save_user_data(user_id, user)
+            logger.info(f"🧠 MEMORY | user={user_id} | extracted={extracted_data}")
+        
+        # 3. DETECTAR si es una corrección (si corrige, NO avanzar de fase)
+        is_correction, corrected_field = detect_correction(text)
+        if is_correction:
+            correction_tracker = get_correction_tracker()
+            logger.info(f"✏️ CORRECTION DETECTED | user={user_id} | field={corrected_field}")
+            
+            # Registrar la corrección
+            if corrected_field and corrected_field in extracted_data:
+                old_value = user.get("profile", {}).get("personal", {}).get(corrected_field, "")
+                correction_tracker.register_correction(user_id, corrected_field, old_value, extracted_data[corrected_field])
+            
+            # Confirmar la corrección y NO avanzar
+            confirm_msg = "Entendido, actualizo esa información. ✏️" if lang == "es" else "Got it, I'll update that. ✏️"
+            await update.message.reply_text(confirm_msg)
+            watchdog.mark_response_sent(user_id)
+            return
+        
+        # 4. Verificar si hay correcciones pendientes (bloquea avance de fase)
+        correction_tracker = get_correction_tracker()
+        can_advance, correction_msg = correction_tracker.can_advance_phase(user_id)
+        if not can_advance:
+            await update.message.reply_text(correction_msg)
+            watchdog.mark_response_sent(user_id)
+            return
+        
+        # 2. Registrar interacción para throttling de formularios
+        form_throttler = get_form_throttler()
+        conversation_director = get_conversation_director()
+        
+        # 3. Si el usuario hace pregunta, expresa preocupación o frustración, RESPONDER PRIMERO
+        if interpreted.input_type in [InputType.QUESTION, InputType.CONCERN, InputType.FRUSTRATION]:
+            # Responder empáticamente antes de continuar con el flujo
+            contextual_response = InputInterpreter.get_contextual_response(interpreted, lang)
+            await update.message.reply_text(contextual_response)
+            watchdog.mark_response_sent(user_id)
+            
+            # Si es pregunta, intentar responder con IA
+            if interpreted.input_type == InputType.QUESTION:
+                try:
+                    ai_response = await self._process_with_ai_brain(text, user, state)
+                    if ai_response:
+                        await update.message.reply_text(ai_response, parse_mode='Markdown')
+                except:
+                    pass
+            return
+        
+        # 4. V3.1.0 - HARDENED: Solo guardar datos extraidos con confirmación
+        # REGLA: NO guardar nombre fuera del estado ask_name sin señal fuerte
+        if interpreted.extracted_data:
+            from app.services.ux_improvements import NameValidator
+            
+            for field, value in interpreted.extracted_data.items():
+                # V3.1.0 - NOMBRE: Solo guardar si estamos en estado correcto O hay señal fuerte
+                if field == "name" and value:
+                    is_name_state = state in [STATE_NAME, 'ask_name', 'NAME_REQUEST', 'confirm_name']
+                    has_strong_signal = NameValidator.has_strong_name_signal(text)
+                    
+                    if is_name_state or has_strong_signal:
+                        # Validar con NameValidator hardened
+                        is_valid, result = NameValidator.is_valid_name(value, state)
+                        if is_valid:
+                            user["profile"]["personal"]["name"] = result
+                            logger.info(f"🔒 NAME SAVED | user={user_id} | name={result} | state={state}")
+                        else:
+                            logger.info(f"🚫 NAME BLOCKED | user={user_id} | reason={result} | value={value}")
+                    else:
+                        # NO guardar nombre fuera de contexto - evitar datos fantasma
+                        logger.info(f"🚫 NAME BLOCKED (wrong state) | user={user_id} | state={state} | value={value}")
+                        continue
+                elif field == "age" and value:
+                    user["profile"]["personal"]["age"] = value
+                elif field == "profession" and value:
+                    user["profile"]["work"]["profession"] = value
+                elif field == "country" and value:
+                    user["profile"]["personal"]["nationality"] = value
+            
+            # Solo guardar si hay datos válidos
+            if any(f != "name" for f in interpreted.extracted_data.keys()) or \
+               ("name" in interpreted.extracted_data and user.get("profile", {}).get("personal", {}).get("name")):
+                save_user_data(user_id, user)
+                logger.info(f"💾 EXTRACTED DATA SAVED | user={user_id} | data={list(interpreted.extracted_data.keys())}")
+            else:
+                logger.info(f"🚫 NO DATA SAVED | user={user_id} | blocked fields")
+        
+        
+        # 5. Verificar si se puede mostrar formulario (máx 1 cada 5 interacciones)
+        can_show_form_now, form_reason = should_show_form(user_id, state)
+        form_throttler.record_interaction(user_id, is_form=False)  # Registrar esta interacción
+        
+        # === ESTADOS DE FORMULARIO ===
         # P0 FIX: Solo incluir estados que están definidos y tienen handlers
         FORM_STATES = [
             STATE_NAME, "confirm_name", STATE_BIRTH_DATE, STATE_CURRENT_CITY, STATE_EMAIL, STATE_PHONE,
@@ -5390,9 +6152,22 @@ class MigPALBot:
         ]
         
         if state in FORM_STATES:
+            # SEGMENTO 2/3: Si no se puede mostrar formulario, usar enfoque conversacional
+            if not can_show_form_now:
+                logger.info(f"FORM THROTTLED | user={user_id} | reason={form_reason}")
+                # Usar enfoque conversacional en lugar de formulario
+                alternative = form_throttler.get_alternative_approach(user_id, state, lang)
+                await update.message.reply_text(alternative)
+                watchdog.mark_response_sent(user_id)
+                return
+            
+            # Registrar que mostramos formulario
+            form_throttler.record_interaction(user_id, is_form=True)
+            
             # Procesar el estado de formulario directamente
             handled = await self._handle_form_state(update, user_id, user, state, text)
             if handled:
+                watchdog.mark_response_sent(user_id)
                 return
         
         # V2.1 - DETECTAR INTENCIÓN DEL MENSAJE (Comandos Invisibles)
@@ -5467,6 +6242,9 @@ class MigPALBot:
             # Enviar respuesta de la IA
             if ai_response:
                 await update.message.reply_text(ai_response, parse_mode='Markdown')
+                # SEGMENTO 2/3: Registrar intercambio conversacional
+                conversation_director.record_exchange(user_id, text, ai_response[:200], was_form=False, state=state)
+                watchdog.mark_response_sent(user_id)
         
         except Exception as e:
             logger.error(f"Error processing message: {e}")
@@ -5691,11 +6469,13 @@ class MigPALBot:
             await update.message.chat.send_action("typing")
             response = await self._get_ai_response(text, user)
             await update.message.reply_text(response)
+            watchdog.mark_response_sent(user_id)
         
         else:
-            await update.message.reply_text(
-                "Usa los botones o /start para comenzar."
-            )
+            # SEGMENTO 1/3: Fallback empático en lugar de mensaje genérico
+            fallback_msg = EmpathicFallback.get_phase_fallback(lang, state)
+            await update.message.reply_text(fallback_msg)
+            watchdog.mark_response_sent(user_id)
     
     # ============== DOCUMENT HANDLERS ==============
     
@@ -5844,9 +6624,14 @@ class MigPALBot:
         else:
             options = [(f"✅ {dest}", dest)]
         
+        # V3.2.0: Usar intro validado
+        user_id = query.from_user.id
+        user = get_user_data(user_id)
+        lang = user.get("language", "es")
+        profile_intro = get_profile_based_intro(user_id, user, lang)
+        
         await query.edit_message_text(
-            "🎯 *FASE 4: Opciones*\n\n"
-            "Basado en tu perfil, selecciona país:",
+            f"🎯 *FASE 4: Opciones*\n\n{profile_intro}, selecciona país:",
             parse_mode='Markdown',
             reply_markup=self._kb(options)
         )
@@ -5860,11 +6645,25 @@ class MigPALBot:
         english = profile.get("languages", {}).get("english", "")
         reason = user.get("preferences", {}).get("reason", "")
         
+        # V3.2.0: Validar si el perfil está confirmado antes de usar "basado en tu perfil"
+        user_id = user.get("user_id", 0)
+        lang = user.get("language", "es")
+        profile_intro = get_profile_based_intro(user_id, user, lang)
+        
+        # Construir descripción del perfil solo si hay datos
+        profile_desc = ""
+        if profession and education:
+            profile_desc = f" ({profession}, {education})"
+        elif profession:
+            profile_desc = f" ({profession})"
+        elif education:
+            profile_desc = f" ({education})"
+        
         explanations = {
             "USA": f"""
 🇺🇸 *OPCIONES DE VISA PARA ESTADOS UNIDOS*
 
-Basado en tu perfil ({profession}, {education}):
+{profile_intro}{profile_desc}:
 
 💼 *H-1B - Trabajo Especializado*
 • Para profesionales con título universitario
@@ -5894,7 +6693,7 @@ Basado en tu perfil ({profession}, {education}):
             "Canadá": f"""
 🇨🇦 *OPCIONES DE MIGRACIÓN A CANADÁ*
 
-Basado en tu perfil ({profession}, inglés {english}):
+{profile_intro}{' (inglés ' + english + ')' if english else ''}:
 
 ⚡ *Express Entry*
 • Sistema de puntos (CRS)
@@ -5919,7 +6718,7 @@ Basado en tu perfil ({profession}, inglés {english}):
             "España": f"""
 🇪🇸 *OPCIONES DE VISA PARA ESPAÑA*
 
-Basado en tu perfil ({profession}):
+{profile_intro}{profile_desc}:
 
 💼 *Visa de Trabajo*
 • Requiere oferta de trabajo en España
@@ -5947,7 +6746,7 @@ Basado en tu perfil ({profession}):
             "Alemania": f"""
 🇩🇪 *OPCIONES DE VISA PARA ALEMANIA*
 
-Basado en tu perfil ({profession}, {education}):
+{profile_intro}{profile_desc}:
 
 💳 *Blue Card EU*
 • Para profesionales altamente calificados
@@ -6113,6 +6912,17 @@ Basado en tu perfil ({profession}, {education}):
             
             if result.get("success"):
                 response = result.get("response", "")
+                
+                # ============== V4.0: POST-PROCESO DE RESPUESTA ==============
+                # Aplicar reglas del estándar v4.0 (micro-checks, tono suave, etc.)
+                if is_v4_enabled() and response:
+                    try:
+                        formatted_response = v4_post_process(user_id, response, is_form=False)
+                        if formatted_response:
+                            response = formatted_response
+                            logger.debug(f"V4 post-process applied to response")
+                    except Exception as e:
+                        logger.warning(f"V4 post-process error (using original): {e}")
                 
                 # Extraer datos del perfil del mensaje
                 extracted = result.get("extracted_data", {})
