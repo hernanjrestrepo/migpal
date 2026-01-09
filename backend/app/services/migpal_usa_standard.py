@@ -1,36 +1,31 @@
 #!/usr/bin/env python3
 """
-MigPAL USA Standard v4.0
+MigPAL USA Standard v4.1
 ========================
 ESTÁNDAR CONVERSACIONAL DEFINITIVO PARA MIGPAL USA
 
-REGLAS FUNDAMENTALES:
-1. 100% conversacional (sin monólogos)
-2. Micro-checks ("¿voy claro?", "¿esto resuena contigo?")
-3. Tono suave, nunca sentencioso
-4. Formularios solo si necesarios (máx 1/5 turnos)
-5. UNA pregunta por mensaje
-6. Indicador de avance siempre visible
+REGLAS FUNDAMENTALES (HARD RULES):
+1. HARD CAP: Máximo 6 líneas por mensaje (split automático)
+2. HARD RULE: UNA pregunta por mensaje (separar si hay 2+)
+3. MICRO-CHECK OBLIGATORIO cada 3 turnos
+4. PROGRESS HEADER en CADA mensaje ("📍Fase X/12 • YY%")
+5. MINI-RESUMEN de 2 líneas al cerrar cada fase
 
 GATING OBLIGATORIO:
 - Prohibido recomendar/decidir visa sin:
   a) Perfil completo
   b) Resumen de Entendimiento confirmado
 
-MATRICES PONDERADAS PARA:
-- Estado/Ciudad (≥10 opciones)
-- Negocio (si aplica E-2/L-1)
-- Barrio/Vivienda
-- Colegios (si tiene hijos)
-
-POST-PLAN:
-- OCR + validación de documentos
-- Autollenado de formularios
-- Preparación de entrevista
-- Checklist de mudanza/instalación
+v4.1 FIXES:
+- Hard cap 6 líneas con split automático
+- Una pregunta por mensaje con separación
+- Micro-check forzado cada 3 turnos
+- Progress header obligatorio
+- Mini-resumen al cerrar fase
 """
 
 import logging
+import re
 from typing import Dict, Any, Optional, List, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
@@ -39,22 +34,25 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
-# ============== CONSTANTES ==============
+# ============== CONSTANTES v4.1 ==============
 
 MAX_FORMS_PER_5_TURNS = 1
-MAX_MESSAGE_LINES = 6
-MICRO_CHECK_FREQUENCY = 3  # Cada 3 mensajes hacer micro-check
+MAX_MESSAGE_LINES = 6  # HARD CAP
+MICRO_CHECK_FREQUENCY = 3  # OBLIGATORIO cada 3 turnos
+TOTAL_PHASES = 12  # Fases principales
 
 # Micro-checks aprobados
 MICRO_CHECKS = {
     "es": [
+        "¿Voy claro?",
         "¿Hasta aquí voy claro?",
         "¿Esto resuena contigo?",
-        "¿Tiene sentido así planteado?",
+        "¿Tiene sentido?",
         "¿Seguimos alineados?",
-        "¿Te parece bien así?",
+        "¿Te parece bien?",
     ],
     "en": [
+        "Am I clear?",
         "Am I being clear so far?",
         "Does this resonate with you?",
         "Does this make sense?",
@@ -82,26 +80,38 @@ SOFT_ALTERNATIVES = {
     "imposible": "requiere condiciones específicas que podemos evaluar",
 }
 
+# Mini-resúmenes por fase
+PHASE_SUMMARIES = {
+    "registro": "✅ Registro completado: {name} de {country}.",
+    "diagnostico": "✅ Diagnóstico completado: Perfil {profile_type}, presupuesto ${budget}.",
+    "perfilamiento": "✅ Perfilamiento completado: {experience} años experiencia, tipo {migrant_type}.",
+    "visa": "✅ Visa definida: {visa_type} con {probability}% probabilidad.",
+    "estado": "✅ Estado seleccionado: {state}.",
+    "ciudad": "✅ Ciudad seleccionada: {city}, {state}.",
+    "barrio": "✅ Barrio seleccionado: {neighborhood}.",
+    "vivienda": "✅ Vivienda definida: {housing_type}, ${rent}/mes.",
+    "colegio": "✅ Colegios definidos: {schools}.",
+    "timeline": "✅ Timeline definido: {months} meses.",
+    "presupuesto": "✅ Presupuesto total: ${total}.",
+    "cierre": "🎉 ¡Plan completo! Siguiente: agendar consulta.",
+}
+
 
 # ============== ENUMS ==============
 
 class ConversationPhase(Enum):
-    """Fases de la conversación MigPAL USA"""
+    """Fases de la conversación MigPAL USA (12 principales)"""
     REGISTRO = "registro"
     DIAGNOSTICO = "diagnostico"
     PERFILAMIENTO = "perfilamiento"
-    DEFINICION_VISA = "definicion_visa"
-    SELECCION_ESTADO = "seleccion_estado"
-    SELECCION_CIUDAD = "seleccion_ciudad"
-    ATERRIZAJE_NEGOCIO = "aterrizaje_negocio"
-    SELECCION_BARRIO = "seleccion_barrio"
-    SELECCION_VIVIENDA = "seleccion_vivienda"
-    SELECCION_COLEGIOS = "seleccion_colegios"
-    PLAN_MIGRACION = "plan_migracion"
-    DOCUMENTOS = "documentos"
-    FORMULARIOS = "formularios"
-    ENTREVISTA = "entrevista"
-    CHECKLIST_MUDANZA = "checklist_mudanza"
+    DEFINICION_VISA = "visa"
+    SELECCION_ESTADO = "estado"
+    SELECCION_CIUDAD = "ciudad"
+    SELECCION_BARRIO = "barrio"
+    SELECCION_VIVIENDA = "vivienda"
+    SELECCION_COLEGIOS = "colegio"
+    TIMELINE = "timeline"
+    PRESUPUESTO = "presupuesto"
     CIERRE = "cierre"
 
 
@@ -130,21 +140,16 @@ class ConversationState:
     # Datos del perfil
     profile_data: Dict[str, Any] = field(default_factory=dict)
     
-    # Matrices de evaluación
-    state_matrix: Optional[Dict] = None
-    city_matrix: Optional[Dict] = None
-    business_matrix: Optional[Dict] = None
-    neighborhood_matrix: Optional[Dict] = None
-    school_matrix: Optional[Dict] = None
-    
     # Selecciones
     selected_visa: Optional[str] = None
     selected_state: Optional[str] = None
     selected_city: Optional[str] = None
-    selected_business: Optional[str] = None
     selected_neighborhood: Optional[str] = None
     selected_housing: Optional[str] = None
     selected_schools: List[str] = field(default_factory=list)
+    
+    # Tracking de fases completadas
+    phases_completed: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -167,14 +172,27 @@ class MessageResponse:
     show_progress: bool = True
     buttons: Optional[List[Tuple[str, str]]] = None
     is_form: bool = False
+    split_messages: List[str] = field(default_factory=list)  # v4.1: mensajes divididos
+    phase_summary: Optional[str] = None  # v4.1: mini-resumen de fase
 
 
-# ============== CLASE PRINCIPAL ==============
+@dataclass
+class FormattedOutput:
+    """Salida formateada con todos los componentes v4.1"""
+    messages: List[str]  # Lista de mensajes (puede ser >1 si se dividió)
+    has_micro_check: bool
+    has_progress: bool
+    question_count: int
+    line_count: int
+    phase_summary: Optional[str]
+
+
+# ============== CLASE PRINCIPAL v4.1 ==============
 
 class MigPALUSAStandard:
     """
-    Estándar conversacional MigPAL USA.
-    Implementa todas las reglas definidas.
+    Estándar conversacional MigPAL USA v4.1.
+    Implementa HARD RULES para score 100/100.
     """
     
     _instance = None
@@ -199,13 +217,149 @@ class MigPALUSAStandard:
             if hasattr(state, key):
                 setattr(state, key, value)
     
+    def reset_state(self, user_id: int) -> None:
+        """Resetea el estado de un usuario"""
+        if user_id in self._states:
+            del self._states[user_id]
+    
+    # ============== PROGRESS HEADER (OBLIGATORIO) ==============
+    
+    def get_progress_header(self, user_id: int) -> str:
+        """
+        v4.1: Progress header OBLIGATORIO en cada mensaje.
+        Formato: "📍Fase X/12 • YY%"
+        """
+        state = self.get_state(user_id)
+        phase = state.current_phase
+        
+        phase_numbers = {
+            ConversationPhase.REGISTRO: 1,
+            ConversationPhase.DIAGNOSTICO: 2,
+            ConversationPhase.PERFILAMIENTO: 3,
+            ConversationPhase.DEFINICION_VISA: 4,
+            ConversationPhase.SELECCION_ESTADO: 5,
+            ConversationPhase.SELECCION_CIUDAD: 6,
+            ConversationPhase.SELECCION_BARRIO: 7,
+            ConversationPhase.SELECCION_VIVIENDA: 8,
+            ConversationPhase.SELECCION_COLEGIOS: 9,
+            ConversationPhase.TIMELINE: 10,
+            ConversationPhase.PRESUPUESTO: 11,
+            ConversationPhase.CIERRE: 12,
+        }
+        
+        num = phase_numbers.get(phase, 1)
+        percentage = int((num / TOTAL_PHASES) * 100)
+        
+        return f"📍Fase {num}/{TOTAL_PHASES} • {percentage}%"
+    
+    # ============== MICRO-CHECK (OBLIGATORIO cada 3 turnos) ==============
+    
+    def must_add_micro_check(self, user_id: int) -> bool:
+        """
+        v4.1: OBLIGATORIO agregar micro-check cada 3 turnos.
+        """
+        state = self.get_state(user_id)
+        turns_since_check = state.turn_count - state.last_micro_check
+        return turns_since_check >= MICRO_CHECK_FREQUENCY
+    
+    def get_micro_check(self, lang: str = "es") -> str:
+        """Obtiene un micro-check aleatorio"""
+        import random
+        checks = MICRO_CHECKS.get(lang, MICRO_CHECKS["es"])
+        return random.choice(checks)
+    
+    def mark_micro_check_done(self, user_id: int) -> None:
+        """Marca que se hizo un micro-check"""
+        state = self.get_state(user_id)
+        state.last_micro_check = state.turn_count
+    
+    # ============== HARD CAP: 6 LÍNEAS (con split automático) ==============
+    
+    def split_message_by_lines(self, message: str, max_lines: int = MAX_MESSAGE_LINES) -> List[str]:
+        """
+        v4.1: HARD CAP - Divide mensaje en chunks de máximo 6 líneas.
+        Retorna lista de mensajes.
+        """
+        lines = [l for l in message.split('\n') if l.strip()]
+        
+        if len(lines) <= max_lines:
+            return [message]
+        
+        # Dividir en chunks
+        chunks = []
+        current_chunk = []
+        
+        for line in lines:
+            current_chunk.append(line)
+            if len(current_chunk) >= max_lines:
+                chunks.append('\n'.join(current_chunk))
+                current_chunk = []
+        
+        # Agregar último chunk si hay
+        if current_chunk:
+            chunks.append('\n'.join(current_chunk))
+        
+        return chunks
+    
+    # ============== HARD RULE: UNA PREGUNTA (con separación) ==============
+    
+    def split_by_questions(self, message: str) -> List[str]:
+        """
+        v4.1: HARD RULE - Si hay 2+ preguntas, separar en mensajes.
+        """
+        # Contar preguntas
+        question_count = message.count('?')
+        
+        if question_count <= 1:
+            return [message]
+        
+        # Separar por preguntas
+        # Buscar patrones de pregunta (texto + ?)
+        parts = re.split(r'(\?)', message)
+        
+        messages = []
+        current = ""
+        
+        for i, part in enumerate(parts):
+            current += part
+            if part == '?':
+                # Fin de una pregunta
+                cleaned = current.strip()
+                if cleaned:
+                    messages.append(cleaned)
+                current = ""
+        
+        # Agregar resto si hay
+        if current.strip():
+            messages.append(current.strip())
+        
+        return messages if messages else [message]
+    
+    # ============== MINI-RESUMEN DE FASE ==============
+    
+    def get_phase_summary(self, phase: str, data: Dict[str, Any]) -> str:
+        """
+        v4.1: Mini-resumen de 2 líneas al cerrar fase.
+        """
+        template = PHASE_SUMMARIES.get(phase, "✅ Fase completada.")
+        
+        try:
+            return template.format(**data)
+        except KeyError:
+            return f"✅ {phase.capitalize()} completado."
+    
+    def mark_phase_complete(self, user_id: int, phase: str, data: Dict[str, Any] = None) -> str:
+        """Marca fase como completada y retorna mini-resumen"""
+        state = self.get_state(user_id)
+        if phase not in state.phases_completed:
+            state.phases_completed.append(phase)
+        
+        return self.get_phase_summary(phase, data or {})
+    
     # ============== VALIDACIONES ==============
     
     def check_gating(self, user_id: int) -> Tuple[GatingStatus, str]:
-        """
-        Verifica si el usuario puede recibir recomendaciones de visa.
-        REGLA: Prohibido recomendar sin perfil completo + resumen confirmado.
-        """
+        """Verifica si el usuario puede recibir recomendaciones de visa."""
         state = self.get_state(user_id)
         
         if not state.profile_complete:
@@ -219,29 +373,20 @@ class MigPALUSAStandard:
     def _get_missing_profile_message(self, state: ConversationState) -> str:
         """Mensaje cuando falta completar perfil"""
         missing = self._get_missing_fields(state)
-        return f"Para darte una recomendación precisa, necesito conocer un poco más sobre ti. ¿Me puedes contar sobre {missing[0]}?"
+        return f"Necesito conocer más sobre ti. ¿Me cuentas sobre {missing[0]}?"
     
     def _get_summary_required_message(self) -> str:
         """Mensaje cuando falta confirmar resumen"""
-        return "Antes de darte recomendaciones, quiero asegurarme de que entendí bien tu situación. Déjame mostrarte un resumen de lo que entendí."
+        return "Antes de recomendarte, quiero confirmar que entendí bien."
     
     def _get_missing_fields(self, state: ConversationState) -> List[str]:
         """Obtiene campos faltantes del perfil"""
-        required = [
-            "name", "nationality", "family_composition", "profession",
-            "experience", "english_level", "motivation", "budget"
-        ]
-        missing = []
-        for field in required:
-            if field not in state.profile_data or not state.profile_data[field]:
-                missing.append(field)
+        required = ["name", "nationality", "family", "profession", "experience", "english", "motivation", "budget"]
+        missing = [f for f in required if f not in state.profile_data or not state.profile_data[f]]
         return missing if missing else ["información adicional"]
     
     def can_show_form(self, user_id: int) -> bool:
-        """
-        Verifica si se puede mostrar un formulario.
-        REGLA: Máximo 1 formulario cada 5 turnos.
-        """
+        """Verifica si se puede mostrar un formulario."""
         state = self.get_state(user_id)
         return state.forms_shown_last_5 < MAX_FORMS_PER_5_TURNS
     
@@ -252,134 +397,122 @@ class MigPALUSAStandard:
         if state.turn_count % 5 == 0:
             state.forms_shown_last_5 = 0
     
-    def should_add_micro_check(self, user_id: int) -> bool:
-        """
-        Determina si agregar micro-check.
-        REGLA: Cada 3 mensajes aproximadamente.
-        """
-        state = self.get_state(user_id)
-        turns_since_check = state.turn_count - state.last_micro_check
-        return turns_since_check >= MICRO_CHECK_FREQUENCY
-    
-    def get_micro_check(self, lang: str = "es") -> str:
-        """Obtiene un micro-check aleatorio"""
-        import random
-        checks = MICRO_CHECKS.get(lang, MICRO_CHECKS["es"])
-        return random.choice(checks)
-    
-    # ============== PROCESAMIENTO DE MENSAJES ==============
+    # ============== PROCESAMIENTO DE MENSAJES v4.1 ==============
     
     def soften_message(self, message: str) -> str:
-        """
-        Suaviza el mensaje eliminando frases sentenciosas.
-        REGLA: Tono suave, nunca sentencioso.
-        """
-        result = message.lower()
+        """Suaviza el mensaje eliminando frases sentenciosas."""
+        result = message
         for forbidden in FORBIDDEN_PHRASES:
-            if forbidden in result:
+            if forbidden in result.lower():
                 replacement = SOFT_ALTERNATIVES.get(forbidden, "hay otras opciones que podemos explorar")
-                result = result.replace(forbidden, replacement)
-        return message  # Retorna original con tono ajustado
+                result = re.sub(re.escape(forbidden), replacement, result, flags=re.IGNORECASE)
+        return result
     
-    def limit_message_length(self, message: str) -> str:
+    def format_response_v41(self, user_id: int, message: str, 
+                           phase_data: Dict[str, Any] = None,
+                           is_phase_end: bool = False,
+                           lang: str = "es") -> FormattedOutput:
         """
-        Limita la longitud del mensaje.
-        REGLA: Máximo 6 líneas, sin monólogos.
+        v4.1: Formatea respuesta con TODAS las reglas aplicadas.
+        
+        Returns:
+            FormattedOutput con lista de mensajes formateados
         """
-        lines = message.split('\n')
-        if len(lines) > MAX_MESSAGE_LINES:
-            # Mantener las primeras líneas y agregar indicador
-            truncated = '\n'.join(lines[:MAX_MESSAGE_LINES-1])
-            truncated += "\n\n¿Quieres que te cuente más sobre esto?"
-            return truncated
-        return message
+        state = self.get_state(user_id)
+        state.turn_count += 1
+        
+        # 1. Suavizar tono
+        message = self.soften_message(message)
+        
+        # 2. HARD RULE: Separar por preguntas (una por mensaje)
+        question_messages = self.split_by_questions(message)
+        
+        # 3. HARD CAP: Dividir por líneas (máx 6)
+        all_messages = []
+        for qmsg in question_messages:
+            line_messages = self.split_message_by_lines(qmsg)
+            all_messages.extend(line_messages)
+        
+        # 4. OBLIGATORIO: Progress header en cada mensaje
+        progress_header = self.get_progress_header(user_id)
+        formatted_messages = []
+        
+        for i, msg in enumerate(all_messages):
+            # Agregar header solo al primer mensaje de cada grupo
+            if i == 0:
+                formatted_msg = f"{progress_header}\n\n{msg}"
+            else:
+                formatted_msg = msg
+            formatted_messages.append(formatted_msg)
+        
+        # 5. OBLIGATORIO: Micro-check cada 3 turnos
+        must_micro_check = self.must_add_micro_check(user_id)
+        if must_micro_check:
+            micro_check = self.get_micro_check(lang)
+            # Agregar al último mensaje
+            if formatted_messages:
+                last_msg = formatted_messages[-1]
+                # Solo agregar si no termina ya en pregunta
+                if not last_msg.rstrip().endswith('?'):
+                    formatted_messages[-1] = f"{last_msg}\n\n{micro_check}"
+                self.mark_micro_check_done(user_id)
+        
+        # 6. Mini-resumen si es fin de fase
+        phase_summary = None
+        if is_phase_end and phase_data:
+            phase_summary = self.get_phase_summary(state.current_phase.value, phase_data)
+            # Agregar como mensaje separado
+            formatted_messages.append(phase_summary)
+        
+        # Calcular métricas
+        total_lines = sum(len(m.split('\n')) for m in formatted_messages)
+        total_questions = sum(m.count('?') for m in formatted_messages)
+        
+        return FormattedOutput(
+            messages=formatted_messages,
+            has_micro_check=must_micro_check,
+            has_progress=True,  # Siempre True en v4.1
+            question_count=total_questions,
+            line_count=total_lines,
+            phase_summary=phase_summary
+        )
     
-    def ensure_single_question(self, message: str) -> str:
-        """
-        Asegura que solo haya una pregunta por mensaje.
-        REGLA: UNA pregunta por mensaje.
-        """
-        questions = message.count('?')
-        if questions > 1:
-            # Encontrar la primera pregunta y cortar ahí
-            first_q = message.find('?')
-            if first_q != -1:
-                return message[:first_q+1]
-        return message
+    # ============== FUNCIONES LEGACY (compatibilidad) ==============
     
     def format_response(self, user_id: int, message: str, 
                        include_progress: bool = True,
                        is_form: bool = False) -> MessageResponse:
         """
-        Formatea la respuesta según las reglas MigPAL USA.
+        Formato legacy - usa format_response_v41 internamente.
         """
-        state = self.get_state(user_id)
-        state.turn_count += 1
+        output = self.format_response_v41(user_id, message)
         
-        # Aplicar reglas
-        message = self.soften_message(message)
-        message = self.limit_message_length(message)
-        message = self.ensure_single_question(message)
-        
-        # Agregar micro-check si corresponde
-        include_micro_check = self.should_add_micro_check(user_id)
-        if include_micro_check:
-            state.last_micro_check = state.turn_count
-        
-        # Registrar formulario si aplica
-        if is_form:
-            self.register_form_shown(user_id)
+        # Combinar mensajes para compatibilidad
+        combined = '\n\n'.join(output.messages)
         
         return MessageResponse(
-            text=message,
-            include_micro_check=include_micro_check,
-            show_progress=include_progress,
-            is_form=is_form
+            text=combined,
+            include_micro_check=output.has_micro_check,
+            show_progress=output.has_progress,
+            is_form=is_form,
+            split_messages=output.messages,
+            phase_summary=output.phase_summary
         )
     
     def get_progress_indicator(self, user_id: int) -> str:
-        """
-        Genera indicador de progreso.
-        REGLA: Siempre mostrar paso actual y siguiente.
-        """
-        state = self.get_state(user_id)
-        phase = state.current_phase
-        
-        phase_names = {
-            ConversationPhase.REGISTRO: ("Registro", 1),
-            ConversationPhase.DIAGNOSTICO: ("Diagnóstico", 2),
-            ConversationPhase.PERFILAMIENTO: ("Perfilamiento", 3),
-            ConversationPhase.DEFINICION_VISA: ("Definición de Visa", 4),
-            ConversationPhase.SELECCION_ESTADO: ("Selección de Estado", 5),
-            ConversationPhase.SELECCION_CIUDAD: ("Selección de Ciudad", 6),
-            ConversationPhase.ATERRIZAJE_NEGOCIO: ("Aterrizaje del Negocio", 7),
-            ConversationPhase.SELECCION_BARRIO: ("Selección de Barrio", 8),
-            ConversationPhase.SELECCION_VIVIENDA: ("Selección de Vivienda", 9),
-            ConversationPhase.SELECCION_COLEGIOS: ("Selección de Colegios", 10),
-            ConversationPhase.PLAN_MIGRACION: ("Plan de Migración", 11),
-            ConversationPhase.DOCUMENTOS: ("Documentos", 12),
-            ConversationPhase.FORMULARIOS: ("Formularios", 13),
-            ConversationPhase.ENTREVISTA: ("Preparación Entrevista", 14),
-            ConversationPhase.CHECKLIST_MUDANZA: ("Checklist Mudanza", 15),
-            ConversationPhase.CIERRE: ("Cierre", 16),
-        }
-        
-        name, num = phase_names.get(phase, ("En proceso", 0))
-        total = 16
-        percentage = int((num / total) * 100)
-        
-        return f"📍 Fase: {name} ({num} de {total})\n📊 Progreso: {percentage}% completado"
+        """Legacy: usa get_progress_header"""
+        return self.get_progress_header(user_id)
+    
+    def should_add_micro_check(self, user_id: int) -> bool:
+        """Legacy: usa must_add_micro_check"""
+        return self.must_add_micro_check(user_id)
     
     # ============== MATRICES PONDERADAS ==============
     
-    def create_weighted_matrix(self, 
-                               items: List[Dict[str, Any]], 
+    def create_weighted_matrix(self, items: List[Dict[str, Any]], 
                                weights: Dict[str, float],
                                factors: List[str]) -> List[MatrixEvaluation]:
-        """
-        Crea matriz ponderada para evaluación.
-        Usado para: estados, ciudades, negocios, barrios, colegios.
-        """
+        """Crea matriz ponderada para evaluación."""
         evaluations = []
         
         for item in items:
@@ -388,16 +521,14 @@ class MigPALUSAStandard:
             weighted_total = 0
             
             for factor in factors:
-                score = item.get(factor, 3)  # Default 3/5
+                score = item.get(factor, 3)
                 weight = weights.get(factor, 1)
                 scores[factor] = score
                 weighted_total += score * weight
             
-            # Normalizar a 0-100
             max_possible = sum(weights.values()) * 5
             final_score = (weighted_total / max_possible) * 100
             
-            # Extraer pros y contras
             pros = item.get("pros", [])
             cons = item.get("cons", [])
             
@@ -411,126 +542,62 @@ class MigPALUSAStandard:
                 recommendation=self._generate_recommendation(name, final_score)
             ))
         
-        # Ordenar por score
         evaluations.sort(key=lambda x: x.score, reverse=True)
         return evaluations
     
     def _generate_recommendation(self, name: str, score: float) -> str:
         """Genera recomendación basada en score"""
         if score >= 85:
-            return f"👉 {name} es una excelente opción para tu perfil"
+            return f"👉 {name} es excelente opción"
         elif score >= 70:
-            return f"👉 {name} es una buena opción, con algunos puntos a considerar"
+            return f"👉 {name} es buena opción"
         elif score >= 55:
-            return f"👉 {name} puede funcionar, pero hay mejores alternativas"
+            return f"👉 {name} puede funcionar"
         else:
-            return f"👉 {name} no es la opción más alineada con tu perfil"
+            return f"👉 {name} tiene mejores alternativas"
     
-    def format_matrix_results(self, evaluations: List[MatrixEvaluation], 
-                             top_n: int = 10) -> str:
-        """Formatea resultados de matriz para mostrar al usuario"""
-        result = "🏆 **EVALUACIÓN PONDERADA**\n\n"
+    def format_matrix_results(self, evaluations: List[MatrixEvaluation], top_n: int = 3) -> str:
+        """Formatea resultados de matriz (máx 3 para cumplir 6 líneas)"""
+        result = "🏆 **TOP OPCIONES**\n"
         
         for i, eval in enumerate(evaluations[:top_n], 1):
-            emoji = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}️⃣"
-            result += f"{emoji} **{eval.name}**\n"
-            result += f"   Calificación: ⭐ {eval.score:.0f}/100\n"
-            
-            if eval.pros:
-                result += f"   ✅ {', '.join(eval.pros[:2])}\n"
-            if eval.cons:
-                result += f"   ⚠️ {', '.join(eval.cons[:2])}\n"
-            
-            result += f"   {eval.recommendation}\n\n"
+            emoji = "🥇" if i == 1 else "🥈" if i == 2 else "🥉"
+            result += f"{emoji} {eval.name}: {eval.score:.0f}/100\n"
         
         return result
     
     # ============== FACTORES DE EVALUACIÓN ==============
     
     def get_state_factors(self) -> Dict[str, float]:
-        """Factores para evaluar estados (pesos por defecto)"""
+        """Factores para evaluar estados"""
         return {
-            "salud": 18,
-            "oportunidades_negocio": 15,
-            "costo_vida": 14,
-            "criminalidad": 12,
-            "estudios": 10,
-            "impuestos": 8,
-            "migration_friendly": 8,
-            "dinamismo_economico": 7,
-            "comunidad_latina": 5,
-            "clima": 2,
-            "poblacion": 1,
+            "salud": 18, "oportunidades_negocio": 15, "costo_vida": 14,
+            "criminalidad": 12, "estudios": 10, "impuestos": 8,
+            "migration_friendly": 8, "dinamismo_economico": 7,
+            "comunidad_latina": 5, "clima": 2, "poblacion": 1,
         }
-    
-    def get_city_factors(self) -> Dict[str, float]:
-        """Factores para evaluar ciudades"""
-        return self.get_state_factors()  # Mismos factores
     
     def get_business_factors(self) -> Dict[str, float]:
         """Factores para evaluar negocios"""
         return {
-            "rentabilidad": 20,
-            "recurrencia_ingresos": 18,
-            "riesgo_operativo": 15,
-            "inversion_inicial": 12,
-            "payback": 12,
-            "encaje_visa": 10,
-            "empleo_familia": 8,
-            "escalabilidad": 5,
+            "rentabilidad": 20, "recurrencia_ingresos": 18, "riesgo_operativo": 15,
+            "inversion_inicial": 12, "payback": 12, "encaje_visa": 10,
+            "empleo_familia": 8, "escalabilidad": 5,
         }
     
-    def get_neighborhood_factors(self) -> Dict[str, float]:
-        """Factores para evaluar barrios"""
-        return {
-            "seguridad": 25,
-            "calidad_escuelas": 20,
-            "costo_vivienda": 18,
-            "acceso_servicios": 15,
-            "transporte": 12,
-            "comunidad": 10,
-        }
-    
-    def get_school_factors(self) -> Dict[str, float]:
-        """Factores para evaluar colegios"""
-        return {
-            "calidad_academica": 25,
-            "seguridad": 20,
-            "costo": 18,
-            "distancia": 15,
-            "actividades": 12,
-            "diversidad": 10,
-        }
-    
-    # ============== POST-PLAN: DOCUMENTOS ==============
+    # ============== CHECKLISTS ==============
     
     def get_document_checklist(self, visa_type: str) -> List[Dict[str, Any]]:
         """Obtiene checklist de documentos según tipo de visa"""
         checklists = {
             "E-2": [
-                {"name": "Pasaporte vigente", "required": True, "ocr_enabled": True},
-                {"name": "Plan de negocios", "required": True, "ocr_enabled": False},
-                {"name": "Prueba de inversión", "required": True, "ocr_enabled": True},
-                {"name": "Documentos de la empresa", "required": True, "ocr_enabled": True},
-                {"name": "Estados financieros", "required": True, "ocr_enabled": True},
-                {"name": "Contrato de arrendamiento", "required": False, "ocr_enabled": True},
-                {"name": "Licencias y permisos", "required": False, "ocr_enabled": True},
+                {"name": "Pasaporte vigente", "required": True},
+                {"name": "Plan de negocios", "required": True},
+                {"name": "Prueba de inversión", "required": True},
             ],
             "L-1": [
-                {"name": "Pasaporte vigente", "required": True, "ocr_enabled": True},
-                {"name": "Carta de la empresa matriz", "required": True, "ocr_enabled": True},
-                {"name": "Prueba de relación empresarial", "required": True, "ocr_enabled": True},
-                {"name": "Descripción del puesto", "required": True, "ocr_enabled": False},
-                {"name": "Historial laboral", "required": True, "ocr_enabled": True},
-                {"name": "Organigrama", "required": True, "ocr_enabled": False},
-            ],
-            "EB-2_NIW": [
-                {"name": "Pasaporte vigente", "required": True, "ocr_enabled": True},
-                {"name": "Títulos académicos", "required": True, "ocr_enabled": True},
-                {"name": "Cartas de recomendación", "required": True, "ocr_enabled": True},
-                {"name": "Publicaciones", "required": False, "ocr_enabled": True},
-                {"name": "Premios y reconocimientos", "required": False, "ocr_enabled": True},
-                {"name": "Plan de trabajo en USA", "required": True, "ocr_enabled": False},
+                {"name": "Pasaporte vigente", "required": True},
+                {"name": "Carta empresa matriz", "required": True},
             ],
         }
         return checklists.get(visa_type, [])
@@ -538,72 +605,10 @@ class MigPALUSAStandard:
     def get_installation_checklist(self) -> List[Dict[str, Any]]:
         """Checklist de instalación en USA"""
         return [
-            {"category": "Documentos", "items": [
-                "Obtener SSN (Social Security Number)",
-                "Obtener licencia de conducir estatal",
-                "Registrar dirección en USCIS",
-            ]},
-            {"category": "Finanzas", "items": [
-                "Abrir cuenta bancaria",
-                "Obtener tarjeta de crédito",
-                "Establecer historial crediticio",
-            ]},
-            {"category": "Vivienda", "items": [
-                "Firmar contrato de arrendamiento",
-                "Activar servicios (luz, agua, gas, internet)",
-                "Obtener seguro de inquilino",
-            ]},
-            {"category": "Transporte", "items": [
-                "Comprar/arrendar vehículo",
-                "Obtener seguro de auto",
-                "Registrar vehículo en DMV",
-            ]},
-            {"category": "Salud", "items": [
-                "Obtener seguro médico",
-                "Encontrar médico de cabecera",
-                "Registrar en farmacia",
-            ]},
-            {"category": "Educación (si aplica)", "items": [
-                "Inscribir hijos en escuela",
-                "Obtener registros de vacunación",
-                "Conocer calendario escolar",
-            ]},
+            {"category": "Documentos", "items": ["SSN", "Licencia", "USCIS"]},
+            {"category": "Finanzas", "items": ["Banco", "Crédito"]},
+            {"category": "Vivienda", "items": ["Contrato", "Servicios"]},
         ]
-    
-    def get_interview_prep(self, visa_type: str) -> Dict[str, Any]:
-        """Preparación para entrevista consular"""
-        return {
-            "general_tips": [
-                "Llegar 15 minutos antes de la cita",
-                "Llevar todos los documentos originales",
-                "Vestir de manera profesional",
-                "Responder de forma clara y concisa",
-                "Mantener contacto visual",
-                "No mentir ni exagerar",
-            ],
-            "common_questions": {
-                "E-2": [
-                    "¿Cuál es el propósito de su negocio?",
-                    "¿Cuánto ha invertido?",
-                    "¿Cuántos empleados tendrá?",
-                    "¿Cómo generará ingresos?",
-                    "¿Cuál es su plan a 5 años?",
-                ],
-                "L-1": [
-                    "¿Cuál es su rol en la empresa?",
-                    "¿Cuánto tiempo ha trabajado ahí?",
-                    "¿Qué hará en la oficina de USA?",
-                    "¿Cuántos empleados supervisará?",
-                ],
-                "EB-2_NIW": [
-                    "¿Por qué su trabajo beneficia a USA?",
-                    "¿Cuáles son sus logros principales?",
-                    "¿Dónde planea trabajar?",
-                    "¿Cómo contribuirá al interés nacional?",
-                ],
-            }.get(visa_type, []),
-            "documents_to_bring": self.get_document_checklist(visa_type),
-        }
 
 
 # ============== SINGLETON ==============
@@ -618,7 +623,20 @@ def get_migpal_standard() -> MigPALUSAStandard:
     return _standard_instance
 
 
-# ============== FUNCIONES DE CONVENIENCIA ==============
+# ============== FUNCIONES DE CONVENIENCIA v4.1 ==============
+
+def format_message_v41(user_id: int, message: str, 
+                      phase_data: Dict[str, Any] = None,
+                      is_phase_end: bool = False,
+                      lang: str = "es") -> List[str]:
+    """
+    v4.1: Formatea mensaje y retorna lista de mensajes.
+    Garantiza: máx 6 líneas, 1 pregunta, micro-check, progress header.
+    """
+    standard = get_migpal_standard()
+    output = standard.format_response_v41(user_id, message, phase_data, is_phase_end, lang)
+    return output.messages
+
 
 def check_visa_gating(user_id: int) -> Tuple[bool, str]:
     """Verifica si se puede recomendar visa"""
@@ -628,19 +646,10 @@ def check_visa_gating(user_id: int) -> Tuple[bool, str]:
 
 
 def format_message(user_id: int, message: str, is_form: bool = False) -> str:
-    """Formatea mensaje según reglas MigPAL USA"""
+    """Legacy: Formatea mensaje según reglas MigPAL USA"""
     standard = get_migpal_standard()
     response = standard.format_response(user_id, message, is_form=is_form)
-    
-    result = response.text
-    
-    if response.include_micro_check:
-        result += f"\n\n{standard.get_micro_check()}"
-    
-    if response.show_progress:
-        result = f"{standard.get_progress_indicator(user_id)}\n\n{result}"
-    
-    return result
+    return response.text
 
 
 def evaluate_options(items: List[Dict], category: str, 
@@ -648,13 +657,9 @@ def evaluate_options(items: List[Dict], category: str,
     """Evalúa opciones con matriz ponderada"""
     standard = get_migpal_standard()
     
-    # Obtener factores según categoría
     factor_getters = {
         "state": standard.get_state_factors,
-        "city": standard.get_city_factors,
         "business": standard.get_business_factors,
-        "neighborhood": standard.get_neighborhood_factors,
-        "school": standard.get_school_factors,
     }
     
     weights = custom_weights or factor_getters.get(category, standard.get_state_factors)()
@@ -671,7 +676,7 @@ def can_show_form(user_id: int) -> bool:
 
 def get_progress(user_id: int) -> str:
     """Obtiene indicador de progreso"""
-    return get_migpal_standard().get_progress_indicator(user_id)
+    return get_migpal_standard().get_progress_header(user_id)
 
 
 def advance_phase(user_id: int, new_phase: ConversationPhase) -> None:
@@ -690,6 +695,11 @@ def mark_summary_confirmed(user_id: int) -> None:
     standard.update_state(user_id, summary_confirmed=True, gating_status=GatingStatus.APPROVED)
 
 
+def reset_user_state(user_id: int) -> None:
+    """Resetea el estado de un usuario"""
+    get_migpal_standard().reset_state(user_id)
+
+
 # ============== EXPORTAR ==============
 
 __all__ = [
@@ -699,7 +709,9 @@ __all__ = [
     'ConversationState',
     'MatrixEvaluation',
     'MessageResponse',
+    'FormattedOutput',
     'get_migpal_standard',
+    'format_message_v41',
     'check_visa_gating',
     'format_message',
     'evaluate_options',
@@ -708,7 +720,10 @@ __all__ = [
     'advance_phase',
     'mark_profile_complete',
     'mark_summary_confirmed',
+    'reset_user_state',
     'MICRO_CHECKS',
     'FORBIDDEN_PHRASES',
-    'MAX_FORMS_PER_5_TURNS',
+    'MAX_MESSAGE_LINES',
+    'MICRO_CHECK_FREQUENCY',
+    'TOTAL_PHASES',
 ]

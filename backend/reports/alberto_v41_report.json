@@ -1,0 +1,259 @@
+{
+  "simulation_id": "alberto_v41_20260109_101546",
+  "timestamp": "2026-01-09T10:15:46.844402",
+  "total_turns": 27,
+  "phases_completed": 12,
+  "validations": {
+    "long_message_count": 0,
+    "multiple_question_count": 0,
+    "progress_rate": 100.0,
+    "micro_check_rate": 77.77777777777779
+  },
+  "final_score": 100,
+  "passed": true,
+  "details": [
+    {
+      "turn": 1,
+      "line_count": 3,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 2,
+      "line_count": 3,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 3,
+      "line_count": 3,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 4,
+      "line_count": 3,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 5,
+      "line_count": 3,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 6,
+      "line_count": 3,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 7,
+      "line_count": 3,
+      "question_count": 0,
+      "has_progress": true,
+      "has_micro_check": false,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 8,
+      "line_count": 3,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 9,
+      "line_count": 3,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 10,
+      "line_count": 3,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 11,
+      "line_count": 3,
+      "question_count": 0,
+      "has_progress": true,
+      "has_micro_check": false,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 12,
+      "line_count": 4,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 13,
+      "line_count": 4,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 14,
+      "line_count": 3,
+      "question_count": 0,
+      "has_progress": true,
+      "has_micro_check": false,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 15,
+      "line_count": 4,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 16,
+      "line_count": 3,
+      "question_count": 0,
+      "has_progress": true,
+      "has_micro_check": false,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 17,
+      "line_count": 4,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 18,
+      "line_count": 3,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 19,
+      "line_count": 4,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 20,
+      "line_count": 3,
+      "question_count": 0,
+      "has_progress": true,
+      "has_micro_check": false,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 21,
+      "line_count": 4,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 22,
+      "line_count": 3,
+      "question_count": 0,
+      "has_progress": true,
+      "has_micro_check": false,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 23,
+      "line_count": 4,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 24,
+      "line_count": 3,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 25,
+      "line_count": 4,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 26,
+      "line_count": 4,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "turn": 27,
+      "line_count": 4,
+      "question_count": 1,
+      "has_progress": true,
+      "has_micro_check": true,
+      "issues": [],
+      "passed": true
+    }
+  ]
+}
