@@ -1,0 +1,62 @@
+{
+  "beta_version": "3.0",
+  "start_date": "2026-01-04",
+  "target_users": 10,
+  "min_users": 5,
+  "status": "recruiting",
+  
+  "target_profiles": [
+    {
+      "type": "empleado",
+      "description": "Profesional buscando trabajo en USA",
+      "target_count": 3,
+      "recruited": 0
+    },
+    {
+      "type": "emprendedor",
+      "description": "Quiere montar negocio en USA",
+      "target_count": 2,
+      "recruited": 0
+    },
+    {
+      "type": "inversionista",
+      "description": "Tiene capital para invertir",
+      "target_count": 1,
+      "recruited": 0
+    },
+    {
+      "type": "familiar",
+      "description": "Tiene familia en USA",
+      "target_count": 2,
+      "recruited": 0
+    },
+    {
+      "type": "remoto",
+      "description": "Trabaja remoto, quiere vivir en USA",
+      "target_count": 2,
+      "recruited": 0
+    }
+  ],
+  
+  "beta_users": [],
+  
+  "recruitment_message": "🧪 ¡Bienvenido al Beta de MigPAL!\n\nEres parte de un grupo selecto probando nuestra nueva versión.\n\n✅ Beneficios:\n• Acceso gratuito al diagnóstico ($50 valor)\n• Soporte prioritario\n• Tu feedback moldea el producto\n\n¿Listo para comenzar?",
+  
+  "completion_bonus": "Por completar el beta, recibirás 50% de descuento en tu Plan Maestro.",
+  
+  "metrics_to_track": [
+    "time_per_phase",
+    "abandonment_rate",
+    "friction_points",
+    "repeated_questions",
+    "payment_conversion",
+    "feedback_score"
+  ],
+  
+  "success_criteria": {
+    "min_completion_rate": 60,
+    "max_avg_frustration": 2,
+    "min_feedback_score": 3.5,
+    "min_payment_conversion": 40
+  }
+}

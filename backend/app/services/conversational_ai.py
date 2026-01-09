@@ -31,12 +31,15 @@ class UserIntent(Enum):
     NOT_READY = "not_ready"             # No está listo para decidir
     CONFUSED = "confused"               # Está confundido
     WANTS_INFO = "wants_info"           # Quiere más información
+    WANTS_EXPLANATION = "wants_explanation"  # Quiere que le expliquen algo ("explícame")
     ASKING_QUESTION = "asking_question" # Hace una pregunta
     EXPRESSING_CONCERN = "concern"      # Expresa preocupación
     READY_TO_CONTINUE = "ready"         # Listo para continuar
     CORRECTION = "correction"           # Quiere corregir algo
     OFF_TOPIC = "off_topic"             # Tema no relacionado
     PROVIDING_INFO = "providing_info"   # Dando información (nombre, profesión, etc)
+    GREETING = "greeting"               # Saludo
+    GRATITUDE = "gratitude"             # Agradecimiento
     UNKNOWN = "unknown"                 # No se pudo determinar
 
 
@@ -88,16 +91,56 @@ class ConversationalAI:
             r"cuentame mas",
             r"más información",
             r"mas informacion",
-            r"explícame",
-            r"explicame",
             r"qué es",
             r"que es",
             r"cómo funciona",
             r"como funciona",
             r"tell me more",
             r"more info",
-            r"explain",
             r"how does.*work",
+        ],
+        UserIntent.WANTS_EXPLANATION: [
+            # REGLA: "explícame" SIEMPRE debe explicar, NUNCA redirigir
+            r"explícame",
+            r"explicame",
+            r"explícamelo",
+            r"explicamelo",
+            r"explain",
+            r"explain to me",
+            r"can you explain",
+            r"puedes explicar",
+            r"me puedes explicar",
+            r"no entiendo.*expl",
+            r"qué significa",
+            r"que significa",
+            r"qué quiere decir",
+            r"que quiere decir",
+            r"a qué te refieres",
+            r"a que te refieres",
+            r"what do you mean",
+            r"what does.*mean",
+        ],
+        UserIntent.GREETING: [
+            r"^hola",
+            r"^hello",
+            r"^hi$",
+            r"^hey",
+            r"^buenos días",
+            r"^buenas tardes",
+            r"^buenas noches",
+            r"^good morning",
+            r"^good afternoon",
+            r"^good evening",
+            r"^qué tal",
+            r"^que tal",
+        ],
+        UserIntent.GRATITUDE: [
+            r"gracias",
+            r"thank",
+            r"thanks",
+            r"te agradezco",
+            r"muy amable",
+            r"appreciate",
         ],
         UserIntent.ASKING_QUESTION: [
             r"\?$",
@@ -361,32 +404,46 @@ class ConversationalAI:
         return False
     
     def extract_data(self, text: str, current_state: str) -> Dict[str, Any]:
-        """Extraer datos del texto libre del usuario"""
+        """
+        V3.1.0 - HARDENED data extraction
+        Extraer datos del texto libre del usuario.
+        
+        REGLA CRÍTICA para nombres:
+        - SOLO extraer nombre si hay señal fuerte ('me llamo', 'mi nombre es')
+        - O si estamos en estado ask_name/name
+        - Si no, NO guardar nombre para evitar datos fantasma
+        """
+        from app.services.ux_improvements import NameValidator
+        
         extracted = {}
         text_lower = text.lower()
         
-        # Extraer nombre (si parece un nombre)
-        # Patrón 1: Solo nombre y apellido
-        name_match = re.match(r"^([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)+)$", text.strip())
-        if name_match:
-            extracted["name"] = name_match.group(1)
+        # V3.1.0 - HARDENED name extraction
+        # REGLA: SOLO extraer nombre si:
+        # 1. Hay señal fuerte ('me llamo', 'mi nombre es', etc.)
+        # 2. O estamos en estado ask_name/name
+        
+        is_name_state = current_state in ['name', 'ask_name', 'NAME_REQUEST', 'confirm_name']
+        has_strong_signal = NameValidator.has_strong_name_signal(text)
+        
+        if has_strong_signal:
+            # Extraer nombre usando el método seguro
+            extracted_name = NameValidator.extract_name_from_signal(text)
+            if extracted_name:
+                extracted["name"] = extracted_name
+                logger.info(f"🔒 NAME EXTRACTED (strong signal) | name={extracted_name}")
+        elif is_name_state:
+            # En estado de nombre, validar el texto completo como nombre
+            is_valid, result = NameValidator.is_valid_name(text.strip(), current_state)
+            if is_valid:
+                extracted["name"] = result
+                logger.info(f"🔒 NAME EXTRACTED (name state) | name={result}")
+            else:
+                logger.info(f"🚫 NAME REJECTED | reason={result} | text={text[:50]}")
         else:
-            # Patrón 2: "mi nombre es X" o "me llamo X" o "soy X"
-            name_patterns = [
-                r"(?:mi nombre(?:\s+correcto)?\s+es|me llamo|soy)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*)",
-                r"(?:my name is|i'm|i am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)",
-            ]
-            for pattern in name_patterns:
-                match = re.search(pattern, text, re.IGNORECASE)
-                if match:
-                    potential_name = match.group(1)
-                    # Verificar que no sea una profesión
-                    professions = ["ingeniero", "doctor", "abogado", "contador", "profesor", "diseñador", "programador"]
-                    if potential_name.lower() not in professions:
-                        # Capitalizar correctamente
-                        name_parts = potential_name.split()
-                        extracted["name"] = " ".join(p.capitalize() for p in name_parts)
-                    break
+            # NO extraer nombre fuera de contexto - evitar datos fantasma
+            logger.debug(f"🚫 NAME NOT EXTRACTED (no signal, wrong state) | state={current_state}")
+            pass
         
         # Extraer profesión
         profession_patterns = [
@@ -524,6 +581,16 @@ class ConversationalAI:
         
         elif intent == UserIntent.WANTS_INFO:
             return await self._handle_wants_info(name, text, topic, context_info, lang)
+        
+        elif intent == UserIntent.WANTS_EXPLANATION:
+            # REGLA: "explícame" SIEMPRE explica, NUNCA redirige
+            return await self._handle_explanation_request(name, text, topic, context_info, lang, user)
+        
+        elif intent == UserIntent.GREETING:
+            return await self._handle_greeting(name, lang, user)
+        
+        elif intent == UserIntent.GRATITUDE:
+            return await self._handle_gratitude(name, lang)
         
         elif intent == UserIntent.ASKING_QUESTION:
             return await self._handle_question(name, text, topic, context_info, lang, user)
@@ -890,6 +957,189 @@ class ConversationalAI:
         return ConversationalResponse(
             message=message,
             suggested_actions=actions,
+            should_advance_state=False
+        )
+    
+    async def _handle_explanation_request(
+        self, name: str, text: str, topic: str, context_info: str, lang: str, user: Dict
+    ) -> ConversationalResponse:
+        """
+        Manejar solicitudes de explicación.
+        REGLA CRÍTICA: "explícame" SIEMPRE debe explicar, NUNCA redirigir.
+        """
+        
+        # Detectar qué quiere que le expliquen
+        text_lower = text.lower()
+        
+        # Explicaciones específicas por tema detectado
+        explanations = {
+            "es": {
+                "visa": (
+                    "📝 *TE EXPLICO SOBRE LAS VISAS*\n\n"
+                    "Una visa es un permiso que te da un país para entrar y quedarte por un tiempo.\n\n"
+                    "*Tipos principales para USA:*\n\n"
+                    "💼 *Trabajo (H-1B):* Para profesionales con título universitario. "
+                    "Tu empleador en USA debe patrocinarte.\n\n"
+                    "🎓 *Estudiante (F-1):* Para estudiar en universidad o escuela. "
+                    "Puedes trabajar medio tiempo.\n\n"
+                    "🏢 *Inversionista (E-2):* Si inviertes dinero en un negocio en USA. "
+                    "Mínimo ~$100,000.\n\n"
+                    "👨\u200d👩\u200d👧 *Familiar:* Si tienes familia ciudadana o residente que te patrocine.\n\n"
+                    "¿Qué tipo te interesa más o quieres que te explique alguno en detalle?"
+                ),
+                "proceso": (
+                    "📝 *TE EXPLICO EL PROCESO DE MIGRACIÓN*\n\n"
+                    "Migrar legalmente tiene varios pasos:\n\n"
+                    "1️⃣ *Evaluación:* Primero entendemos tu situación y opciones.\n\n"
+                    "2️⃣ *Elección de ruta:* Decidimos qué tipo de visa es mejor para ti.\n\n"
+                    "3️⃣ *Documentación:* Reunimos todos los papeles necesarios.\n\n"
+                    "4️⃣ *Aplicación:* Enviamos la solicitud al gobierno.\n\n"
+                    "5️⃣ *Entrevista:* En algunos casos, entrevista en la embajada.\n\n"
+                    "6️⃣ *Aprobación:* Si todo sale bien, recibes tu visa.\n\n"
+                    "El tiempo varía según el tipo de visa (de meses a años).\n\n"
+                    "¿Qué parte del proceso te gustaría entender mejor?"
+                ),
+                "costos": (
+                    "📝 *TE EXPLICO LOS COSTOS*\n\n"
+                    "Los costos de migrar incluyen:\n\n"
+                    "💳 *Tarifas de visa:* $160-$500 (depende del tipo)\n\n"
+                    "👨\u200d⚖️ *Abogado (opcional):* $2,000-$10,000\n\n"
+                    "📄 *Documentos:* $200-$1,000 (traducciones, apostillas)\n\n"
+                    "✈️ *Viaje:* Variable según origen\n\n"
+                    "🏠 *Establecimiento:* 3-6 meses de gastos (renta, comida, etc.)\n\n"
+                    "*Ejemplo para USA:* Un proceso completo puede costar entre $5,000 y $20,000.\n\n"
+                    "¿Quieres que calcule un presupuesto más específico para tu caso?"
+                ),
+                "regiones": (
+                    "📝 *TE EXPLICO LAS REGIONES DE USA*\n\n"
+                    "Estados Unidos tiene 4 regiones principales:\n\n"
+                    "☀️ *SUR (Florida, Texas, Georgia):*\n"
+                    "- Clima cálido todo el año\n"
+                    "- Gran comunidad latina\n"
+                    "- Costo de vida moderado\n\n"
+                    "🏙️ *NORESTE (New York, New Jersey):*\n"
+                    "- Muchas oportunidades laborales\n"
+                    "- Ciudades grandes y diversas\n"
+                    "- Costo de vida alto\n\n"
+                    "🌲 *OESTE (California, Washington):*\n"
+                    "- Hub tecnológico\n"
+                    "- Clima agradable\n"
+                    "- Muy caro\n\n"
+                    "🌾 *MEDIO OESTE (Illinois, Ohio):*\n"
+                    "- Más económico\n"
+                    "- Buenas oportunidades\n"
+                    "- Inviernos fríos\n\n"
+                    "¿Qué región te interesa más?"
+                ),
+                "default": (
+                    f"📝 *CON GUSTO TE EXPLICO, {name}*\n\n"
+                    f"{context_info}\n\n"
+                    "¿Hay algo específico que quieras que te aclare?"
+                )
+            },
+            "en": {
+                "visa": (
+                    "📝 *LET ME EXPLAIN ABOUT VISAS*\n\n"
+                    "A visa is a permit that allows you to enter and stay in a country.\n\n"
+                    "*Main types for USA:*\n\n"
+                    "💼 *Work (H-1B):* For professionals with a university degree. "
+                    "Your US employer must sponsor you.\n\n"
+                    "🎓 *Student (F-1):* To study at a university or school. "
+                    "You can work part-time.\n\n"
+                    "🏢 *Investor (E-2):* If you invest money in a US business. "
+                    "Minimum ~$100,000.\n\n"
+                    "👨\u200d👩\u200d👧 *Family:* If you have citizen or resident family to sponsor you.\n\n"
+                    "Which type interests you most or would you like me to explain any in detail?"
+                ),
+                "default": (
+                    f"📝 *I'M HAPPY TO EXPLAIN, {name}*\n\n"
+                    f"{context_info}\n\n"
+                    "Is there something specific you'd like me to clarify?"
+                )
+            }
+        }
+        
+        lang_explanations = explanations.get(lang, explanations["es"])
+        
+        # Detectar tema de la explicación
+        if any(w in text_lower for w in ["visa", "permiso", "h1b", "h-1b", "f1", "f-1"]):
+            message = lang_explanations.get("visa", lang_explanations["default"])
+        elif any(w in text_lower for w in ["proceso", "process", "paso", "step", "cómo", "how"]):
+            message = lang_explanations.get("proceso", lang_explanations["default"])
+        elif any(w in text_lower for w in ["costo", "cost", "precio", "price", "dinero", "money"]):
+            message = lang_explanations.get("costos", lang_explanations["default"])
+        elif any(w in text_lower for w in ["región", "region", "estado", "state", "ciudad", "city"]):
+            message = lang_explanations.get("regiones", lang_explanations["default"])
+        else:
+            message = lang_explanations["default"]
+        
+        return ConversationalResponse(
+            message=message,
+            should_advance_state=False
+        )
+    
+    async def _handle_greeting(
+        self, name: str, lang: str, user: Dict
+    ) -> ConversationalResponse:
+        """Manejar saludos del usuario"""
+        
+        # Verificar si es usuario nuevo o recurrente
+        has_profile = bool(user.get("profile", {}).get("personal", {}).get("name"))
+        
+        if lang == "es":
+            if has_profile:
+                message = (
+                    f"¡Hola de nuevo, {name}! 👋\n\n"
+                    "¿En qué puedo ayudarte hoy?"
+                )
+            else:
+                message = (
+                    "¡Hola! 👋 Soy MigPAL, tu amigo en el proceso de migración.\n\n"
+                    "Estoy aquí para ayudarte a planear tu viaje a un nuevo país. "
+                    "Puedo responder tus preguntas, explicarte el proceso, "
+                    "y ayudarte a encontrar la mejor opción para ti.\n\n"
+                    "Cuéntame, ¿qué te trae por aquí hoy? 💭"
+                )
+        else:
+            if has_profile:
+                message = (
+                    f"Hello again, {name}! 👋\n\n"
+                    "How can I help you today?"
+                )
+            else:
+                message = (
+                    "Hello! 👋 I'm MigPAL, your friend in the migration process.\n\n"
+                    "I'm here to help you plan your journey to a new country. "
+                    "I can answer your questions, explain the process, "
+                    "and help you find the best option for you.\n\n"
+                    "Tell me, what brings you here today? 💭"
+                )
+        
+        return ConversationalResponse(
+            message=message,
+            should_advance_state=False
+        )
+    
+    async def _handle_gratitude(
+        self, name: str, lang: str
+    ) -> ConversationalResponse:
+        """Manejar agradecimientos del usuario"""
+        
+        if lang == "es":
+            message = (
+                f"¡De nada, {name}! 😊\n\n"
+                "Estoy aquí para ayudarte. "
+                "¿Hay algo más en lo que pueda asistirte?"
+            )
+        else:
+            message = (
+                f"You're welcome, {name}! 😊\n\n"
+                "I'm here to help. "
+                "Is there anything else I can assist you with?"
+            )
+        
+        return ConversationalResponse(
+            message=message,
             should_advance_state=False
         )
     

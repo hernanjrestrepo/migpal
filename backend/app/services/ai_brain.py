@@ -34,6 +34,19 @@ from .off_topic_detector import (
     is_confirmation, is_rejection, needs_redirect
 )
 
+# V3.2.0: Importar validador de perfil
+from .profile_validator import get_profile_based_intro, is_profile_confirmed
+
+# V3.3.0: Importar test-time reasoning y validación de coherencia
+from .profile_checklist import get_profile_checklist, check_profile_completeness
+from .test_time_reasoning import (
+    get_test_time_reasoner, reason_visa_analysis, reason_migration_plan,
+    check_inconsistencies, ReasoningTask
+)
+from .coherence_validator import (
+    get_coherence_validator, validate_response, is_response_safe, get_safe_response
+)
+
 logger = logging.getLogger(__name__)
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
@@ -550,13 +563,24 @@ Incluye:
 
 ¿Procedemos con el diagnóstico?"""
         else:
-            return f"""✅ Excelente{', ' + name if name else ''}.
+            # V3.2.0: Validar perfil antes de usar "basado en tu perfil"
+            user_id = user_data.get("user_id", 0)
+            lang = user_data.get("language", "es")
+            if is_profile_confirmed(user_id, user_data):
+                profile_intro = get_profile_based_intro(user_id, user_data, lang)
+                return f"""✅ Excelente{', ' + name if name else ''}.
 
-Basado en tu perfil, te recomiendo la **visa O-1** (Habilidades Extraordinarias).
+{profile_intro}, te recomiendo la **visa O-1** (Habilidades Extraordinarias).
 
 Tu probabilidad estimada: **70-75%** 🎯
 
 ¿Quieres que te explique los requisitos?"""
+            else:
+                return f"""✅ Excelente{', ' + name if name else ''}.
+
+Para darte una recomendación personalizada, necesito conocerte mejor.
+
+¿Me cuentas un poco sobre tu profesión y experiencia?"""
     
     # === SALUDOS ===
     if any(w in msg_lower for w in ["hola", "hi", "hello", "buenos", "buenas"]):
@@ -664,11 +688,22 @@ Ya tienes la visa O-1 seleccionada. El siguiente paso es el Diagnóstico ($50) p
 
 ¿Procedemos?"""
         else:
-            return f"""👋 {name}, vamos a definir tu mejor opción.
+            # V3.2.0: Validar perfil antes de usar "basado en tu perfil"
+            user_id = user_data.get("user_id", 0)
+            lang = user_data.get("language", "es")
+            if is_profile_confirmed(user_id, user_data):
+                profile_intro = get_profile_based_intro(user_id, user_data, lang)
+                return f"""👋 {name}, vamos a definir tu mejor opción.
 
-Basado en tu perfil, la visa O-1 parece ideal para ti.
+{profile_intro}, la visa O-1 parece ideal para ti.
 
 ¿Quieres que te explique por qué?"""
+            else:
+                return f"""👋 {name}, vamos a definir tu mejor opción.
+
+Cuéntame más sobre ti para poder recomendarte la mejor visa.
+
+¿A qué te dedicas?"""
     else:
         return """👋 Soy MigPAL, tu consultor de migración.
 
@@ -704,6 +739,176 @@ def build_process_state(user_data: Dict[str, Any]) -> str:
     return build_complete_user_context(user_data)
 
 
+# ============== V3.3.0: TEST-TIME REASONING ==============
+
+async def analyze_visa_with_reasoning(
+    user_data: Dict[str, Any],
+    context: Dict[str, Any] = None
+) -> Dict[str, Any]:
+    """
+    Análisis de visa con test-time reasoning.
+    
+    PROCESO:
+    1. Verificar checklist completo
+    2. Generar 2-4 borradores con diferentes enfoques
+    3. Validar coherencia de cada borrador
+    4. Seleccionar y retornar el mejor
+    
+    REGLAS DURAS:
+    - No recomendar sin checklist mínimo
+    - No inventar datos
+    - Verificar contra perfil confirmado
+    """
+    user_id = user_data.get("user_id", 0)
+    lang = user_data.get("language", "es")
+    
+    # 1. Verificar checklist
+    checklist = check_profile_completeness(user_id, user_data)
+    
+    if not checklist["can_recommend_visa"]:
+        # No se puede recomendar - pedir datos faltantes
+        next_q = checklist.get("next_question")
+        if next_q:
+            field_name, question = next_q
+            return {
+                "success": False,
+                "blocked": True,
+                "reason": "incomplete_checklist",
+                "missing_fields": checklist["missing"],
+                "next_question": question,
+                "summary": checklist["summary"]
+            }
+        else:
+            return {
+                "success": False,
+                "blocked": True,
+                "reason": "incomplete_checklist",
+                "summary": checklist["summary"]
+            }
+    
+    # 2. Ejecutar test-time reasoning
+    try:
+        result = await reason_visa_analysis(user_data, context or {})
+        
+        # 3. Validar coherencia de la respuesta seleccionada
+        validation = validate_response(result.selected_draft.content, user_data, lang)
+        
+        if validation.blocked:
+            # Respuesta bloqueada por coherencia
+            logger.warning(f"⚠️ VISA ANALYSIS | blocked | reason={validation.block_reason}")
+            return {
+                "success": False,
+                "blocked": True,
+                "reason": "coherence_failed",
+                "block_reason": validation.block_reason,
+                "suggestions": validation.suggestions
+            }
+        
+        # 4. Retornar respuesta validada
+        return {
+            "success": True,
+            "response": result.selected_draft.content,
+            "approach": result.selected_draft.approach.value,
+            "confidence": result.confidence,
+            "warnings": result.warnings,
+            "validation_score": validation.score,
+            "processing_time_ms": result.processing_time_ms
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ VISA ANALYSIS | error={e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+async def generate_migration_plan_with_reasoning(
+    user_data: Dict[str, Any],
+    context: Dict[str, Any] = None
+) -> Dict[str, Any]:
+    """
+    Genera plan de migración con test-time reasoning.
+    
+    REGLA DURA: Requiere checklist COMPLETO.
+    """
+    user_id = user_data.get("user_id", 0)
+    lang = user_data.get("language", "es")
+    
+    # 1. Verificar checklist completo
+    checklist = check_profile_completeness(user_id, user_data)
+    
+    if not checklist["can_generate_plan"]:
+        return {
+            "success": False,
+            "blocked": True,
+            "reason": "incomplete_checklist",
+            "percentage": checklist["percentage"],
+            "missing_fields": checklist["missing"],
+            "summary": checklist["summary"]
+        }
+    
+    # 2. Ejecutar test-time reasoning
+    try:
+        result = await reason_migration_plan(user_data, context or {})
+        
+        # 3. Validar coherencia
+        validation = validate_response(result.selected_draft.content, user_data, lang)
+        
+        if validation.blocked:
+            return {
+                "success": False,
+                "blocked": True,
+                "reason": "coherence_failed",
+                "block_reason": validation.block_reason
+            }
+        
+        return {
+            "success": True,
+            "response": result.selected_draft.content,
+            "approach": result.selected_draft.approach.value,
+            "confidence": result.confidence,
+            "warnings": result.warnings
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ MIGRATION PLAN | error={e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+async def detect_profile_inconsistencies(
+    user_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Detecta inconsistencias en el perfil del usuario.
+    
+    Verifica:
+    - Edad vs educación
+    - Experiencia vs edad
+    - Datos contradictorios
+    """
+    try:
+        result = await check_inconsistencies(user_data)
+        
+        return {
+            "success": True,
+            "has_inconsistencies": len(result.warnings) > 0,
+            "analysis": result.selected_draft.content,
+            "warnings": result.warnings,
+            "confidence": result.confidence
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ INCONSISTENCY CHECK | error={e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
 __all__ = [
     'process_with_ai',
     'process_message', 
@@ -714,4 +919,8 @@ __all__ = [
     'get_fallback_message',
     'fallback_response',
     'detect_intent',
+    # V3.3.0: Test-time reasoning
+    'analyze_visa_with_reasoning',
+    'generate_migration_plan_with_reasoning',
+    'detect_profile_inconsistencies',
 ]

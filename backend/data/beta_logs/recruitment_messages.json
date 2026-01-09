@@ -1,0 +1,23 @@
+{
+  "general_invite": "🧪 **¡Únete al Beta de MigPAL V3.0!**\n\nEstamos buscando 10 personas que quieran migrar a USA para probar nuestra nueva versión.\n\n✅ **Beneficios:**\n• Diagnóstico GRATIS ($50 valor)\n• 50% descuento en Plan Maestro\n• Soporte prioritario\n• Tu feedback moldea el producto\n\n**Requisitos:**\n• Interés real en migrar a USA\n• Disponibilidad de 30-60 min\n• Dar feedback honesto al final\n\n¿Te interesa? Escribe /beta para comenzar",
+  
+  "profile_specific": {
+    "empleado": "🧪 **Beta MigPAL - Profesionales**\n\n¿Eres profesional y buscas trabajo en USA?\n\nNecesitamos tu perfil para probar nuestro sistema de visas H-1B, O-1 y L-1.\n\n✅ Diagnóstico GRATIS\n✅ 50% descuento\n\nEscribe /beta para participar",
+    
+    "emprendedor": "🧪 **Beta MigPAL - Emprendedores**\n\n¿Quieres montar tu negocio en USA?\n\nNecesitamos emprendedores para probar nuestro sistema de visas E-2.\n\n✅ Diagnóstico GRATIS\n✅ 50% descuento\n\nEscribe /beta para participar",
+    
+    "inversionista": "🧪 **Beta MigPAL - Inversionistas**\n\n¿Tienes capital para invertir en USA?\n\nNecesitamos inversionistas para probar nuestro sistema de visas EB-5.\n\n✅ Diagnóstico GRATIS\n✅ 50% descuento\n\nEscribe /beta para participar",
+    
+    "familiar": "🧪 **Beta MigPAL - Reunificación Familiar**\n\n¿Tienes familia ciudadana o residente en USA?\n\nNecesitamos tu perfil para probar nuestro sistema de visas familiares.\n\n✅ Diagnóstico GRATIS\n✅ 50% descuento\n\nEscribe /beta para participar",
+    
+    "remoto": "🧪 **Beta MigPAL - Trabajadores Remotos**\n\n¿Trabajas remoto y quieres vivir en USA?\n\nNecesitamos nómadas digitales para probar nuestro sistema.\n\n✅ Diagnóstico GRATIS\n✅ 50% descuento\n\nEscribe /beta para participar"
+  },
+  
+  "welcome_beta": "🎉 **¡Bienvenido al Beta de MigPAL V3.0!**\n\nGracias por unirte. Eres el usuario beta #{user_number}.\n\n📋 **Lo que haremos:**\n1. Registro (5 min)\n2. Diagnóstico GRATIS (10 min)\n3. Perfilamiento (15 min)\n4. Plan de Migración (20 min)\n5. Feedback (2 min)\n\n⏱️ **Tiempo total:** ~45 minutos\n\n💡 **Importante:**\n• Responde con naturalidad\n• Si algo no está claro, dímelo\n• Tu feedback es valioso\n\n¿Empezamos? Escribe **\"Listo\"** para comenzar.",
+  
+  "feedback_request": "🙏 **¡Gracias por completar el beta!**\n\nAntes de terminar, necesito tu feedback:\n\n**¿Cómo calificarías tu experiencia?**\n(1 = Muy mala, 5 = Excelente)\n\nResponde con un número y, si quieres, agrega un comentario.\n\nEjemplo: \"4 - Me gustó, pero algunas preguntas eran confusas\"",
+  
+  "feedback_thanks": "🎁 **¡Gracias por tu feedback!**\n\nComo agradecimiento por participar en el beta:\n\n🎟️ **Código de descuento: BETA50**\n(50% off en tu Plan Maestro)\n\nVálido por 30 días.\n\n¡Mucho éxito en tu proceso migratorio! 🇺🇸",
+  
+  "reminder_inactive": "👋 **¡Hola! Te extrañamos en MigPAL**\n\nVimos que no has continuado con tu proceso beta.\n\n¿Todo bien? ¿Necesitas ayuda?\n\nRecuerda que tienes:\n• Diagnóstico GRATIS\n• 50% descuento\n\nEscribe cualquier cosa para continuar."
+}

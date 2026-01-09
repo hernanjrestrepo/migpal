@@ -328,11 +328,23 @@ async def generate_guidance(
     provider = get_ai_provider()
     
     if not provider:
+        # V3.2.0: No asumir perfil confirmado
+        origin = user_profile.get('current_country', '')
+        dest = user_profile.get('target_country', '')
+        edu = user_profile.get('education_level', '')
+        
+        profile_info = ""
+        if origin or dest or edu:
+            profile_info = "\n\nLo que sé de ti hasta ahora:"
+            if origin:
+                profile_info += f"\n- Origen: {origin}"
+            if dest:
+                profile_info += f"\n- Destino: {dest}"
+            if edu:
+                profile_info += f"\n- Educación: {edu}"
+        
         return f"""
-Bienvenido a MigPAL. Basado en tu perfil:
-- Origen: {user_profile.get('current_country', 'Desconocido')}
-- Destino: {user_profile.get('target_country', 'Desconocido')}
-- Educación: {user_profile.get('education_level', 'Desconocido')}
+Bienvenido a MigPAL. 👋{profile_info}
 
 La guía personalizada con IA estará disponible una vez que se configure la integración de API.
 """

@@ -1,0 +1,20 @@
+{"timestamp": "2026-01-04T16:55:10.870848", "user_id": 888888888, "event_type": "session_start", "phase": "REGISTRO", "data": {}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:10.887524", "user_id": 888888888, "event_type": "phase_start", "phase": "REGISTRO", "data": {}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:10.909418", "user_id": 888888888, "event_type": "message_received", "phase": "REGISTRO", "data": {"message": "Hola"}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:10.924121", "user_id": 888888888, "event_type": "question_asked", "phase": "REGISTRO", "data": {"question": "\u00bfC\u00f3mo te llamas?"}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:10.936964", "user_id": 888888888, "event_type": "data_extracted", "phase": "REGISTRO", "data": {"field": "name", "value": "Test"}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:10.950671", "user_id": 888888888, "event_type": "phase_complete", "phase": "REGISTRO", "data": {}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:10.963859", "user_id": 888888889, "event_type": "session_start", "phase": "REGISTRO", "data": {}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:10.977211", "user_id": 888888889, "event_type": "frustration_detected", "phase": "REGISTRO", "data": {"message": "No entiendo"}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:10.990691", "user_id": 888888889, "event_type": "frustration_detected", "phase": "REGISTRO", "data": {"message": "Ya te dije"}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:11.015081", "user_id": 888888889, "event_type": "help_requested", "phase": "REGISTRO", "data": {}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:11.028721", "user_id": 888888890, "event_type": "session_start", "phase": "REGISTRO", "data": {}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:11.062560", "user_id": 888888890, "event_type": "payment_prompted", "phase": "DIAGNOSTICO", "data": {"amount": 50}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:11.078404", "user_id": 888888890, "event_type": "payment_completed", "phase": "DIAGNOSTICO", "data": {"amount": 50}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:11.091692", "user_id": 888888890, "event_type": "payment_prompted", "phase": "PERFILAMIENTO", "data": {"amount": 100}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:11.113878", "user_id": 888888891, "event_type": "feedback_requested", "phase": "CIERRE", "data": {}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:11.127635", "user_id": 888888891, "event_type": "feedback_received", "phase": "CIERRE", "data": {"score": 4, "text": "Me gust\u00f3 mucho, muy \u00fatil"}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:11.157078", "user_id": 888888892, "event_type": "session_start", "phase": "REGISTRO", "data": {"profile_type": "empleado"}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:11.190386", "user_id": 888888892, "event_type": "phase_start", "phase": "REGISTRO", "data": {}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:11.212197", "user_id": 888888892, "event_type": "message_received", "phase": "REGISTRO", "data": {"message_length": 19, "message_preview": "Hola, quiero migrar"}, "duration_ms": 0}
+{"timestamp": "2026-01-04T16:55:11.225689", "user_id": 888888892, "event_type": "phase_complete", "phase": "REGISTRO", "data": {}, "duration_ms": 0}

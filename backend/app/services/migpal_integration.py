@@ -548,7 +548,7 @@ Usa /perfil para empezar tu perfilamiento.
     "lawyer_needed": """
 ⚖️ **IMPORTANTE: Tu caso requiere abogado**
 
-Basado en tu perfil, el tipo de visa que necesitas requiere representación legal profesional.
+El tipo de visa que necesitas requiere representación legal profesional.
 
 💡 **¿Cómo funciona con MigPAL?**
 1. Pagas solo **$50 USD** a MigPAL

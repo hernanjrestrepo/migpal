@@ -1,0 +1,233 @@
+{
+  "summary": {
+    "total_simulations": 10,
+    "passed": 0,
+    "failed": 10,
+    "success_rate": "0.0%",
+    "total_issues": 8,
+    "total_loops": 8,
+    "total_ghost_data": 52
+  },
+  "issues_by_category": {
+    "loop": [
+      {
+        "simulation": "Carlos - Ingeniero Senior",
+        "severity": "warning",
+        "message": "Posible loop de respuesta detectado",
+        "phase": "questions"
+      },
+      {
+        "simulation": "Juan - Confundido",
+        "severity": "warning",
+        "message": "Posible loop de respuesta detectado",
+        "phase": "questions"
+      },
+      {
+        "simulation": "Juan - Confundido",
+        "severity": "warning",
+        "message": "Posible loop de respuesta detectado",
+        "phase": "questions"
+      },
+      {
+        "simulation": "Ana - Frustrada",
+        "severity": "warning",
+        "message": "Posible loop de respuesta detectado",
+        "phase": "personal_info"
+      },
+      {
+        "simulation": "Ana - Frustrada",
+        "severity": "warning",
+        "message": "Posible loop de respuesta detectado",
+        "phase": "professional_info"
+      },
+      {
+        "simulation": "Roberto - Negación Previa",
+        "severity": "warning",
+        "message": "Posible loop de respuesta detectado",
+        "phase": "questions"
+      },
+      {
+        "simulation": "Carmen - Emprendedora",
+        "severity": "warning",
+        "message": "Posible loop de respuesta detectado",
+        "phase": "questions"
+      },
+      {
+        "simulation": "Elena - Caso Complejo",
+        "severity": "warning",
+        "message": "Posible loop de respuesta detectado",
+        "phase": "questions"
+      }
+    ]
+  },
+  "failed_simulations": [
+    {
+      "name": "Carlos - Ingeniero Senior",
+      "issues": [
+        {
+          "category": "loop",
+          "message": "Posible loop de respuesta detectado"
+        }
+      ],
+      "ghost_data": [
+        "personal.name=ingeniero de",
+        "personal.age=35",
+        "personal.nationality=Colombiano",
+        "work.profession=Ingeniero",
+        "financial.savings=$30000",
+        "history.visa_history=B1/B2"
+      ]
+    },
+    {
+      "name": "María - Doctora",
+      "issues": [],
+      "ghost_data": [
+        "personal.name=médica especialista",
+        "personal.age=40",
+        "personal.nationality=Mexicana",
+        "work.profession=Doctor",
+        "languages.english=Nativo",
+        "financial.savings=$100000",
+        "history.visa_history=Ninguna"
+      ]
+    },
+    {
+      "name": "Juan - Confundido",
+      "issues": [
+        {
+          "category": "loop",
+          "message": "Posible loop de respuesta detectado"
+        },
+        {
+          "category": "loop",
+          "message": "Posible loop de respuesta detectado"
+        }
+      ],
+      "ghost_data": [
+        "personal.name=Juan",
+        "personal.age=28"
+      ]
+    },
+    {
+      "name": "Ana - Frustrada",
+      "issues": [
+        {
+          "category": "loop",
+          "message": "Posible loop de respuesta detectado"
+        },
+        {
+          "category": "loop",
+          "message": "Posible loop de respuesta detectado"
+        }
+      ],
+      "ghost_data": [
+        "personal.name=ok gracias",
+        "work.profession=Contador"
+      ]
+    },
+    {
+      "name": "Pedro - Familia Grande",
+      "issues": [],
+      "ghost_data": [
+        "personal.name=Inglés intermedio",
+        "personal.age=45",
+        "work.profession=Profesor",
+        "languages.english=Intermedio",
+        "history.visa_history=B1/B2"
+      ]
+    },
+    {
+      "name": "Laura - Estudiante",
+      "issues": [],
+      "ghost_data": [
+        "personal.name=Inglés avanzado",
+        "personal.age=22",
+        "personal.nationality=Argentina",
+        "languages.english=Avanzado"
+      ]
+    },
+    {
+      "name": "Roberto - Negación Previa",
+      "issues": [
+        {
+          "category": "loop",
+          "message": "Posible loop de respuesta detectado"
+        }
+      ],
+      "ghost_data": [
+        "personal.name=abogado con",
+        "personal.age=38",
+        "personal.nationality=Venezolano",
+        "work.profession=Abogado",
+        "languages.english=Intermedio",
+        "financial.savings=$15000",
+        "history.visa_history=B1/B2",
+        "history.visa_denials=True"
+      ]
+    },
+    {
+      "name": "Carmen - Emprendedora",
+      "issues": [
+        {
+          "category": "loop",
+          "message": "Posible loop de respuesta detectado"
+        }
+      ],
+      "ghost_data": [
+        "personal.name=Inglés básico",
+        "personal.age=25",
+        "personal.nationality=Peruana",
+        "work.profession=Empresaria",
+        "languages.english=Básico",
+        "history.visa_history=B1/B2"
+      ]
+    },
+    {
+      "name": "Diego - Artista",
+      "issues": [],
+      "ghost_data": [
+        "personal.name=guitarrista profesional",
+        "personal.age=30",
+        "personal.nationality=Chileno",
+        "work.profession=Artista",
+        "languages.english=Intermedio",
+        "financial.savings=$10000",
+        "history.visa_history=B1/B2"
+      ]
+    },
+    {
+      "name": "Elena - Caso Complejo",
+      "issues": [
+        {
+          "category": "loop",
+          "message": "Posible loop de respuesta detectado"
+        }
+      ],
+      "ghost_data": [
+        "personal.age=35",
+        "personal.nationality=Ecuatoriana",
+        "work.profession=Enfermera",
+        "languages.english=Avanzado",
+        "history.visa_history=B1/B2"
+      ]
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "issue": "Loops de respuesta detectados",
+      "count": 8,
+      "solution": "Implementar tracking de respuestas previas y variar mensajes empáticos"
+    },
+    {
+      "priority": "MEDIUM",
+      "issue": "Alto número de loops (8)",
+      "solution": "Implementar sistema de variación de respuestas empáticas"
+    },
+    {
+      "priority": "CRITICAL",
+      "issue": "Datos fantasma en perfiles (52)",
+      "solution": "Revisar extracción de datos y validar contra input real del usuario"
+    }
+  ]
+}

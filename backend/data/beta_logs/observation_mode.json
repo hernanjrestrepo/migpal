@@ -1,0 +1,50 @@
+{
+  "mode": "observation",
+  "activated_at": "2026-01-04T17:00:00",
+  "status": "active",
+  
+  "rules": {
+    "no_code_changes": true,
+    "no_flow_changes": true,
+    "no_price_changes": true,
+    "no_message_changes": true,
+    "no_manual_intervention": true
+  },
+  
+  "auto_tracking": {
+    "session_events": true,
+    "phase_events": true,
+    "message_events": true,
+    "friction_events": true,
+    "payment_events": true,
+    "feedback_events": true
+  },
+  
+  "auto_labels": {
+    "friction_threshold": 2,
+    "slow_phase_minutes": 20,
+    "repeated_questions_threshold": 2
+  },
+  
+  "report_config": {
+    "min_users": 5,
+    "auto_generate": true,
+    "include_feedback": true,
+    "include_patterns": true,
+    "include_recommendations": true
+  },
+  
+  "monitoring": {
+    "refresh_interval_seconds": 5,
+    "alert_on_high_friction": true,
+    "alert_on_abandon": true,
+    "log_all_events": true
+  },
+  
+  "notes": [
+    "Modo observación activado - NO modificar código",
+    "Registrar todos los eventos automáticamente",
+    "Generar reporte cuando haya 5+ usuarios",
+    "Solo observar y documentar"
+  ]
+}

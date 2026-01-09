@@ -1,0 +1,117 @@
+{
+  "timestamp": "2026-01-08T21:37:35.611178",
+  "version": "V3.2.0",
+  "summary": {
+    "total_simulations": 10,
+    "passed": 10,
+    "failed": 0,
+    "success_rate": "100.0%",
+    "total_ghost_data": 0,
+    "total_loops": 0,
+    "total_rejected_correctly": 11
+  },
+  "results_by_persona": [
+    {
+      "name": "Carlos - Ingeniero Senior",
+      "success": true,
+      "ghost_data": [],
+      "loops": 0,
+      "rejected_correctly": [
+        "Soy ingeniero de software -> too_many_words"
+      ],
+      "issues": []
+    },
+    {
+      "name": "María - Doctora",
+      "success": true,
+      "ghost_data": [],
+      "loops": 0,
+      "rejected_correctly": [
+        "médica especialista en cardiología -> too_many_words"
+      ],
+      "issues": []
+    },
+    {
+      "name": "Juan - Confundido",
+      "success": true,
+      "ghost_data": [],
+      "loops": 0,
+      "rejected_correctly": [
+        "qué? -> not_a_name",
+        "no entiendo -> not_a_name"
+      ],
+      "issues": []
+    },
+    {
+      "name": "Ana - Frustrada",
+      "success": true,
+      "ghost_data": [],
+      "loops": 0,
+      "rejected_correctly": [
+        "ok gracias -> not_a_name"
+      ],
+      "issues": []
+    },
+    {
+      "name": "Pedro - Familia Grande",
+      "success": true,
+      "ghost_data": [],
+      "loops": 0,
+      "rejected_correctly": [
+        "Inglés intermedio, $200,000 para invertir -> invalid_chars"
+      ],
+      "issues": []
+    },
+    {
+      "name": "Laura - Estudiante",
+      "success": true,
+      "ghost_data": [],
+      "loops": 0,
+      "rejected_correctly": [
+        "Inglés avanzado -> not_a_name"
+      ],
+      "issues": []
+    },
+    {
+      "name": "Roberto - Negación Previa",
+      "success": true,
+      "ghost_data": [],
+      "loops": 0,
+      "rejected_correctly": [
+        "abogado con 15 años de experiencia -> invalid_chars"
+      ],
+      "issues": []
+    },
+    {
+      "name": "Carmen - Emprendedora",
+      "success": true,
+      "ghost_data": [],
+      "loops": 0,
+      "rejected_correctly": [
+        "Inglés básico, tengo un negocio -> invalid_chars"
+      ],
+      "issues": []
+    },
+    {
+      "name": "Diego - Artista",
+      "success": true,
+      "ghost_data": [],
+      "loops": 0,
+      "rejected_correctly": [
+        "guitarrista profesional -> too_long"
+      ],
+      "issues": []
+    },
+    {
+      "name": "Elena - Caso Complejo",
+      "success": true,
+      "ghost_data": [],
+      "loops": 0,
+      "rejected_correctly": [
+        "soy de Ecuador, tengo 35 años -> invalid_chars"
+      ],
+      "issues": []
+    }
+  ],
+  "top_5_causes": []
+}
