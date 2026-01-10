@@ -235,6 +235,14 @@ class GlobalExceptionHandler:
 
 
 def global_error_handler(func):
+    """Decorator for global error handling with recovery to /start.
+    
+    V4.1 FIX: Improved error handling with:
+    - Full traceback logging
+    - State validation before use
+    - Recovery to /start without duplicating messages
+    - Safe defaults for all user data
+    """
     @wraps(func)
     async def wrapper(*args, **kwargs):
         try:
@@ -244,34 +252,90 @@ def global_error_handler(func):
             state = "unknown"
             lang = "es"
             update = None
+            error_type = type(e).__name__
             
+            # Extract update object from args
             for arg in args:
                 if hasattr(arg, 'effective_user'):
                     update = arg
                     user_id = arg.effective_user.id if arg.effective_user else 0
                     break
             
+            # Safely get state and user data with defensive checks
             try:
-                from app.services.telegram_bot import get_state, get_user_data
+                from app.services.telegram_bot import get_state, get_user_data, set_state, STATE_START
                 if user_id:
-                    state = get_state(user_id)
-                    user = get_user_data(user_id)
-                    lang = user.get("language", "es")
-            except:
+                    # Defensive state retrieval
+                    try:
+                        state = get_state(user_id)
+                        if state is None or not isinstance(state, str):
+                            state = STATE_START
+                            logger.warning(f"🔧 RECOVERY | user={user_id} | null/invalid state, resetting to START")
+                    except Exception as state_err:
+                        state = STATE_START
+                        logger.warning(f"🔧 RECOVERY | user={user_id} | state retrieval failed: {state_err}")
+                    
+                    # Defensive user data retrieval
+                    try:
+                        user = get_user_data(user_id)
+                        if user and isinstance(user, dict):
+                            lang = user.get("language", "es") or "es"
+                        else:
+                            lang = "es"
+                    except Exception as user_err:
+                        lang = "es"
+                        logger.warning(f"🔧 RECOVERY | user={user_id} | user data retrieval failed: {user_err}")
+            except ImportError:
                 pass
             
+            # Log the error with full traceback
             handler = GlobalExceptionHandler()
             handler.log_error(user_id, state, e, func.__name__)
             
+            # Log additional context for debugging
+            logger.error(
+                f"🔴 EXCEPTION | func={func.__name__} | user={user_id} | state={state} | "
+                f"type={error_type} | msg={str(e)[:200]}"
+            )
+            
+            # Send recovery message to user (without duplicating)
             if update:
                 try:
+                    # Get localized error message
                     fallback_msg = handler.get_fallback_message(lang)
+                    
+                    # Determine if we should offer /start recovery
+                    # Only offer recovery for certain error types that indicate corrupted state
+                    should_offer_recovery = error_type in [
+                        'KeyError', 'TypeError', 'AttributeError', 'ValueError',
+                        'IndexError', 'NoneType'
+                    ]
+                    
+                    if should_offer_recovery:
+                        recovery_hint = (
+                            "\n\n💡 Si el problema persiste, escribe /start para reiniciar."
+                            if lang == "es" else
+                            "\n\n💡 If the problem persists, type /start to restart."
+                        )
+                        fallback_msg += recovery_hint
+                    
+                    # Send message based on update type
+                    message_sent = False
                     if hasattr(update, 'message') and update.message:
                         await update.message.reply_text(fallback_msg)
+                        message_sent = True
                     elif hasattr(update, 'callback_query') and update.callback_query:
-                        await update.callback_query.message.reply_text(fallback_msg)
-                except:
-                    pass
+                        try:
+                            await update.callback_query.message.reply_text(fallback_msg)
+                            message_sent = True
+                        except Exception:
+                            # Callback query message might be too old
+                            pass
+                    
+                    if message_sent:
+                        logger.info(f"✅ RECOVERY_MSG_SENT | user={user_id} | func={func.__name__}")
+                except Exception as send_err:
+                    logger.error(f"❌ RECOVERY_MSG_FAILED | user={user_id} | error={send_err}")
     return wrapper
 
 

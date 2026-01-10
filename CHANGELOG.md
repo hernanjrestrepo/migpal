@@ -1,5 +1,38 @@
 # Changelog - MigPAL USA
 
+## [v4.1-hotfix] - 2026-01-10
+
+### 🔧 Hotfix: Defensive State Handling
+
+**Problema**: Bot lanzaba excepciones en runtime ("⚠️ error inesperado") cuando el estado de conversación era nulo/corrupto.
+
+### ✅ Fixes Aplicados
+
+| Fix | Descripción | Archivo |
+|-----|-------------|--------|
+| **_ensure_valid_user_data()** | Valida y repara datos de usuario corruptos | `telegram_bot.py` |
+| **get_state() defensivo** | Siempre retorna STATE_START si estado inválido | `telegram_bot.py` |
+| **set_state() validado** | Rechaza estados nulos/inválidos | `telegram_bot.py` |
+| **global_error_handler mejorado** | Recovery a /start sin duplicar mensajes | `ux_improvements.py` |
+| **Traceback completo** | Logging detallado para debugging | Ambos archivos |
+
+### 🧪 Tests de Recovery
+
+```
+✅ get_state() con estado nulo → recupera a START
+✅ get_user_data() con datos corruptos → estructura válida
+✅ set_state(None) → usa STATE_START
+✅ _ensure_valid_user_data({}) → todos los campos requeridos
+✅ Logs limpios (0 Traceback/Exception)
+```
+
+### 📁 Archivos Modificados
+
+- `backend/app/services/telegram_bot.py` - Funciones de estado defensivas
+- `backend/app/services/ux_improvements.py` - Error handler mejorado
+
+---
+
 ## [v4.1-prod] - 2026-01-09
 
 ### 🚀 Release: MigPAL USA Standard v4.1

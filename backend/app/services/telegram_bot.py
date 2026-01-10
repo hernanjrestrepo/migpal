@@ -58,7 +58,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8243325921:AAFTkOmUG9emaDVa6dBPdxpey1rUxkSdLOA")
+# SECURITY: Token MUST be set in .env - no hardcoded fallback
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+if not TELEGRAM_BOT_TOKEN:
+    logger.error("❌ CRITICAL: TELEGRAM_BOT_TOKEN not set in .env!")
+    raise ValueError("TELEGRAM_BOT_TOKEN environment variable is required")
 
 # ============== DATA STORAGE ==============
 from app.services.case_storage import (
@@ -367,53 +371,147 @@ STATE_DOCUMENT_UPLOAD = "document_upload"
 STATE_CONSULTING = "consulting"
 
 
+# V4.1 FIX: Default user data structure for defensive initialization
+DEFAULT_USER_DATA = {
+    "state": STATE_START,
+    "language": "es",
+    "profile": {
+        "personal": {},
+        "education": {},
+        "work": {},
+        "languages": {},
+        "history": {},
+        "financial": {}
+    },
+    "family_members": [],
+    "current_family_index": 0,
+    "preferences": {},
+    "selected_route": {},
+    "documents": [],
+}
+
+
+def _ensure_valid_user_data(data: Dict[str, Any], user_id: int) -> Dict[str, Any]:
+    """V4.1 FIX: Ensure user data has all required fields with safe defaults."""
+    if not isinstance(data, dict):
+        logger.warning(f"🔧 RECOVERY | user={user_id} | invalid data type, creating new")
+        data = {}
+    
+    # Ensure user_id is set
+    data["user_id"] = user_id
+    
+    # Ensure state is valid
+    if "state" not in data or not isinstance(data.get("state"), str):
+        data["state"] = STATE_START
+        logger.warning(f"🔧 RECOVERY | user={user_id} | missing/invalid state, reset to START")
+    
+    # Ensure language is valid
+    if "language" not in data or not isinstance(data.get("language"), str):
+        data["language"] = "es"
+    
+    # Ensure profile structure exists
+    if "profile" not in data or not isinstance(data.get("profile"), dict):
+        data["profile"] = {
+            "personal": {},
+            "education": {},
+            "work": {},
+            "languages": {},
+            "history": {},
+            "financial": {}
+        }
+    else:
+        # Ensure all profile sections exist
+        for section in ["personal", "education", "work", "languages", "history", "financial"]:
+            if section not in data["profile"] or not isinstance(data["profile"].get(section), dict):
+                data["profile"][section] = {}
+    
+    # Ensure other required fields
+    if "family_members" not in data or not isinstance(data.get("family_members"), list):
+        data["family_members"] = []
+    if "current_family_index" not in data:
+        data["current_family_index"] = 0
+    if "preferences" not in data or not isinstance(data.get("preferences"), dict):
+        data["preferences"] = {}
+    if "selected_route" not in data or not isinstance(data.get("selected_route"), dict):
+        data["selected_route"] = {}
+    if "documents" not in data or not isinstance(data.get("documents"), list):
+        data["documents"] = []
+    
+    return data
+
+
 def get_user_data(user_id: int) -> Dict[str, Any]:
-    """Get or create user data - loads from disk if exists (with decryption)"""
-    if user_id not in user_data:
-        # Try to load from disk first
-        saved_data = load_user_data(user_id)
-        if saved_data:
-            # Decrypt sensitive data when loading
-            user_data[user_id] = decrypt_user_data(saved_data)
-            user_data[user_id]["user_id"] = user_id  # Ensure user_id is set
-            logger.info(f"Loaded existing case for user (decrypted)")
+    """Get or create user data - loads from disk if exists (with decryption).
+    
+    V4.1 FIX: Added defensive validation to handle corrupted/null data.
+    """
+    try:
+        if user_id not in user_data:
+            # Try to load from disk first
+            saved_data = load_user_data(user_id)
+            if saved_data:
+                try:
+                    # Decrypt sensitive data when loading
+                    decrypted = decrypt_user_data(saved_data)
+                    user_data[user_id] = _ensure_valid_user_data(decrypted, user_id)
+                    logger.info(f"Loaded existing case for user (decrypted)")
+                except Exception as e:
+                    logger.error(f"🔴 DECRYPT_ERROR | user={user_id} | error={e}")
+                    # Create new case if decryption fails
+                    user_data[user_id] = _ensure_valid_user_data({}, user_id)
+                    user_data[user_id]["created_at"] = datetime.now().isoformat()
+                    log_user_action(user_id, "new_case", "Created new case (decrypt failed)")
+            else:
+                # Create new case
+                user_data[user_id] = _ensure_valid_user_data({}, user_id)
+                user_data[user_id]["created_at"] = datetime.now().isoformat()
+                log_user_action(user_id, "new_case", "Created new migration case")
         else:
-            # Create new case
-            user_data[user_id] = {
-                "user_id": user_id,
-                "state": STATE_START,
-                "language": "en",
-                "profile": {
-                    "personal": {},
-                    "education": {},
-                    "work": {},
-                    "languages": {},
-                    "history": {},
-                    "financial": {}
-                },
-                "family_members": [],
-                "current_family_index": 0,
-                "preferences": {},
-                "selected_route": {},
-                "documents": [],
-                "created_at": datetime.now().isoformat()
-            }
-            log_user_action(user_id, "new_case", "Created new migration case")
-    return user_data[user_id]
+            # Validate existing data in memory
+            user_data[user_id] = _ensure_valid_user_data(user_data[user_id], user_id)
+        
+        return user_data[user_id]
+    except Exception as e:
+        logger.error(f"🔴 GET_USER_DATA_ERROR | user={user_id} | error={e}")
+        # Return safe default on any error
+        return _ensure_valid_user_data({"user_id": user_id}, user_id)
 
 
 def set_state(user_id: int, state: str):
-    """Set state and auto-save to disk for persistence (with encryption)"""
-    data = get_user_data(user_id)
-    data["state"] = state
-    # Encrypt sensitive data before saving
-    encrypted_data = encrypt_user_data(data)
-    save_user_data(user_id, encrypted_data)
-    log_user_action(user_id, "state_change", f"State: {state}")
+    """Set state and auto-save to disk for persistence (with encryption).
+    
+    V4.1 FIX: Added validation for state parameter.
+    """
+    # Validate state parameter
+    if not state or not isinstance(state, str):
+        logger.warning(f"🔧 RECOVERY | user={user_id} | invalid state '{state}', using START")
+        state = STATE_START
+    
+    try:
+        data = get_user_data(user_id)
+        data["state"] = state
+        # Encrypt sensitive data before saving
+        encrypted_data = encrypt_user_data(data)
+        save_user_data(user_id, encrypted_data)
+        log_user_action(user_id, "state_change", f"State: {state}")
+    except Exception as e:
+        logger.error(f"🔴 SET_STATE_ERROR | user={user_id} | state={state} | error={e}")
 
 
 def get_state(user_id: int) -> str:
-    return get_user_data(user_id).get("state", STATE_START)
+    """Get current state for user.
+    
+    V4.1 FIX: Added defensive validation to always return valid state.
+    """
+    try:
+        state = get_user_data(user_id).get("state", STATE_START)
+        if not state or not isinstance(state, str):
+            logger.warning(f"🔧 RECOVERY | user={user_id} | invalid state, returning START")
+            return STATE_START
+        return state
+    except Exception as e:
+        logger.error(f"🔴 GET_STATE_ERROR | user={user_id} | error={e}")
+        return STATE_START
 
 
 class MigPALBot:
@@ -463,33 +561,68 @@ class MigPALBot:
         
         self.application = Application.builder().token(self.token).build()
         
-        # V3.0.3 - Add global error handler
+        # V4.1 FIX - Improved global error handler with recovery to /start
         async def error_handler(update, context):
-            """Global error handler for all exceptions"""
+            """Global error handler for all exceptions.
+            
+            V4.1 FIX: Improved error handling with:
+            - Full traceback logging
+            - State validation before use
+            - Recovery to /start without duplicating messages
+            - Safe defaults for all user data
+            """
+            import traceback
+            
             user_id = 0
             state = "unknown"
-            lang = "en"
+            lang = "es"  # Default to Spanish for MigPAL
+            error_type = type(context.error).__name__ if context.error else "Unknown"
             
+            # Safely extract user info
             if update and update.effective_user:
                 user_id = update.effective_user.id
                 try:
+                    # Defensive state retrieval
                     state = get_state(user_id)
+                    if not state or not isinstance(state, str):
+                        state = STATE_START
+                    
+                    # Defensive user data retrieval
                     user = get_user_data(user_id)
-                    lang = user.get("language", "en")
-                except:
-                    pass
+                    if user and isinstance(user, dict):
+                        lang = user.get("language", "es") or "es"
+                except Exception as e:
+                    logger.warning(f"🔧 RECOVERY | user={user_id} | error getting state/user: {e}")
             
-            # Log the error
+            # Log the error with full traceback
             handler = get_exception_handler()
             handler.log_error(user_id, state, context.error, "global_handler")
             
-            # Send fallback message
+            # Log additional context
+            logger.error(
+                f"🔴 GLOBAL_ERROR | user={user_id} | state={state} | "
+                f"type={error_type} | msg={str(context.error)[:200]}\n"
+                f"Traceback: {traceback.format_exc()[:500]}"
+            )
+            
+            # Send fallback message with recovery hint
             try:
                 fallback_msg = handler.get_fallback_message(lang)
+                
+                # Add recovery hint for certain error types
+                if error_type in ['KeyError', 'TypeError', 'AttributeError', 'ValueError', 'IndexError']:
+                    recovery_hint = (
+                        "\n\n💡 Si el problema persiste, escribe /start para reiniciar."
+                        if lang == "es" else
+                        "\n\n💡 If the problem persists, type /start to restart."
+                    )
+                    fallback_msg += recovery_hint
+                
                 if update and update.effective_message:
                     await update.effective_message.reply_text(fallback_msg)
+                    logger.info(f"✅ RECOVERY_MSG_SENT | user={user_id} | handler=global")
             except Exception as e:
-                logger.error(f"Failed to send error fallback: {e}")
+                logger.error(f"❌ RECOVERY_MSG_FAILED | user={user_id} | error={e}")
         
         self.application.add_error_handler(error_handler)
         
