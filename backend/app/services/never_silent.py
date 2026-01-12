@@ -26,8 +26,12 @@ logger = logging.getLogger(__name__)
 
 # ============== CONFIGURACIÓN ==============
 
-# Timeout para watchdog (segundos)
-WATCHDOG_TIMEOUT = 3.0
+# V5.0 FIX: WATCHDOG COMPLETAMENTE DESHABILITADO
+# Los mensajes "⏳ Sigo aquí" causan más problemas que soluciones
+WATCHDOG_ENABLED = False  # DESHABILITADO PERMANENTEMENTE
+
+# Timeout para watchdog (segundos) - NO USADO
+WATCHDOG_TIMEOUT = 10.0  # V4.2.1 FIX: Aumentado de 3s a 10s
 
 # Directorio para lockfile
 LOCK_DIR = Path(__file__).parent.parent.parent / "data"
@@ -219,7 +223,11 @@ class ProcessingWatchdog:
         return cls._instance
     
     async def start_watching(self, user_id: int, update, lang: str = "es"):
-        """Inicia el watchdog para un usuario"""
+        """Inicia el watchdog para un usuario - V5.0: DESHABILITADO"""
+        # V5.0 FIX: Watchdog completamente deshabilitado
+        if not WATCHDOG_ENABLED:
+            return f"{user_id}_disabled"
+        
         task_id = f"{user_id}_{time.time()}"
         
         async def watchdog_task():

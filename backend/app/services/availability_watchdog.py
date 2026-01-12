@@ -30,10 +30,26 @@ logger = logging.getLogger(__name__)
 
 # ============== CONFIGURACIÓN ==============
 
-WATCHDOG_TIMEOUT_SECONDS = 3.0  # Tiempo antes de enviar "Sigo aquí..."
+# V5.0 FIX: WATCHDOG COMPLETAMENTE DESHABILITADO
+# Los mensajes "⏳ Sigo aquí" causan más problemas que soluciones:
+# - Interrumpen la conversación natural
+# - Generan confusión en el usuario
+# - Duplican mensajes cuando hay latencia de IA
+WATCHDOG_ENABLED = False  # DESHABILITADO PERMANENTEMENTE
+
+WATCHDOG_TIMEOUT_SECONDS = 10.0  # No usado - watchdog deshabilitado
 MAX_RESPONSE_TIME_SECONDS = 30.0  # Tiempo máximo antes de forzar respuesta
 EMPATHIC_FALLBACK_ENABLED = True  # Usar fallbacks empáticos vs genéricos
-WATCHDOG_THROTTLE_SECONDS = 300.0  # Mínimo 5 minutos entre mensajes "sigo aquí" por usuario
+WATCHDOG_THROTTLE_SECONDS = 300.0  # No usado - watchdog deshabilitado
+
+# V4.2.1 FIX: Estados donde el watchdog está DESHABILITADO (usan IA intensiva)
+WATCHDOG_DISABLED_STATES = {
+    "start",  # Estado inicial puede usar IA
+    "emotion_clarification",  # Clarificación emocional usa IA
+    "onboarding_question",  # Onboarding puede usar IA
+    "onboarding_listening",  # Escucha activa usa IA
+    "consulting",  # Consultoría usa IA intensiva
+}
 
 
 # ============== MENSAJES EMPÁTICOS DE FALLBACK ==============
@@ -181,11 +197,21 @@ class ResponseWatchdog:
         """Registra que se envió un mensaje de watchdog"""
         self._last_watchdog_message[user_id] = datetime.now()
     
-    async def start_watchdog(self, user_id: int, send_callback: Callable, lang: str = "es"):
+    async def start_watchdog(self, user_id: int, send_callback: Callable, lang: str = "es", current_state: str = ""):
         """
         Inicia el watchdog para un usuario.
-        Si no se cancela en 3s, envía mensaje de espera.
+        V5.0: COMPLETAMENTE DESHABILITADO - los mensajes "⏳" causan más problemas.
         """
+        # V5.0 FIX: Watchdog completamente deshabilitado
+        if not WATCHDOG_ENABLED:
+            logger.debug(f"⏱️ WATCHDOG DISABLED GLOBALLY | user={user_id}")
+            return
+        
+        # V4.2.1 FIX: No iniciar watchdog en estados con IA intensiva
+        if current_state in WATCHDOG_DISABLED_STATES:
+            logger.debug(f"⏱️ WATCHDOG DISABLED | user={user_id} | state={current_state} (IA intensive)")
+            return
+        
         # Cancelar watchdog anterior si existe
         if user_id in self._pending_responses:
             self._pending_responses[user_id].cancel()

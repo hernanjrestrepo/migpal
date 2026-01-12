@@ -242,6 +242,11 @@ def global_error_handler(func):
     - State validation before use
     - Recovery to /start without duplicating messages
     - Safe defaults for all user data
+    
+    V4.2 FIX (PRODUCTION BUG): Short-circuit post-error:
+    - Cancel watchdog immediately to prevent "⏳ Sigo aquí…" messages
+    - Mark response as sent to prevent duplicate messages
+    - Return early after sending recovery message
     """
     @wraps(func)
     async def wrapper(*args, **kwargs):
@@ -260,6 +265,23 @@ def global_error_handler(func):
                     update = arg
                     user_id = arg.effective_user.id if arg.effective_user else 0
                     break
+            
+            # V4.2 FIX: IMMEDIATELY cancel watchdog to prevent "Sigo aquí" messages
+            # This MUST happen before any other processing
+            if user_id:
+                try:
+                    from app.services.availability_watchdog import get_watchdog, get_response_tracker
+                    watchdog = get_watchdog()
+                    watchdog.cancel_watchdog(user_id)
+                    watchdog.mark_response_sent(user_id)
+                    
+                    # Also mark response in tracker to prevent any follow-up messages
+                    response_tracker = get_response_tracker()
+                    response_tracker.record_response(user_id)
+                    
+                    logger.info(f"🛑 ERROR_SHORT_CIRCUIT | user={user_id} | watchdog cancelled")
+                except Exception as watchdog_err:
+                    logger.warning(f"🔧 WATCHDOG_CANCEL_FAILED | user={user_id} | error={watchdog_err}")
             
             # Safely get state and user data with defensive checks
             try:
@@ -336,6 +358,10 @@ def global_error_handler(func):
                         logger.info(f"✅ RECOVERY_MSG_SENT | user={user_id} | func={func.__name__}")
                 except Exception as send_err:
                     logger.error(f"❌ RECOVERY_MSG_FAILED | user={user_id} | error={send_err}")
+            
+            # V4.2 FIX: Return early to prevent any further processing
+            # This ensures the handler execution stops completely after error
+            return None
     return wrapper
 
 
@@ -542,6 +568,14 @@ class TransitionLogger:
     def get_user_transitions(self, user_id: int, limit: int = 20) -> List[Dict]:
         user_transitions = [t for t in self._transitions if t["user_id"] == user_id]
         return user_transitions[-limit:]
+    
+    def log_message_received(self, user_id: int, state: str, msg_type: str, content: str):
+        """Log incoming message for debugging/analytics"""
+        logger.debug(f"📩 MSG_RECV | user={user_id} | state={state} | type={msg_type} | len={len(content)}")
+    
+    def log_callback_received(self, user_id: int, state: str, callback_data: str):
+        """Log incoming callback for debugging/analytics"""
+        logger.debug(f"🔘 CALLBACK_RECV | user={user_id} | state={state} | data={callback_data}")
 
 
 # ============== NAME VALIDATOR (V3.2.0 ULTRA-HARDENED) ==============

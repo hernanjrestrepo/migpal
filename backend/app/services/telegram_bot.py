@@ -29,6 +29,7 @@ Características Completas:
 """
 
 import os
+import re
 import asyncio
 import logging
 import json
@@ -232,7 +233,8 @@ from app.services.memory_profiler import (
     get_correction_tracker, get_life_goal_extractor, get_decision_gate,
     store_user_input, validate_profile, generate_understanding_summary,
     detect_correction, can_make_decision, get_next_life_question,
-    ProfileCompleteness, ProfileValidationResult
+    ProfileCompleteness, ProfileValidationResult,
+    is_profile_min_complete  # V4.2 FIX: Guard clause for transitions
 )
 
 # SEGMENTO 2/4 - NeverSilent: El bot NUNCA se queda callado
@@ -243,6 +245,12 @@ from app.services.never_silent import (
     never_silent, never_silent_callback, with_watchdog,
     full_protection, full_protection_callback,
     WATCHDOG_TIMEOUT
+)
+
+# V5.0 - Onboarding Conversacional: Escuchar primero, preguntar después
+from app.services.conversational_onboarding import (
+    get_conversational_engine, process_conversational_message,
+    get_conversational_welcome, is_profile_sufficient
 )
 
 # V2.2 - Import housing scraper (Zillow, Apartments.com)
@@ -310,6 +318,18 @@ from app.services.migpal_v4_middleware import (
 # In-memory cache (loaded from disk)
 user_data: Dict[int, Dict[str, Any]] = {}
 
+# V4.2.1 FIX: Cache de respuestas comunes para reducir llamadas a IA
+CACHED_RESPONSES = {
+    "confusion_es": "Entiendo que puede ser confuso. 💭 Déjame aclararte...\n\n💭 ¿Qué parte te genera más dudas? Cuéntame y te ayudo a entenderlo mejor.",
+    "confusion_en": "I understand it can be confusing. 💭 Let me clarify...\n\n💭 What part confuses you the most? Tell me and I'll help you understand better.",
+    "greeting_es": "¡Hola! 👋\n\nSoy MigPAL, tu consultor de migración. 🌍\n\nVoy a guiarte paso a paso en tu proceso de migración.",
+    "greeting_en": "Hello! 👋\n\nI'm MigPAL, your migration consultant. 🌍\n\nI'll guide you step by step through your migration process.",
+}
+
+# V4.2.1 FIX: Tracker para evitar animaciones duplicadas por usuario
+_animation_tracker: Dict[int, float] = {}  # user_id -> last_animation_timestamp
+ANIMATION_COOLDOWN = 5.0  # Segundos mínimos entre animaciones
+
 # ============== CONVERSATION STATES ==============
 STATE_START = "start"
 STATE_NAME = "name"
@@ -369,6 +389,10 @@ STATE_DOCUMENT_UPLOAD = "document_upload"
 
 # Consultoría
 STATE_CONSULTING = "consulting"
+
+# V4.2 FIX: Estado de clarificación emocional
+# Cuando el usuario expresa confusión/emoción, NO avanzar fase, solo contener
+STATE_EMOTION_CLARIFICATION = "emotion_clarification"
 
 
 # V4.1 FIX: Default user data structure for defensive initialization
@@ -790,28 +814,16 @@ class MigPALBot:
                 ])
             )
         else:
-            # Ya tiene idioma: iniciar onboarding conversacional
-            from app.services.onboarding_v306 import get_onboarding_engine, OnboardingState
+            # V5.0: Onboarding conversacional simple - UN solo mensaje de bienvenida
+            # NO hay estados rígidos, NO hay formularios, solo conversación natural
             
-            engine = get_onboarding_engine()
-            
-            # Establecer estado de onboarding
-            user_data[user_id]["state"] = OnboardingState.WELCOME.value
+            # Estado simple: "conversing" - el bot está conversando
+            user_data[user_id]["state"] = "conversing"
             save_user_data(user_id, user_data[user_id])
             
-            # PASO 1: Presentación empática
-            welcome_msg = engine.get_welcome_message(lang)
+            # Mensaje de bienvenida conversacional (UN solo mensaje)
+            welcome_msg = get_conversational_welcome(lang)
             await update.message.reply_text(welcome_msg)
-            
-            # Pequeña pausa para que se sienta natural
-            await asyncio.sleep(1.5)
-            
-            # PASO 2: Pregunta abierta
-            user_data[user_id]["state"] = OnboardingState.OPEN_QUESTION.value
-            save_user_data(user_id, user_data[user_id])
-            
-            open_question = engine.get_open_question(lang)
-            await update.message.reply_text(open_question)
     
     async def _cmd_help(self, update, context):
         user_id = update.effective_user.id
@@ -2250,7 +2262,9 @@ class MigPALBot:
             except Exception as e:
                 logger.error(f"Watchdog send failed: {e}")
         
-        await watchdog.start_watchdog(user_id, send_watchdog_message, lang)
+        # V4.2.1: Pasar estado actual para deshabilitar watchdog en estados con IA intensiva
+        current_state = get_state(user_id)
+        await watchdog.start_watchdog(user_id, send_watchdog_message, lang, current_state)
         
         # Anti-spam: solo procesar si pasó suficiente tiempo desde el último click
         if not should_process_click(user_id):
@@ -2909,6 +2923,20 @@ class MigPALBot:
         
         # Explore state callbacks
         elif data.startswith("explore_"):
+            # V4.2 FIX: Guard clause - profile min complete
+            profile_ok, profile_blocking_msg = is_profile_min_complete(user)
+            if not profile_ok:
+                await query.edit_message_text(
+                    profile_blocking_msg,
+                    parse_mode='Markdown',
+                    reply_markup=self._kb([
+                        [("✅ Continuar con mi perfil", "flow_continue_profile")],
+                    ])
+                )
+                watchdog.mark_response_sent(user_id)
+                logger.info(f"🚫 PROFILE_MIN_GUARD | user={user_id} | blocked transition to explore")
+                return
+            
             parts = data.split("_")
             action = parts[1] if len(parts) > 1 else ""
             
@@ -3616,6 +3644,21 @@ class MigPALBot:
             
             # === HANDLERS DE VISA ===
             elif action.startswith("visa_"):
+                # ============== V4.2 FIX: GUARD CLAUSE - PROFILE MIN COMPLETE ==============
+                # Bloquear CUALQUIER transición si el perfil mínimo no está completo
+                profile_ok, profile_blocking_msg = is_profile_min_complete(user)
+                if not profile_ok:
+                    await query.edit_message_text(
+                        profile_blocking_msg,
+                        parse_mode='Markdown',
+                        reply_markup=self._kb([
+                            [("✅ Continuar con mi perfil", "flow_continue_profile")],
+                        ])
+                    )
+                    watchdog.mark_response_sent(user_id)
+                    logger.info(f"🚫 PROFILE_MIN_GUARD | user={user_id} | blocked transition to visa")
+                    return
+                
                 # ============== V4.0: GATING DE VISA ==============
                 # Verificar con el estándar v4.0 primero (si está habilitado)
                 if is_v4_enabled():
@@ -5982,7 +6025,8 @@ class MigPALBot:
             except Exception as e:
                 logger.error(f"Watchdog send failed: {e}")
         
-        await watchdog.start_watchdog(user_id, send_watchdog_message, lang)
+        # V4.2.1: Pasar estado actual para deshabilitar watchdog en estados con IA intensiva
+        await watchdog.start_watchdog(user_id, send_watchdog_message, lang, state)
         
         # V3.0.3 - Enhanced logging
         transition_logger = get_transition_logger()
@@ -6018,12 +6062,39 @@ class MigPALBot:
         if should_interrupt:
             logger.info(f"🚨 PRIORITY INTENT | user={user_id} | type={intent_type} | text={text[:50]}")
             
-            # 1. Responder empáticamente primero
+            # V4.2 FIX: Para confusión/emociones, NO avanzar fase ni evaluar gating
+            # Solo responder con contención + 1 pregunta de clarificación
+            if intent_type == "confusion":
+                # Guardar estado anterior para poder volver
+                previous_state = state
+                user["_previous_state_before_emotion"] = previous_state
+                save_user_data(user_id, user)
+                
+                # Cambiar a estado de clarificación emocional
+                set_state(user_id, STATE_EMOTION_CLARIFICATION)
+                
+                # Respuesta empática de contención + 1 pregunta de clarificación
+                containment_response = (
+                    f"{empathic_response}\n\n"
+                    "💭 ¿Qué parte te genera más dudas? Cuéntame y te ayudo a entenderlo mejor."
+                ) if lang == "es" else (
+                    f"{empathic_response}\n\n"
+                    "💭 What part is most confusing? Tell me and I'll help you understand it better."
+                )
+                
+                await update.message.reply_text(containment_response)
+                watchdog.mark_response_sent(user_id)
+                response_tracker.record_response(user_id)
+                
+                logger.info(f"💭 EMOTION_CLARIFICATION | user={user_id} | prev_state={previous_state} | NO phase advance, NO gating")
+                return  # IMPORTANTE: NO continuar, NO avanzar fase, NO evaluar gating
+            
+            # 1. Responder empáticamente primero (para otros intents)
             await update.message.reply_text(empathic_response)
             watchdog.mark_response_sent(user_id)
             
-            # 2. Si es pregunta o confusión, intentar responder con IA
-            if intent_type in ["question", "confusion"]:
+            # 2. Si es pregunta, intentar responder con IA
+            if intent_type == "question":
                 try:
                     ai_response = await self._process_with_ai_brain(text, user, state)
                     if ai_response:
@@ -6056,6 +6127,120 @@ class MigPALBot:
             response_tracker.record_response(user_id)
             return  # IMPORTANTE: No continuar con el flujo normal
         
+        # V4.2 FIX: Handler para STATE_EMOTION_CLARIFICATION
+        # Cuando el usuario está en estado de clarificación emocional, responder con empatía
+        # y volver al estado anterior cuando esté listo
+        if state == STATE_EMOTION_CLARIFICATION:
+            # Obtener estado anterior
+            previous_state = user.get("_previous_state_before_emotion", STATE_START)
+            
+            # Detectar si el usuario indica que ya entendió o quiere continuar
+            continue_patterns = [
+                r"entiendo", r"entendí", r"ya entendí", r"ahora entiendo",
+                r"ok", r"okay", r"vale", r"listo", r"continuar", r"seguir",
+                r"understand", r"got it", r"i see", r"continue", r"next",
+                r"sí", r"si", r"yes", r"claro", r"perfecto"
+            ]
+            
+            text_lower = text.lower().strip()
+            wants_to_continue = any(re.search(p, text_lower) for p in continue_patterns)
+            
+            # V4.2.1 FIX: Detectar si el usuario está dando información útil de perfil
+            # En ese caso, salir de clarificación y procesar normalmente
+            profile_info_patterns = [
+                r"soy\s+(ingenier|doctor|abogad|profesor|contador|enferm|programador|diseñador)",
+                r"trabajo\s+(como|en|de)",
+                r"tengo\s+\d+\s+(años|meses)\s+(de\s+)?experiencia",
+                r"mi\s+(profesión|trabajo|carrera)",
+                r"quiero\s+(ir|migrar|vivir)\s+(a|en)",
+                r"(estados\s+unidos|usa|canada|españa|alemania|australia)",
+                r"presupuesto\s+(es|de|tengo)",
+                r"\$?\d+[,.]?\d*\s*(dólares|dolares|euros|usd|eur)",
+                r"i\s+(am|work|have)\s+",
+                r"my\s+(profession|job|budget)",
+            ]
+            is_giving_profile_info = any(re.search(p, text_lower) for p in profile_info_patterns)
+            
+            if wants_to_continue or is_giving_profile_info:
+                # Limpiar el estado temporal
+                if "_previous_state_before_emotion" in user:
+                    del user["_previous_state_before_emotion"]
+                    save_user_data(user_id, user)
+                
+                # V4.2.1 FIX: Si el usuario da info de perfil, NO volver a start
+                # En su lugar, dejar que CorrectionNLU lo procese correctamente
+                if is_giving_profile_info:
+                    # Detectar qué tipo de info está dando
+                    is_occupation = any(re.search(p, text_lower) for p in [
+                        r"soy\s+(ingenier|doctor|abogad|profesor|contador|enferm|programador|diseñador)",
+                        r"trabajo\s+(como|en|de)",
+                        r"mi\s+(profesión|trabajo|carrera)",
+                    ])
+                    is_destination = any(re.search(p, text_lower) for p in [
+                        r"quiero\s+(ir|migrar|vivir)\s+(a|en)",
+                        r"(estados\s+unidos|usa|canada|españa|alemania|australia)",
+                    ])
+                    is_budget = any(re.search(p, text_lower) for p in [
+                        r"presupuesto\s+(es|de|tengo)",
+                        r"\$?\d+[,.]?\d*\s*(dólares|dolares|euros|usd|eur)",
+                    ])
+                    
+                    logger.info(f"✅ EMOTION_RESOLVED | user={user_id} | profile_info=True | occupation={is_occupation} | destination={is_destination} | budget={is_budget}")
+                    
+                    # NO cambiar estado aquí - dejar que CorrectionNLU lo maneje
+                    # Solo actualizar la variable local para que continúe el flujo
+                    state = STATE_NAME if is_occupation else previous_state
+                    # NO hacer return - dejar que continúe el flujo normal
+                    pass
+                else:
+                    # Solo quiere continuar - mostrar mensaje y prompt
+                    transition_msg = (
+                        "¡Perfecto! 😊 Continuemos donde estabamos."
+                        if lang == "es" else
+                        "Perfect! 😊 Let's continue where we were."
+                    )
+                    await update.message.reply_text(transition_msg)
+                    watchdog.mark_response_sent(user_id)
+                    
+                    # Obtener el prompt del estado anterior
+                    current_prompt = self._get_state_prompt(previous_state, user, lang)
+                    if current_prompt:
+                        await update.message.reply_text(current_prompt, parse_mode='Markdown')
+                    
+                    response_tracker.record_response(user_id)
+                    return
+            else:
+                # Seguir en modo de clarificación - responder con empatía
+                clarification_response = (
+                    "Entiendo. 🤔 Déjame explicarte de otra forma...\n\n"
+                    "Si tienes más dudas, pregúntame. Cuando estés listo para continuar, "
+                    "solo dime 'listo' o 'continuar'."
+                ) if lang == "es" else (
+                    "I understand. 🤔 Let me explain it differently...\n\n"
+                    "If you have more questions, just ask. When you're ready to continue, "
+                    "just say 'ready' or 'continue'."
+                )
+                
+                # Intentar responder con IA si es posible
+                try:
+                    ai_response = await self._process_with_ai_brain(text, user, previous_state)
+                    if ai_response:
+                        await update.message.reply_text(ai_response, parse_mode='Markdown')
+                        await update.message.reply_text(
+                            "👉 Cuando estés listo, dime 'continuar'." if lang == "es" else 
+                            "👉 When you're ready, say 'continue'."
+                        )
+                    else:
+                        await update.message.reply_text(clarification_response)
+                except Exception as e:
+                    logger.warning(f"AI response failed in emotion clarification: {e}")
+                    await update.message.reply_text(clarification_response)
+                
+                watchdog.mark_response_sent(user_id)
+                response_tracker.record_response(user_id)
+                logger.info(f"💭 EMOTION_CLARIFICATION_CONTINUE | user={user_id} | still clarifying")
+                return
+        
         # === V3.0.5: NLU DE CORRECCIÓN ===
         # Detectar si el usuario quiere corregir un campo mientras está en otro prompt
         try:
@@ -6079,6 +6264,22 @@ class MigPALBot:
                     user["profile"]["personal"]["name"] = correction.value
                     field_updated = True
                     field_name = "nombre" if lang == "es" else "name"
+                # V4.2.1 FIX: Manejar OCCUPATION - guardar y pedir nombre
+                elif correction.type == CorrectionType.OCCUPATION:
+                    if "professional" not in user["profile"]:
+                        user["profile"]["professional"] = {}
+                    user["profile"]["professional"]["profession"] = correction.value
+                    save_user_data(user_id, user)
+                    logger.info(f"✅ OCCUPATION_DETECTED | user={user_id} | profession={correction.value}")
+                    
+                    # Transicionar a pedir nombre (profile_collect)
+                    set_state(user_id, STATE_NAME)
+                    
+                    # Mensaje de confirmación + pedir nombre
+                    confirm_msg = CorrectionNLU.get_confirmation_message(correction, lang)
+                    await update.message.reply_text(confirm_msg)
+                    watchdog.mark_response_sent(user_id)
+                    return
                 
                 if field_updated:
                     save_user_data(user_id, user)
@@ -6098,73 +6299,96 @@ class MigPALBot:
         except Exception as e:
             logger.warning(f"Error en NLU de corrección: {e}")
         
-        # === v3.0.6: ONBOARDING CONVERSACIONAL ===
-        # Manejar estados de onboarding ANTES de formularios
-        from app.services.onboarding_v306 import (
-            get_onboarding_engine, OnboardingState, ONBOARDING_STATES
-        )
+        # === V5.0: ONBOARDING CONVERSACIONAL SIMPLE ===
+        # Estado "conversing" = el bot está en modo conversacional
+        # Extrae info naturalmente, pregunta UNA cosa a la vez
         
-        if state in ONBOARDING_STATES:
-            engine = get_onboarding_engine()
-            
-            if state == OnboardingState.OPEN_QUESTION.value:
-                # Usuario respondió a la pregunta abierta
-                # PASO 3: Respuesta empática
-                empathic_response = engine.get_empathic_response(text, lang)
-                await update.message.reply_text(empathic_response)
-                
-                # asyncio ya está importado globalmente
-                await asyncio.sleep(1.5)
-                
-                # PASO 4: Explicación del proceso
-                set_state(user_id, OnboardingState.PROCESS_EXPLAIN.value)
-                process_explanation = engine.get_process_explanation(lang)
-                await update.message.reply_text(process_explanation, parse_mode='Markdown')
-                
-                await asyncio.sleep(1)
-                
-                # PASO 5: Pedir consentimiento
-                set_state(user_id, OnboardingState.CONSENT.value)
-                consent_text, consent_buttons = engine.get_consent_request(lang)
-                await update.message.reply_text(
-                    consent_text,
-                    reply_markup=self._kb(consent_buttons)
+        if state == "conversing" or state in ["start", "onboarding_welcome", "onboarding_question", "onboarding_listening", "onboarding_explain", "onboarding_consent", "onboarding_name"]:
+            # Usar el nuevo motor conversacional
+            try:
+                response, updated_user = process_conversational_message(text, user, lang)
+
+                # Guardar datos actualizados
+                user_data[user_id] = updated_user
+                save_user_data(user_id, updated_user)
+
+                # Enviar respuesta conversacional
+                await update.message.reply_text(response, parse_mode='Markdown')
+
+                # Marcar respuesta enviada
+                watchdog.mark_response_sent(user_id)
+                response_tracker.record_response(user_id)
+
+                # Si hay una pregunta pendiente de IA, procesarla asíncronamente
+                if updated_user.get("pending_ai_question"):
+                    try:
+                        # Mostrar indicador de "typing"
+                        await update.message.chat.send_action("typing")
+
+                        # Importar y procesar con IA
+                        from app.services.ai_brain import process_with_ai
+
+                        conversation_history = updated_user.get("conversation_history", [])
+                        ai_result = await process_with_ai(
+                            updated_user["pending_ai_question"],
+                            updated_user,
+                            conversation_history
+                        )
+
+                        if ai_result.get("success") and ai_result.get("response"):
+                            # Enviar respuesta de IA
+                            await update.message.reply_text(ai_result["response"], parse_mode='Markdown')
+
+                            # Actualizar historial
+                            if "conversation_history" not in updated_user:
+                                updated_user["conversation_history"] = []
+                            updated_user["conversation_history"].append({
+                                "role": "user",
+                                "content": updated_user["pending_ai_question"]
+                            })
+                            updated_user["conversation_history"].append({
+                                "role": "assistant",
+                                "content": ai_result["response"]
+                            })
+
+                            # Limpiar la pregunta pendiente
+                            del updated_user["pending_ai_question"]
+                            if "pending_reflections" in updated_user:
+                                del updated_user["pending_reflections"]
+                            if "has_reflections" in updated_user:
+                                del updated_user["has_reflections"]
+
+                            # Guardar cambios
+                            user_data[user_id] = updated_user
+                            save_user_data(user_id, updated_user)
+
+                            logger.info(f"🤖 AI RESPONSE | user={user_id} | answered user question")
+
+                    except Exception as e:
+                        logger.error(f"Error procesando pregunta con IA: {e}")
+                        # En caso de error, continuar con una pregunta del flujo
+                        from app.services.conversational_onboarding import get_conversational_engine
+                        engine = get_conversational_engine()
+                        profile = engine._get_or_create_profile(updated_user)
+                        next_q = engine.question_gen.get_next_question(profile, lang)
+                        if next_q:
+                            _, question = next_q
+                            await update.message.reply_text(question)
+
+                logger.info(f"💬 CONVERSATIONAL | user={user_id} | extracted info from natural conversation")
+                return
+            except Exception as e:
+                logger.error(f"Conversational engine error: {e}")
+                # Fallback: respuesta empática simple
+                fallback = (
+                    "Entiendo. Cuéntame más sobre tu situación. 💭"
+                    if lang == "es" else
+                    "I understand. Tell me more about your situation. 💭"
                 )
+                await update.message.reply_text(fallback)
+                watchdog.mark_response_sent(user_id)
+                response_tracker.record_response(user_id)
                 return
-            
-            elif state == OnboardingState.LISTENING.value:
-                # Usuario sigue escribiendo, escuchar y responder
-                empathic_response = engine.get_empathic_response(text, lang)
-                await update.message.reply_text(empathic_response)
-                return
-            
-            elif state == OnboardingState.NAME_REQUEST.value:
-                # Usuario dio su nombre después del consentimiento
-                # Guardar nombre y continuar al flujo normal
-                name = sanitize_input(text)
-                if len(name) >= 2:
-                    user["profile"]["personal"]["name"] = name
-                    save_user_data(user_id, user)
-                    
-                    # Confirmar nombre con 1-click
-                    set_state(user_id, "confirm_name")
-                    
-                    confirm_msg = f"¡Mucho gusto, {name}! 😊" if lang == "es" else f"Nice to meet you, {name}! 😊"
-                    confirm_q = "¿Está bien escrito?" if lang == "es" else "Is that spelled correctly?"
-                    
-                    await update.message.reply_text(
-                        f"{confirm_msg}\n\n{confirm_q}",
-                        reply_markup=self._kb([
-                            [("✅ Sí, correcto" if lang == "es" else "✅ Yes, correct", "confirm_name_yes")],
-                            [("✏️ Corregir" if lang == "es" else "✏️ Edit", "confirm_name_no")]
-                        ])
-                    )
-                    return
-                else:
-                    # Nombre muy corto
-                    retry_msg = "Por favor, escribe tu nombre completo." if lang == "es" else "Please write your full name."
-                    await update.message.reply_text(retry_msg)
-                    return
         
         # ============== SEGMENTO 2/3: GOBIERNO DEL FLUJO (ANTI-BOT) ==============
         # La conversación manda, no los formularios ni los states.
@@ -6328,10 +6552,19 @@ class MigPALBot:
         origin_flag = flags.get(origin, "🌎")
         dest_flag = flags.get(dest, "🇺🇸")
         
-        thinking_msg = await update.message.reply_text(f"{origin_flag} ✈️ · · · · · · · · {dest_flag}")
+        # V4.2.1 FIX: Evitar animaciones duplicadas
+        import time
+        current_time = time.time()
+        last_animation = _animation_tracker.get(user_id, 0)
+        should_animate = (current_time - last_animation) > ANIMATION_COOLDOWN
+        
+        thinking_msg = None
+        if should_animate:
+            _animation_tracker[user_id] = current_time
+            thinking_msg = await update.message.reply_text(f"{origin_flag} ✈️ · · · · · · · · {dest_flag}")
         
         try:
-            # Animar el avión viajando
+            # Animar el avión viajando (solo si no hay cooldown)
             async def animate_thinking():
                 frames = [
                     f"{origin_flag} ✈️ · · · · · · · · {dest_flag}",
@@ -6353,38 +6586,56 @@ class MigPALBot:
                     except:
                         break
             
-            # Iniciar animación en background
-            animation_task = asyncio.create_task(animate_thinking())
+            # Iniciar animación en background (solo si hay mensaje)
+            animation_task = None
+            if thinking_msg:
+                animation_task = asyncio.create_task(animate_thinking())
             
             # Procesar con IA
             ai_response = await self._process_with_ai_brain(text, user, state)
             
-            # Detener animación
-            animation_task.cancel()
-            try:
-                await animation_task
-            except asyncio.CancelledError:
-                pass
+            # Detener animación (si existe)
+            if animation_task:
+                animation_task.cancel()
+                try:
+                    await animation_task
+                except asyncio.CancelledError:
+                    pass
             
-            # Eliminar mensaje de "pensando"
-            try:
-                await thinking_msg.delete()
-            except:
-                pass
+            # Eliminar mensaje de "pensando" (si existe)
+            if thinking_msg:
+                try:
+                    await thinking_msg.delete()
+                except:
+                    pass
             
-            # Enviar respuesta de la IA
+            # V4.2.1 FIX C: SIEMPRE enviar respuesta de texto, nunca dejar solo animación
             if ai_response:
                 await update.message.reply_text(ai_response, parse_mode='Markdown')
                 # SEGMENTO 2/3: Registrar intercambio conversacional
                 conversation_director.record_exchange(user_id, text, ai_response[:200], was_form=False, state=state)
                 watchdog.mark_response_sent(user_id)
+            else:
+                # V4.2.1 FIX: Fallback cuando IA no responde - NUNCA dejar sin respuesta
+                fallback_msg = (
+                    "Entiendo. Cuéntame más sobre ti para poder ayudarte mejor. 😊\n\n"
+                    "¿Cuál es tu nombre?"
+                ) if lang == "es" else (
+                    "I understand. Tell me more about yourself so I can help you better. 😊\n\n"
+                    "What's your name?"
+                )
+                await update.message.reply_text(fallback_msg)
+                set_state(user_id, STATE_NAME)
+                watchdog.mark_response_sent(user_id)
+                logger.warning(f"⚠️ AI_FALLBACK | user={user_id} | No AI response, using fallback")
         
         except Exception as e:
             logger.error(f"Error processing message: {e}")
-            try:
-                await thinking_msg.delete()
-            except:
-                pass
+            if thinking_msg:
+                try:
+                    await thinking_msg.delete()
+                except:
+                    pass
             
             # v3.0.8: NUNCA mostrar error - usar IA conversacional
             try:
