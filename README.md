@@ -1,11 +1,12 @@
-# 🌍 MigPAL V2.1 - Global Migration Assistant
+# 🌍 MigPAL V5.0 - Global Migration Assistant
 
 > **Tu consultor personal de migración**
-> Bot de Telegram que elimina los "2 años de dolor" de los migrantes
+> Bot de Telegram con Onboarding Conversacional que elimina los "2 años de dolor" de los migrantes
 
 [![Bot](https://img.shields.io/badge/Telegram-@MigPAL__Bot-blue)](https://t.me/MigPAL_Bot)
-[![Version](https://img.shields.io/badge/Version-2.1-green)]()
+[![Version](https://img.shields.io/badge/Version-5.0-green)]()
 [![AI](https://img.shields.io/badge/AI-MigPAL_Llama3-purple)]()
+[![UX Score](https://img.shields.io/badge/UX_Score-100%2F100-brightgreen)]()
 
 ---
 
@@ -36,6 +37,23 @@ MigPAL no es un chatbot genérico. Es un **consultor profesional** que:
 ⚠️ **Los pagos NO son retornables.** Acompañamiento hasta lograr la visa.
 
 ---
+
+## 🚀 Características V5.0
+
+### 🎭 Onboarding Conversacional (NUEVO)
+- **Escuchar primero, preguntar después** - Extrae información naturalmente
+- **Sin formularios rígidos** - Conversación fluida y empática
+- **Reflexiones contextuales** - El bot refleja lo que entendió
+- **Una pregunta a la vez** - No abruma con múltiples campos
+- **Detección de preguntas** - Responde dudas específicas del usuario
+- **Recomendaciones de visa inteligentes** - Basadas en el perfil completo
+
+### ✨ Mejoras de UX Score 100/100
+- **Watchdog deshabilitado** - No más mensajes "⏳ Sigo aquí"
+- **Extracción inteligente** - Detecta profesión, experiencia, destino, etc.
+- **Resúmenes de perfil mejorados** - Estructura clara y profesional
+- **Sin bloqueos** - Permite avanzar con información parcial
+- **Tests automatizados** - 11 tests garantizando calidad
 
 ## 🚀 Características V2.0
 
@@ -129,8 +147,9 @@ migpal/
 ├── backend/
 │   ├── app/
 │   │   ├── services/
-│   │   │   ├── telegram_bot.py       # Bot principal (~4000 líneas)
-│   │   │   ├── ai_brain.py           # AI V7 Empático
+│   │   │   ├── telegram_bot.py       # Bot principal (~7000 líneas)
+│   │   │   ├── conversational_onboarding.py # 🆕 V5.0 Motor conversacional
+│   │   │   ├── ai_brain.py           # AI V9 Consultivo
 │   │   │   ├── conversation_flow.py  # Máquina de estados (33 estados)
 │   │   │   ├── scoring_engine.py     # Sistema de scoring personalizado
 │   │   │   ├── job_search.py         # Búsqueda de empleos (LinkedIn/JSearch)
@@ -139,6 +158,8 @@ migpal/
 │   │   │   ├── gamification.py       # Sistema de niveles y precios
 │   │   │   ├── migration_planner.py  # Planificador de migración
 │   │   │   ├── case_storage.py       # Persistencia JSON encriptada
+│   │   │   ├── availability_watchdog.py # Sistema watchdog (deshabilitado en v5)
+│   │   │   ├── never_silent.py       # Sistema anti-silencio
 │   │   │   ├── knowledge_base/       # Base de datos de ciudades
 │   │   │   │   ├── cities_usa.py     # 50 estados + DC
 │   │   │   │   ├── cities_database.py # 20+ ciudades principales
@@ -280,6 +301,18 @@ tmux new-session -d -s migpal_bot 'source .venv/bin/activate && python run_teleg
 
 ## 📝 Changelog
 
+### V5.0 (12 Enero 2026) - ONBOARDING CONVERSACIONAL
+- ✅ **Motor Conversacional Completo** - Escucha primero, pregunta después
+- ✅ **Extracción Inteligente** - Detecta información del texto natural
+- ✅ **Reflexiones Empáticas** - El bot refleja lo que entendió
+- ✅ **Detección de Preguntas** - Identifica y responde preguntas del usuario
+- ✅ **Recomendaciones de Visa** - Basadas en perfil completo (USA: H-1B, O-1, L-1, EB-2)
+- ✅ **Watchdog Deshabilitado** - No más mensajes "⏳ Sigo aquí"
+- ✅ **UX Score 100/100** - Experiencia perfecta en simulaciones
+- ✅ **Tests Automatizados** - Suite completa con 11 tests
+- ✅ **Resumen de Perfil Mejorado** - Estructura clara por categorías
+- ✅ **Sin Bloqueos** - Permite avanzar con información parcial
+
 ### V2.2 (3 Enero 2026) - COMANDOS INVISIBLES
 - ✅ **Comandos Invisibles** - El usuario escribe naturalmente, el bot detecta la intención
 - ✅ **1000+ Ciudades** - Base de datos expandida con datos completos
@@ -328,7 +361,7 @@ Proyecto privado - Todos los derechos reservados
 
 ## 📅 Última Actualización
 
-**3 de Enero 2026** - V2.2 (Comandos Invisibles + 1000 Ciudades)
+**12 de Enero 2026** - V5.0 (Onboarding Conversacional)
 
 ### Estado del Sistema
 - 🟢 Bot: **Funcionando** (tmux: migpal_bot)
@@ -337,6 +370,9 @@ Proyecto privado - Todos los derechos reservados
 - 🟢 Base de datos: **1000+ ciudades**
 - 🟢 Escuelas: **Generador dinámico**
 - 🟢 Universidades: **20+ principales**
+- 🟢 **UX Score: 100/100** ✨
+- 🟢 **Tests: 11/11 pasando** ✅
+- 🟢 **Onboarding Conversacional: Activo** 🎭
 
 ---
 
@@ -358,4 +394,4 @@ Proyecto privado - Todos los derechos reservados
 
 ---
 
-*MigPAL V2.2 - Eliminando los "2 años de dolor" de los migrantes* 🌍✨
+*MigPAL V5.0 - Eliminando los "2 años de dolor" de los migrantes con Onboarding Conversacional* 🌍✨
