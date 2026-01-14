@@ -933,3 +933,45 @@ def can_make_decision(user_data: Dict[str, Any], decision_type: str) -> Tuple[bo
 def get_next_life_question(user_data: Dict[str, Any], lang: str = "es") -> Optional[str]:
     """Helper para obtener siguiente pregunta de vida deseada"""
     return LifeGoalExtractor.get_next_life_goal_question(user_data, lang)
+
+
+# V4.2 FIX: Guard clause for profile minimum completion
+def is_profile_min_complete(user_data: Dict[str, Any]) -> Tuple[bool, str]:
+    """
+    Verifica si el perfil tiene los campos mínimos requeridos para transiciones.
+    
+    Campos mínimos requeridos:
+    - name (nombre)
+    - nationality (nacionalidad)
+    - current_country (país actual)
+    
+    Returns:
+        (is_complete, blocking_message)
+    """
+    profile = user_data.get("profile", {})
+    personal = profile.get("personal", {})
+    
+    # Campos mínimos requeridos
+    min_required = {
+        "name": personal.get("name"),
+        "nationality": personal.get("nationality"),
+        "current_country": personal.get("current_country")
+    }
+    
+    missing = [field for field, value in min_required.items() if not value]
+    
+    if missing:
+        # Generar mensaje de bloqueo
+        field_names_es = {
+            "name": "nombre",
+            "nationality": "nacionalidad",
+            "current_country": "país actual"
+        }
+        missing_names = [field_names_es.get(f, f) for f in missing]
+        blocking_msg = (
+            f"🚫 Antes de continuar, necesito saber tu {', '.join(missing_names)}.\n\n"
+            "Esto me ayuda a darte información personalizada."
+        )
+        return False, blocking_msg
+    
+    return True, ""

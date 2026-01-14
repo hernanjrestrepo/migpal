@@ -22,7 +22,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import httpx
 
 # Configuración
-BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '8243325921:AAFTkOmUG9emaDVa6dBPdxpey1rUxkSdLOA')
+# SECURITY: Token MUST be set in .env - no hardcoded fallback
+BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 API_BASE = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 # Directorio para evidencia

@@ -260,7 +260,8 @@ async def main():
         sys.exit(1)
     
     # Check token
-    token = os.getenv("TELEGRAM_BOT_TOKEN", "8243325921:AAFTkOmUG9emaDVa6dBPdxpey1rUxkSdLOA")
+    # SECURITY: Token MUST be set in .env - no hardcoded fallback
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     if not token:
         print("❌ TELEGRAM_BOT_TOKEN not set!")
         print("Set it with: export TELEGRAM_BOT_TOKEN=your_token")

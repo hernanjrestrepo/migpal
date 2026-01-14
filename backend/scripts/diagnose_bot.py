@@ -19,7 +19,8 @@ try:
 except:
     pass
 
-BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '8243325921:AAFTkOmUG9emaDVa6dBPdxpey1rUxkSdLOA')
+# SECURITY: Token MUST be set in .env - no hardcoded fallback
+BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 
 
 async def diagnose():

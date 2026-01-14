@@ -6051,19 +6051,24 @@ class MigPALBot:
         
         logger.info(f"MSG: {user_id} | {state} | {text[:50]}")
         
-        # ============== V3.2.0: PRIORIZACIÓN DE INTENTS ==============
+        # ============== V5.0: PRIORIZACIÓN DE INTENTS (MEJORADA) ==============
         # REGLA CRÍTICA: Las preguntas, confusión, preocupaciones y reclamos del usuario
         # tienen PRIORIDAD ABSOLUTA sobre cualquier flujo interno del bot.
-        # Esto debe ejecutarse ANTES de cualquier otro procesamiento.
+        # 
+        # V5.0 FIX: emotion_clarification SOLO se activa con señales EXPLÍCITAS:
+        # - "no entiendo", "estoy confundido", "me perdí"
+        # NO se activa cuando el usuario responde coherentemente a una pregunta.
+        # Ejemplo: "soy ingeniero" NO es confusión, es respuesta válida a ocupación.
         
         priority_handler = get_priority_intent_handler()
-        should_interrupt, intent_type, empathic_response = priority_handler.should_interrupt_flow(text)
+        # V5.0: Pasar estado actual para contexto
+        should_interrupt, intent_type, empathic_response = priority_handler.should_interrupt_flow(text, state)
         
         if should_interrupt:
             logger.info(f"🚨 PRIORITY INTENT | user={user_id} | type={intent_type} | text={text[:50]}")
             
-            # V4.2 FIX: Para confusión/emociones, NO avanzar fase ni evaluar gating
-            # Solo responder con contención + 1 pregunta de clarificación
+            # V5.0 FIX: Para confusión, verificar que sea EXPLÍCITA antes de activar emotion_clarification
+            # Solo activar si el usuario dice explícitamente que está confundido
             if intent_type == "confusion":
                 # Guardar estado anterior para poder volver
                 previous_state = state
@@ -6264,7 +6269,8 @@ class MigPALBot:
                     user["profile"]["personal"]["name"] = correction.value
                     field_updated = True
                     field_name = "nombre" if lang == "es" else "name"
-                # V4.2.1 FIX: Manejar OCCUPATION - guardar y pedir nombre
+                # V5.0 FIX: Manejar OCCUPATION con patrón REFLECT → CONFIRM → ADVANCE
+                # El bot debe parafrasear lo entendido y avanzar, NO volver a preguntar
                 elif correction.type == CorrectionType.OCCUPATION:
                     if "professional" not in user["profile"]:
                         user["profile"]["professional"] = {}
@@ -6272,13 +6278,34 @@ class MigPALBot:
                     save_user_data(user_id, user)
                     logger.info(f"✅ OCCUPATION_DETECTED | user={user_id} | profession={correction.value}")
                     
-                    # Transicionar a pedir nombre (profile_collect)
+                    # V5.0: REFLECT → CONFIRM → ADVANCE
+                    # 1. REFLECT: Parafrasear lo que entendimos
+                    # 2. CONFIRM: Confirmar implícitamente (no preguntar "es correcto?")
+                    # 3. ADVANCE: Avanzar a la siguiente pregunta
+                    
+                    profession_clean = correction.value.strip().title()
+                    
+                    if lang == "es":
+                        reflect_confirm_advance_msg = (
+                            f"✅ *Entendido, eres {profession_clean}.*\n\n"
+                            f"👍 Excelente profesión. Ahora, para conocerte mejor...\n\n"
+                            f"¿Cómo te llamas? 😊"
+                        )
+                    else:
+                        reflect_confirm_advance_msg = (
+                            f"✅ *Got it, you're a {profession_clean}.*\n\n"
+                            f"👍 Great profession. Now, to get to know you better...\n\n"
+                            f"What's your name? 😊"
+                        )
+                    
+                    # Transicionar a pedir nombre
                     set_state(user_id, STATE_NAME)
                     
-                    # Mensaje de confirmación + pedir nombre
-                    confirm_msg = CorrectionNLU.get_confirmation_message(correction, lang)
-                    await update.message.reply_text(confirm_msg)
+                    await update.message.reply_text(reflect_confirm_advance_msg, parse_mode='Markdown')
                     watchdog.mark_response_sent(user_id)
+                    response_tracker.record_response(user_id)
+                    
+                    logger.info(f"🔄 REFLECT_CONFIRM_ADVANCE | user={user_id} | profession={profession_clean} | next=STATE_NAME")
                     return
                 
                 if field_updated:

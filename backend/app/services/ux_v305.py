@@ -125,6 +125,7 @@ class CorrectionType(Enum):
     DATE = "date"
     CITY = "city"
     COUNTRY = "country"
+    OCCUPATION = "occupation"  # V4.2.1 FIX: Nuevo tipo para profesión
     NONE = "none"
 
 
@@ -159,7 +160,14 @@ class CorrectionNLU:
         CorrectionType.NAME: [
             r"(?:mi\s+)?nombre\s+(?:correcto|real|completo|es|:)\s*[:\s]*([A-Za-záéíóúñÁÉÍÓÚÑ\s]{2,50})",
             r"(?:corregir|cambiar)\s+(?:mi\s+)?nombre\s+(?:a|por|:)\s*([A-Za-záéíóúñÁÉÍÓÚÑ\s]{2,50})",
-            r"(?:me\s+llamo|soy)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]{2,50})",
+            # V4.2.1 FIX: "me llamo" solo para nombres propios, NO ocupaciones
+            r"me\s+llamo\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]{2,50})",
+        ],
+        # V4.2.1 FIX: Nuevo tipo para ocupación/profesión
+        CorrectionType.OCCUPATION: [
+            r"(?:soy|trabajo\s+(?:como|de))\s+(ingenier[oa]|doctor[a]?|abogad[oa]|profesor[a]?|contador[a]?|enferm[oa]|programador[a]?|diseñador[a]?|arquitect[oa]|médic[oa]|psicólog[oa]|econom[oi]sta|administrador[a]?|gerente|director[a]?|analista|consultor[a]?|vendedor[a]?|chef|cocinero[a]?|electricista|mecánico[a]?|plomero[a]?|carpintero[a]?|maestro[a]?|periodista|escritor[a]?|músico[a]?|artista|fotógrafo[a]?|veterinario[a]?|farmacéutico[a]?|biólogo[a]?|químico[a]?|físico[a]?|matemático[a]?)(?:\s+de\s+\w+)?",
+            r"(?:mi\s+)?(?:profesión|ocupación|trabajo)\s+(?:es|:)\s*(.+)",
+            r"(?:trabajo|laburo)\s+(?:en|como)\s+(.+)",
         ],
         CorrectionType.DATE: [
             r"(?:mi\s+)?(?:fecha\s+de\s+)?(?:nacimiento|cumpleaños)\s+(?:es|:)\s*[:\s]*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})",
@@ -238,12 +246,14 @@ class CorrectionNLU:
                 CorrectionType.PHONE: f"✅ Listo, tu teléfono ahora es: {correction.value}",
                 CorrectionType.NAME: f"✅ Entendido, tu nombre es: {correction.value}",
                 CorrectionType.DATE: f"✅ Actualicé tu fecha de nacimiento a: {correction.value}",
+                CorrectionType.OCCUPATION: f"✅ Excelente, eres {correction.value}. ¿Cómo te llamas?",  # V4.2.1
             },
             "en": {
                 CorrectionType.EMAIL: f"✅ Perfect, I updated your email to: {correction.value}",
                 CorrectionType.PHONE: f"✅ Done, your phone is now: {correction.value}",
                 CorrectionType.NAME: f"✅ Got it, your name is: {correction.value}",
                 CorrectionType.DATE: f"✅ I updated your birth date to: {correction.value}",
+                CorrectionType.OCCUPATION: f"✅ Great, you're a {correction.value}. What's your name?",  # V4.2.1
             }
         }
         

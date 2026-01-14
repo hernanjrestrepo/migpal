@@ -28,11 +28,8 @@ class Config:
     BOT_USERNAME = "@MigPAL_Bot"
     BOT_URL = "https://t.me/MigPAL_Bot"
     
-    # Telegram
-    TELEGRAM_BOT_TOKEN: str = os.getenv(
-        "TELEGRAM_BOT_TOKEN", 
-        "8243325921:AAFTkOmUG9emaDVa6dBPdxpey1rUxkSdLOA"
-    )
+    # Telegram - MUST be set in .env (no hardcoded fallback for security)
+    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     
     # ============== AI CONFIG ==============
     AI_PROVIDER: str = os.getenv("AI_PROVIDER", "ollama")

@@ -230,31 +230,44 @@ class PriorityIntentHandler:
     
     REGLA: Las preguntas, confusión, preocupaciones y reclamos del usuario
     tienen PRIORIDAD sobre cualquier flujo interno del bot.
+    
+    V5.0 FIX: emotion_clarification solo se activa con señales EXPLÍCITAS de confusión.
+    NO se activa cuando el usuario responde coherentemente a una pregunta activa.
+    
+    Señales EXPLÍCITAS de confusión (únicas que activan emotion_clarification):
+    - "no entiendo", "estoy confundido/a", "me perdí", "estoy perdido/a"
+    - "no comprendo", "no me queda claro"
+    - "confused", "don't understand", "lost"
+    
+    NO son señales de confusión (respuestas válidas):
+    - "soy ingeniero" (respuesta a ¿a qué te dedicas?)
+    - "tengo una empresa" (respuesta a ocupación)
+    - "no sé" seguido de información ("no sé, pero trabajo en...")
     """
     
-    # Patrones de intents prioritarios
-    # NOTA: El orden importa - confusion y frustration deben detectarse ANTES que question
+    # V5.0: Patrones de intents prioritarios RESTRINGIDOS
+    # Solo señales EXPLÍCITAS de confusión activan emotion_clarification
     PRIORITY_PATTERNS = {
         "confusion": [
-            # Expresiones de confusión explícitas
-            r"no entiendo", r"no comprendo", r"confundido", r"confusa",
-            r"qué significa", r"que significa", r"no conozco", r"don't understand",
-            r"confused", r"what does.*mean", r"qué es eso", r"que es eso",
-            r"a qué te refieres", r"a que te refieres", r"no sé qué", r"no se que",
-            r"explícame", r"explicame", r"no me queda claro",
-            # Expresiones coloquiales de confusión
-            r"ajá", r"aja", r"qué pasa", r"que pasa", r"qué onda", r"que onda",
-            r"cómo así", r"como asi", r"no pillo", r"no capto",
-            r"perdido", r"perdida", r"no sé", r"no se$"
+            # V5.0: SOLO expresiones EXPLÍCITAS de confusión
+            # Removidos: "ajá", "qué pasa", "no sé" (son respuestas válidas)
+            r"\bno entiendo\b", r"\bno comprendo\b", 
+            r"\bestoy confundid[oa]\b", r"\bconfundid[oa]\b",
+            r"\bme perdí\b", r"\bestoy perdid[oa]\b", r"\bperdid[oa]\b",
+            r"\bno me queda claro\b", r"\bno capto\b", r"\bno pillo\b",
+            r"\bdon't understand\b", r"\bconfused\b", r"\bi'm lost\b",
+            r"\bwhat do you mean\b", r"\bwhat does.*mean\b",
+            # V5.0.1: Variaciones adicionales
+            r"estoy confundido", r"estoy confundida",
+            r"estoy perdido", r"estoy perdida",
         ],
         "frustration": [
-            # Expresiones de frustración explícitas
-            r"ya te dije", r"otra vez", r"de nuevo", r"lo mismo",
-            r"don't understand", r"already told you", r"again",
-            r"por qué me preguntas", r"por que me preguntas",
-            r"eso ya lo dije", r"te lo acabo de decir", r"repites",
-            r"no me escuchas", r"no entiendes", r"ya lo sabías",
-            r"te lo dije", r"ya dije", r"ya te conté", r"ya te conte"
+            # V5.0: Expresiones de frustración que indican que el bot no escucha
+            r"\bya te dije\b", r"\bte lo dije\b", r"\bya dije\b",
+            r"\beso ya lo dije\b", r"\bte lo acabo de decir\b",
+            r"\bno me escuchas\b", r"\bno entiendes\b", r"\brepites\b",
+            r"\bya te conté\b", r"\bya te conte\b",
+            r"\balready told you\b", r"\byou're not listening\b"
         ],
         "concern": [
             # Expresiones de preocupación
@@ -298,10 +311,82 @@ class PriorityIntentHandler:
         }
     }
     
+    # V5.0: Patrones que indican respuesta VÁLIDA a una pregunta
+    # Si el usuario da información, NO es confusión
+    VALID_RESPONSE_PATTERNS = [
+        # Ocupación/Profesión
+        r"\bsoy\s+(ingenier|doctor|abogad|profesor|contador|enferm|programador|diseñador|arquitect|médic|psicólog|econom|administrador|gerente|director|analista|consultor|vendedor|chef|cocinero|electricista|mecánic|plomero|carpintero|maestro|periodista|escritor|músic|artista|fotógraf|veterinari|farmacéutic|biólog|químic|físic|matemátic)",
+        r"\btrabajo\s+(como|en|de)\b",
+        r"\btengo\s+(una\s+)?(empresa|negocio|compañía|startup)\b",
+        r"\bmi\s+(profesión|trabajo|ocupación)\b",
+        # Información personal
+        r"\bme\s+llamo\b",
+        r"\bmi\s+nombre\s+es\b",
+        r"\btengo\s+\d+\s+(años|meses)\b",
+        # Destino/Migración
+        r"\bquiero\s+(ir|migrar|vivir)\b",
+        r"\b(estados\s+unidos|usa|canada|españa|alemania|australia)\b",
+        # Presupuesto
+        r"\$\d+",
+        r"\bpresupuesto\b",
+        # Confirmaciones
+        r"^(sí|si|yes|ok|okay|claro|correcto|exacto|así es|eso es)$",
+        # Negaciones con información
+        r"\bno\s+(tengo|sé|se)\s+.{5,}",  # "no tengo experiencia en..." es válido
+    ]
+    
+    # V5.0: Señales EXPLÍCITAS de confusión que NUNCA son respuestas válidas
+    EXPLICIT_CONFUSION_SIGNALS = [
+        "no entiendo", "no comprendo", "no me queda claro",
+        "confundido", "confundida", "confundid",  # Variaciones de género
+        "perdido", "perdida", "perdí", "me perdí",
+        "no capto", "no pillo",
+        "confused", "lost", "don't understand",
+        "what do you mean", "what does that mean",
+    ]
+    
     @staticmethod
-    def detect_priority_intent(text: str) -> Optional[str]:
+    def is_valid_response(text: str) -> bool:
         """
-        Detecta si el texto contiene un intent prioritario.
+        V5.0: Detecta si el texto es una respuesta VÁLIDA a una pregunta.
+        Si es válida, NO debe activar emotion_clarification.
+        
+        REGLA: Si el texto contiene señales EXPLÍCITAS de confusión,
+        NO es una respuesta válida.
+        
+        Returns:
+            True si es una respuesta válida, False si no
+        """
+        import re
+        text_lower = text.lower().strip()
+        
+        # V5.0 FIX: Primero verificar si tiene señales explícitas de confusión
+        # Si las tiene, NO es respuesta válida
+        for signal in PriorityIntentHandler.EXPLICIT_CONFUSION_SIGNALS:
+            if signal in text_lower:
+                return False
+        
+        # Verificar patrones de respuesta válida
+        for pattern in PriorityIntentHandler.VALID_RESPONSE_PATTERNS:
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                return True
+        
+        # Si el texto tiene más de 10 caracteres y no tiene signos de confusión,
+        # probablemente es una respuesta válida
+        if len(text_lower) > 10:
+            return True
+        
+        return False
+    
+    @staticmethod
+    def detect_priority_intent(text: str, current_state: str = "") -> Optional[str]:
+        """
+        V5.0: Detecta si el texto contiene un intent prioritario.
+        IMPORTANTE: Si el usuario está respondiendo coherentemente, NO detectar confusión.
+        
+        Args:
+            text: Texto del usuario
+            current_state: Estado actual del flujo (para contexto)
         
         Returns:
             Tipo de intent ("question", "confusion", etc.) o None
@@ -309,9 +394,21 @@ class PriorityIntentHandler:
         import re
         text_lower = text.lower().strip()
         
+        # V5.0 FIX: Primero verificar si es una respuesta válida
+        # Si el usuario está dando información, NO es confusión
+        if PriorityIntentHandler.is_valid_response(text):
+            logger.debug(f"🟢 VALID_RESPONSE | text={text[:50]} | NOT triggering confusion")
+            return None
+        
         for intent_type, patterns in PriorityIntentHandler.PRIORITY_PATTERNS.items():
             for pattern in patterns:
                 if re.search(pattern, text_lower, re.IGNORECASE):
+                    # V5.0: Para confusión, verificar que sea EXPLÍCITA
+                    if intent_type == "confusion":
+                        # Solo activar si es confusión explícita Y no hay información útil
+                        if len(text_lower) > 50:  # Mensajes largos probablemente tienen info
+                            logger.debug(f"🟡 CONFUSION_SKIPPED | text too long, likely has info")
+                            continue
                     return intent_type
         
         return None
@@ -324,16 +421,38 @@ class PriorityIntentHandler:
         return responses.get(intent_type, responses["question"])
     
     @staticmethod
-    def should_interrupt_flow(text: str) -> Tuple[bool, Optional[str], Optional[str]]:
+    def should_interrupt_flow(text: str, current_state: str = "", active_question: str = "") -> Tuple[bool, Optional[str], Optional[str]]:
         """
-        Determina si el input debe interrumpir el flujo actual.
+        V5.0: Determina si el input debe interrumpir el flujo actual.
+        
+        REGLA CRÍTICA: Si hay una pregunta activa y el usuario responde coherentemente,
+        NO interrumpir el flujo con emotion_clarification.
+        
+        Args:
+            text: Texto del usuario
+            current_state: Estado actual del flujo
+            active_question: Pregunta activa que el bot hizo (para contexto)
         
         Returns:
             (should_interrupt, intent_type, empathic_response)
         """
-        intent_type = PriorityIntentHandler.detect_priority_intent(text)
+        # V5.0 FIX: Primero verificar si es respuesta válida
+        if PriorityIntentHandler.is_valid_response(text):
+            logger.info(f"✅ VALID_RESPONSE | NOT interrupting flow | text={text[:50]}")
+            return False, None, None
+        
+        intent_type = PriorityIntentHandler.detect_priority_intent(text, current_state)
         
         if intent_type:
+            # V5.0: Para confusión, ser más estricto
+            if intent_type == "confusion":
+                # Solo interrumpir si es confusión EXPLÍCITA
+                # V5.0.1: Usar la constante EXPLICIT_CONFUSION_SIGNALS
+                text_lower = text.lower()
+                if not any(signal in text_lower for signal in PriorityIntentHandler.EXPLICIT_CONFUSION_SIGNALS):
+                    logger.info(f"🟡 CONFUSION_NOT_EXPLICIT | NOT interrupting | text={text[:50]}")
+                    return False, None, None
+            
             # Detectar idioma del texto
             lang = "es" if any(c in text.lower() for c in ["á", "é", "í", "ó", "ú", "ñ", "¿", "¡"]) else "en"
             empathic_response = PriorityIntentHandler.get_empathic_response(intent_type, lang)

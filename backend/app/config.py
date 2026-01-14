@@ -25,8 +25,8 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str = "http://localhost:3000"
 
-    # Telegram Bot
-    TELEGRAM_BOT_TOKEN: str = "8243325921:AAFTkOmUG9emaDVa6dBPdxpey1rUxkSdLOA"
+    # Telegram Bot - MUST be set in .env (no hardcoded fallback for security)
+    TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_BOT_ENABLED: bool = True
 
     ENABLE_EXTERNAL_SCRAPERS: bool = False

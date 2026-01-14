@@ -14,6 +14,10 @@ import os
 import sys
 import asyncio
 import logging
+import subprocess
+
+# App version constant
+APP_VERSION = "4.2.1"
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -51,9 +55,26 @@ def check_dependencies():
     return True
 
 
+def get_git_commit():
+    """Get current git commit hash"""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, cwd=os.path.dirname(__file__)
+        )
+        return result.stdout.strip() if result.returncode == 0 else "unknown"
+    except Exception:
+        return "unknown"
+
+
 async def main():
     """Main entry point"""
-    print("""
+    
+    # Get version info
+    git_commit = get_git_commit()
+    bot_file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "app/services/telegram_bot.py"))
+    
+    print(f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
 ║   🌍 MigPAL Telegram Bot 🤖                                  ║
@@ -65,6 +86,14 @@ async def main():
 ╚══════════════════════════════════════════════════════════════╝
     """)
     
+    # Log version info prominently
+    logger.info("="*60)
+    logger.info(f"🚀 APP_VERSION: {APP_VERSION}")
+    logger.info(f"📦 GIT_COMMIT: {git_commit}")
+    logger.info(f"📁 BOT_FILE: {bot_file_path}")
+    logger.info(f"📂 CWD: {os.getcwd()}")
+    logger.info("="*60)
+    
     # Check dependencies
     if not check_dependencies():
         sys.exit(1)
@@ -73,7 +102,8 @@ async def main():
     from app.services.telegram_bot import start_bot, stop_bot, get_bot
     
     # Check token
-    token = os.getenv("TELEGRAM_BOT_TOKEN", "8243325921:AAFTkOmUG9emaDVa6dBPdxpey1rUxkSdLOA")
+    # SECURITY: Token MUST be set in .env - no hardcoded fallback
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     if not token:
         print("❌ TELEGRAM_BOT_TOKEN not set!")
         print("Set it with: export TELEGRAM_BOT_TOKEN=your_token")
