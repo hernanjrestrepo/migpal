@@ -1,31 +1,31 @@
 """
-Case Engine — Aggregate Root: MigrationCase (Anexo A, Domain Model).
+Case Engine — domain: Aggregate Root MigrationCase + entidad CaseFamilyMember
+(Anexo A).
 
-El expediente completo del cliente. Regla de diseño vinculante (Anexo A):
-"Case Engine nunca contiene lógica. Solo estado y consistencia del caso."
-MigrationCase no calcula nada -- Decision Engine, Policy Engine y Workflow
-operan sobre él y le devuelven un resultado que aquí solo se registra.
+Nota de implementación: estas clases son SQLModel `table=True` -- en este
+proyecto el modelo de dominio y el mapeo ORM son la misma clase (compromiso
+deliberado de velocidad; separar un DTO de dominio puro de la fila de tabla
+duplicaría cada campo sin aportar aislamiento real mientras el proyecto siga
+en un único proceso/una única base). Lo que SÍ se separa estrictamente es la
+*capa*: nada fuera de `infrastructure/repository.py` importa `Session` ni
+hace `session.add/commit`, y nada fuera de `adapters/api.py` conoce FastAPI.
+Ese es el límite que main.py estaba a punto de saltarse.
+
+Regla de diseño vinculante (Anexo A): "Case Engine nunca contiene lógica.
+Solo estado y consistencia del caso." Estas clases no tienen métodos de
+negocio -- son estado puro. La lógica de transición vive en application/.
 """
 
 from datetime import UTC, datetime
-from enum import Enum
 from typing import List  # noqa: UP035 -- ver nota junto a family_members
 
 from sqlmodel import Field, Relationship, SQLModel
 
-
-class CaseStatus(str, Enum):
-    """Value object CaseStatus (Anexo A)."""
-
-    DRAFT = "draft"
-    ACTIVE = "active"
-    SUSPENDED = "suspended"
-    CLOSED = "closed"
+from core.case_engine.domain.value_objects import CaseStatus
 
 
 class MigrationCase(SQLModel, table=True):
-    """Aggregate Root. Frontera transaccional (Anexo D, Persistence
-    Strategy) -- ninguna transacción cruza este aggregate y otro."""
+    """Aggregate Root. Frontera transaccional (Anexo D)."""
 
     __tablename__ = "migration_cases"
 
@@ -34,13 +34,8 @@ class MigrationCase(SQLModel, table=True):
 
     status: CaseStatus = Field(default=CaseStatus.DRAFT, index=True)
 
-    # Value object Objective (Anexo A) aplanado en columnas -- sin tabla propia,
-    # es parte del estado del aggregate, no una entidad independiente.
     objective_country: str | None = Field(default=None)
     objective_visa_type: str | None = Field(default=None)
-
-    # NextStepRef (Anexo A): referencia de solo lectura poblada por Workflow.
-    # Sprint 1 todavía no tiene Workflow -- queda null hasta ese bloque.
     next_step_ref: str | None = Field(default=None)
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -48,7 +43,7 @@ class MigrationCase(SQLModel, table=True):
 
     # typing.List, no el builtin `list` -- SQLAlchemy 2.0 no resuelve el
     # genérico builtin dentro de Relationship() (InvalidRequestError en
-    # tiempo de arranque). No dejar que ruff "modernice" esto (UP035).
+    # tiempo de arranque). No dejar que ruff "modernice" esto (UP006/UP035).
     family_members: List["CaseFamilyMember"] = Relationship(back_populates="case")  # noqa: UP006, UP035
 
 

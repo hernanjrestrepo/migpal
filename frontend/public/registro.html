@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MigPAL — Registro</title>
+<style>
+  body{font-family:-apple-system,'Segoe UI',sans-serif;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);}
+  .card{background:#fff;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:40px;max-width:400px;width:90%;}
+  h1{color:#667eea;margin:0 0 6px;font-size:22px;}
+  p.sub{color:#666;margin:0 0 24px;font-size:14px;}
+  label{display:block;font-size:13px;font-weight:600;color:#333;margin:14px 0 4px;}
+  input{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;}
+  button{width:100%;margin-top:22px;padding:12px;background:#667eea;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;}
+  button:hover{background:#5a6fd8;}
+  button:disabled{background:#aaa;cursor:not-allowed;}
+  #msg{margin-top:16px;font-size:13px;padding:10px;border-radius:6px;display:none;}
+  #msg.ok{display:block;background:#e6efe3;color:#3f7d54;}
+  #msg.err{display:block;background:#f4e2df;color:#a3423a;}
+  a{color:#667eea;}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Crear cuenta en MigPAL</h1>
+  <p class="sub">Landing → Registro → Migration Case (Sprint 1, primer vertical conectado)</p>
+
+  <form id="registerForm">
+    <label for="email">Email</label>
+    <input id="email" type="email" required>
+
+    <label for="username">Usuario</label>
+    <input id="username" type="text" required minlength="3">
+
+    <label for="password">Contraseña</label>
+    <input id="password" type="password" required minlength="8">
+
+    <button type="submit" id="submitBtn">Registrarme</button>
+  </form>
+  <div id="msg"></div>
+</div>
+
+<script>
+// Sprint 1, punto 5: conexión mínima real al backend -- no simulación.
+// API_BASE se apunta al puerto de host del backend (Foundation, docker-compose.yml).
+// Cuando exista el frontend Next.js real (Product Definition, UX Specification),
+// esto se vuelve una variable de entorno de build, no un literal.
+const API_BASE = 'http://localhost:8010';
+
+const form = document.getElementById('registerForm');
+const msg = document.getElementById('msg');
+const btn = document.getElementById('submitBtn');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  btn.disabled = true;
+  msg.className = '';
+  msg.textContent = '';
+
+  const email = document.getElementById('email').value;
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+
+  try {
+    const res = await fetch(`${API_BASE}/v1/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, username, password })
+    });
+    const data = await res.json();
+
+    if (res.status === 201) {
+      msg.className = 'ok';
+      msg.textContent = `Cuenta creada (id ${data.id}). Ya puedes iniciar sesión con "${username}".`;
+      form.reset();
+    } else {
+      msg.className = 'err';
+      msg.textContent = data.detail || `Error ${res.status}`;
+    }
+  } catch (err) {
+    msg.className = 'err';
+    msg.textContent = 'No se pudo contactar al backend (' + API_BASE + '). ¿Está corriendo docker compose up?';
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

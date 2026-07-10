@@ -24,7 +24,7 @@ from app.models.zillow_listing import ZillowListing  # noqa: F401
 
 # Sprint 1 — bounded contexts nuevos (vNext 1.2). core/case_engine es el
 # primero: MigrationCase, el aggregate que no existía como código.
-from core.case_engine.models import CaseFamilyMember, MigrationCase  # noqa: F401
+from core.case_engine.domain.aggregates import CaseFamilyMember, MigrationCase  # noqa: F401
 
 # Resuelve las referencias circulares (forward references) entre los modelos
 User.model_rebuild()

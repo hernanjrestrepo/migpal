@@ -4,8 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import router as api_router
 from app.config import settings
 from app.utils.logging_config import get_api_logger, setup_logging
-from adapters.web_api.case_router import router as case_router
-from adapters.web_api.identity_router import router as identity_router
+from core.case_engine.adapters.api import router as case_router
+from core.identity.adapters.api import router as identity_router
 
 setup_logging(
     level=settings.LOG_LEVEL,
