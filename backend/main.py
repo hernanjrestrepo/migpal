@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import router as api_router
 from app.config import settings
 from app.utils.logging_config import get_api_logger, setup_logging
+from adapters.web_api.case_router import router as case_router
+from adapters.web_api.identity_router import router as identity_router
 
 setup_logging(
     level=settings.LOG_LEVEL,
@@ -30,6 +32,11 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix=settings.api_prefix)
+
+# Sprint 1 — Core Vertical (vNext 1.2, A-ADR-003). Superficie de producto
+# (Anexo C), no bounded contexts crudos: /v1/case, /v1/auth/register.
+app.include_router(case_router)
+app.include_router(identity_router)
 
 
 @app.get("/")
