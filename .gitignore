@@ -125,5 +125,17 @@ venv.bak/
 !/logs/.gitkeep
 
 # User data (sensitive - do not track)
-/backend/data/cases/
+/backend/data/
 /backend/backups/
+
+# Deploy env files (SECURITY-001: production.env leaked a live Telegram token — never commit real env files again)
+/backend/deploy/
+.venv_old/
+.env.corrected
+.env.docker.corrected
+.env.port-corrected
+.env.infra
+
+# Ad-hoc generated reports/logs from manual testing iterations (superseded by the formal pytest suite)
+/backend/reports/
+/backend/docs/
