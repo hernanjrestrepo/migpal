@@ -58,7 +58,6 @@ ADDITIONAL_CITIES = [
     ("Sunset", "FL", 18000, False, 75.0),
     ("University Park", "FL", 30000, False, 68.0),
     ("Coral Terrace", "FL", 25000, False, 82.0),
-    
     # GEORGIA - Más ciudades
     ("Marietta", "GA", 60000, False, 18.0),
     ("Roswell", "GA", 95000, False, 12.0),
@@ -80,7 +79,6 @@ ADDITIONAL_CITIES = [
     ("Warner Robins", "GA", 80000, False, 8.0),
     ("Valdosta", "GA", 56000, False, 6.0),
     ("Albany", "GA", 72000, False, 4.0),
-    
     # NORTH CAROLINA - Más ciudades
     ("Cary", "NC", 175000, False, 8.0),
     ("Wilmington", "NC", 125000, False, 6.0),
@@ -97,7 +95,6 @@ ADDITIONAL_CITIES = [
     ("Kannapolis", "NC", 52000, False, 12.0),
     ("Sanford", "NC", 30000, False, 18.0),
     ("Lumberton", "NC", 20000, False, 8.0),
-    
     # VIRGINIA - Más ciudades
     ("Arlington", "VA", 235000, False, 15.0),
     ("Alexandria", "VA", 160000, False, 17.0),
@@ -114,7 +111,6 @@ ADDITIONAL_CITIES = [
     ("Woodbridge", "VA", 45000, False, 28.0),
     ("Dale City", "VA", 72000, False, 25.0),
     ("Lake Ridge", "VA", 45000, False, 18.0),
-    
     # MARYLAND - Más ciudades
     ("Columbia", "MD", 105000, False, 8.0),
     ("Germantown", "MD", 90000, False, 18.0),
@@ -136,7 +132,6 @@ ADDITIONAL_CITIES = [
     ("Wheaton", "MD", 52000, False, 32.0),
     ("Aspen Hill", "MD", 52000, False, 22.0),
     ("Takoma Park", "MD", 18000, False, 18.0),
-    
     # PENNSYLVANIA - Más ciudades
     ("Reading", "PA", 95000, False, 68.0),
     ("Allentown", "PA", 125000, False, 54.0),
@@ -151,7 +146,6 @@ ADDITIONAL_CITIES = [
     ("Norristown", "PA", 35000, False, 28.0),
     ("Chester", "PA", 34000, False, 12.0),
     ("Hazleton", "PA", 25000, False, 55.0),
-    
     # NEW JERSEY - Más ciudades
     ("Trenton", "NJ", 85000, True, 38.0),
     ("Camden", "NJ", 74000, False, 52.0),
@@ -171,7 +165,6 @@ ADDITIONAL_CITIES = [
     ("North Bergen", "NJ", 65000, False, 72.0),
     ("Hoboken", "NJ", 60000, False, 15.0),
     ("Guttenberg", "NJ", 12000, False, 68.0),
-    
     # CONNECTICUT - Más ciudades
     ("New Haven", "CT", 135000, False, 31.0),
     ("Stamford", "CT", 135000, False, 18.0),
@@ -187,7 +180,6 @@ ADDITIONAL_CITIES = [
     ("Norwich", "CT", 40000, False, 12.0),
     ("Shelton", "CT", 42000, False, 8.0),
     ("Torrington", "CT", 35000, False, 12.0),
-    
     # MASSACHUSETTS - Más ciudades
     ("Worcester", "MA", 205000, False, 22.0),
     ("Springfield", "MA", 155000, False, 45.0),
@@ -213,7 +205,6 @@ ADDITIONAL_CITIES = [
     ("Methuen", "MA", 52000, False, 28.0),
     ("Chelsea", "MA", 40000, False, 68.0),
     ("Everett", "MA", 48000, False, 32.0),
-    
     # OHIO - Más ciudades
     ("Cleveland", "OH", 375000, False, 12.0),
     ("Cincinnati", "OH", 310000, False, 4.0),
@@ -235,7 +226,6 @@ ADDITIONAL_CITIES = [
     ("Mansfield", "OH", 46000, False, 3.0),
     ("Newark", "OH", 50000, False, 3.0),
     ("Mentor", "OH", 47000, False, 3.0),
-    
     # MICHIGAN - Más ciudades
     ("Grand Rapids", "MI", 200000, False, 16.0),
     ("Warren", "MI", 140000, False, 3.0),
@@ -257,7 +247,6 @@ ADDITIONAL_CITIES = [
     ("St. Clair Shores", "MI", 60000, False, 2.0),
     ("Royal Oak", "MI", 60000, False, 3.0),
     ("Novi", "MI", 62000, False, 2.0),
-    
     # ILLINOIS - Más ciudades
     ("Aurora", "IL", 180000, False, 42.0),
     ("Naperville", "IL", 150000, False, 6.0),
@@ -284,7 +273,6 @@ ADDITIONAL_CITIES = [
     ("Mount Prospect", "IL", 55000, False, 12.0),
     ("Normal", "IL", 55000, False, 5.0),
     ("Wheaton", "IL", 53000, False, 6.0),
-    
     # INDIANA - Más ciudades
     ("Fort Wayne", "IN", 265000, False, 9.0),
     ("Evansville", "IN", 117000, False, 3.0),
@@ -306,7 +294,6 @@ ADDITIONAL_CITIES = [
     ("Lawrence", "IN", 50000, False, 5.0),
     ("Jeffersonville", "IN", 50000, False, 4.0),
     ("Columbus", "IN", 50000, False, 8.0),
-    
     # WISCONSIN - Más ciudades
     ("Madison", "WI", 270000, True, 7.0),
     ("Green Bay", "WI", 107000, False, 12.0),
@@ -328,7 +315,6 @@ ADDITIONAL_CITIES = [
     ("Beloit", "WI", 37000, False, 18.0),
     ("Greenfield", "WI", 37000, False, 8.0),
     ("Franklin", "WI", 37000, False, 5.0),
-    
     # MINNESOTA - Más ciudades
     ("Saint Paul", "MN", 310000, True, 10.0),
     ("Rochester", "MN", 120000, False, 6.0),
@@ -350,7 +336,6 @@ ADDITIONAL_CITIES = [
     ("Edina", "MN", 52000, False, 3.0),
     ("St. Louis Park", "MN", 50000, False, 5.0),
     ("Mankato", "MN", 45000, False, 4.0),
-    
     # MISSOURI - Más ciudades
     ("Kansas City", "MO", 510000, False, 10.0),
     ("St. Louis", "MO", 300000, False, 4.0),
@@ -367,7 +352,6 @@ ADDITIONAL_CITIES = [
     ("Joplin", "MO", 52000, False, 5.0),
     ("Chesterfield", "MO", 48000, False, 2.0),
     ("Jefferson City", "MO", 43000, True, 3.0),
-    
     # IOWA - Más ciudades
     ("Des Moines", "IA", 215000, True, 13.0),
     ("Cedar Rapids", "IA", 138000, False, 4.0),
@@ -384,7 +368,6 @@ ADDITIONAL_CITIES = [
     ("Cedar Falls", "IA", 42000, False, 3.0),
     ("Marion", "IA", 40000, False, 3.0),
     ("Bettendorf", "IA", 38000, False, 4.0),
-    
     # KANSAS - Más ciudades
     ("Wichita", "KS", 400000, False, 17.0),
     ("Overland Park", "KS", 197000, False, 9.0),
@@ -402,7 +385,6 @@ ADDITIONAL_CITIES = [
     ("Dodge City", "KS", 28000, False, 62.0),
     ("Garden City", "KS", 28000, False, 52.0),
     ("Liberal", "KS", 20000, False, 62.0),
-    
     # NEBRASKA - Más ciudades
     ("Omaha", "NE", 490000, False, 14.0),
     ("Lincoln", "NE", 292000, True, 7.0),
@@ -419,7 +401,6 @@ ADDITIONAL_CITIES = [
     ("Scottsbluff", "NE", 15000, False, 22.0),
     ("South Sioux City", "NE", 14000, False, 42.0),
     ("Lexington", "NE", 10000, False, 55.0),
-    
     # OKLAHOMA - Más ciudades
     ("Oklahoma City", "OK", 680000, True, 19.0),
     ("Tulsa", "OK", 413000, False, 16.0),
@@ -436,7 +417,6 @@ ADDITIONAL_CITIES = [
     ("Owasso", "OK", 38000, False, 6.0),
     ("Shawnee", "OK", 32000, False, 8.0),
     ("Ponca City", "OK", 24000, False, 8.0),
-    
     # LOUISIANA - Más ciudades
     ("New Orleans", "LA", 385000, False, 6.0),
     ("Baton Rouge", "LA", 227000, True, 4.0),
@@ -453,7 +433,6 @@ ADDITIONAL_CITIES = [
     ("Laplace", "LA", 30000, False, 8.0),
     ("Slidell", "LA", 28000, False, 8.0),
     ("Central", "LA", 30000, False, 3.0),
-    
     # ARKANSAS - Más ciudades
     ("Little Rock", "AR", 203000, True, 8.0),
     ("Fort Smith", "AR", 88000, False, 12.0),
@@ -470,7 +449,6 @@ ADDITIONAL_CITIES = [
     ("Texarkana", "AR", 30000, False, 5.0),
     ("Sherwood", "AR", 32000, False, 4.0),
     ("Jacksonville", "AR", 28000, False, 5.0),
-    
     # TENNESSEE - Más ciudades
     ("Nashville", "TN", 690000, True, 10.0),
     ("Memphis", "TN", 633000, False, 7.0),
@@ -487,7 +465,6 @@ ADDITIONAL_CITIES = [
     ("Collierville", "TN", 52000, False, 3.0),
     ("Smyrna", "TN", 55000, False, 8.0),
     ("Cleveland", "TN", 48000, False, 5.0),
-    
     # KENTUCKY - Más ciudades
     ("Louisville", "KY", 620000, False, 6.0),
     ("Lexington", "KY", 323000, False, 7.0),
@@ -504,7 +481,6 @@ ADDITIONAL_CITIES = [
     ("Frankfort", "KY", 28000, True, 4.0),
     ("Jeffersontown", "KY", 28000, False, 4.0),
     ("Paducah", "KY", 25000, False, 3.0),
-    
     # ALABAMA - Más ciudades
     ("Birmingham", "AL", 200000, False, 4.0),
     ("Montgomery", "AL", 200000, True, 3.0),
@@ -521,7 +497,6 @@ ADDITIONAL_CITIES = [
     ("Vestavia Hills", "AL", 37000, False, 3.0),
     ("Prattville", "AL", 37000, False, 3.0),
     ("Phenix City", "AL", 37000, False, 4.0),
-    
     # MISSISSIPPI - Más ciudades
     ("Jackson", "MS", 154000, True, 2.0),
     ("Gulfport", "MS", 72000, False, 5.0),
@@ -538,7 +513,6 @@ ADDITIONAL_CITIES = [
     ("Madison", "MS", 28000, False, 2.0),
     ("Starkville", "MS", 25000, False, 3.0),
     ("Vicksburg", "MS", 22000, False, 2.0),
-    
     # SOUTH CAROLINA - Más ciudades
     ("Charleston", "SC", 150000, False, 4.0),
     ("Columbia", "SC", 137000, True, 5.0),
@@ -555,7 +529,6 @@ ADDITIONAL_CITIES = [
     ("Aiken", "SC", 32000, False, 4.0),
     ("Anderson", "SC", 28000, False, 4.0),
     ("Greer", "SC", 35000, False, 8.0),
-    
     # WEST VIRGINIA - Más ciudades
     ("Charleston", "WV", 48000, True, 2.0),
     ("Huntington", "WV", 46000, False, 2.0),
@@ -567,7 +540,6 @@ ADDITIONAL_CITIES = [
     ("Martinsburg", "WV", 18000, False, 5.0),
     ("Beckley", "WV", 17000, False, 1.0),
     ("Clarksburg", "WV", 16000, False, 1.0),
-    
     # WASHINGTON - Más ciudades
     ("Tacoma", "WA", 220000, False, 12.0),
     ("Vancouver", "WA", 190000, False, 10.0),
@@ -611,7 +583,6 @@ ADDITIONAL_CITIES = [
     ("Wapato", "WA", 5000, False, 88.0),
     ("Granger", "WA", 4000, False, 92.0),
     ("Mabton", "WA", 2500, False, 95.0),
-    
     # OREGON - Más ciudades
     ("Portland", "OR", 653000, False, 10.0),
     ("Salem", "OR", 176000, True, 24.0),
@@ -651,7 +622,6 @@ ADDITIONAL_CITIES = [
     ("Cornelius", "OR", 13000, False, 52.0),
     ("Nyssa", "OR", 3500, False, 68.0),
     ("Ontario", "OR", 11000, False, 42.0),
-    
     # IDAHO - Más ciudades
     ("Boise", "ID", 236000, True, 8.0),
     ("Meridian", "ID", 118000, False, 8.0),
@@ -677,7 +647,6 @@ ADDITIONAL_CITIES = [
     ("Rupert", "ID", 6000, False, 42.0),
     ("Heyburn", "ID", 3500, False, 35.0),
     ("Paul", "ID", 1500, False, 52.0),
-    
     # MONTANA - Más ciudades
     ("Billings", "MT", 117000, False, 5.0),
     ("Missoula", "MT", 75000, False, 4.0),
@@ -689,7 +658,6 @@ ADDITIONAL_CITIES = [
     ("Havre", "MT", 10000, False, 5.0),
     ("Anaconda", "MT", 9000, False, 3.0),
     ("Miles City", "MT", 8500, False, 3.0),
-    
     # WYOMING - Más ciudades
     ("Cheyenne", "WY", 65000, True, 15.0),
     ("Casper", "WY", 58000, False, 10.0),
@@ -701,7 +669,6 @@ ADDITIONAL_CITIES = [
     ("Evanston", "WY", 12000, False, 12.0),
     ("Riverton", "WY", 11000, False, 8.0),
     ("Cody", "WY", 10000, False, 5.0),
-    
     # NORTH DAKOTA - Más ciudades
     ("Fargo", "ND", 126000, False, 3.0),
     ("Bismarck", "ND", 74000, True, 3.0),
@@ -713,7 +680,6 @@ ADDITIONAL_CITIES = [
     ("Mandan", "ND", 23000, False, 3.0),
     ("Jamestown", "ND", 15000, False, 2.0),
     ("Wahpeton", "ND", 8000, False, 5.0),
-    
     # SOUTH DAKOTA - Más ciudades
     ("Sioux Falls", "SD", 193000, False, 5.0),
     ("Rapid City", "SD", 78000, False, 5.0),
@@ -725,7 +691,6 @@ ADDITIONAL_CITIES = [
     ("Pierre", "SD", 14000, True, 3.0),
     ("Huron", "SD", 14000, False, 8.0),
     ("Vermillion", "SD", 12000, False, 3.0),
-    
     # UTAH - Más ciudades
     ("Salt Lake City", "UT", 200000, True, 22.0),
     ("West Valley City", "UT", 140000, False, 28.0),
@@ -757,7 +722,6 @@ ADDITIONAL_CITIES = [
     ("Midvale", "UT", 34000, False, 22.0),
     ("Kaysville", "UT", 32000, False, 6.0),
     ("Holladay", "UT", 32000, False, 8.0),
-    
     # HAWAII - Más ciudades
     ("Honolulu", "HI", 350000, True, 5.0),
     ("Pearl City", "HI", 48000, False, 8.0),
@@ -769,7 +733,6 @@ ADDITIONAL_CITIES = [
     ("Kahului", "HI", 28000, False, 12.0),
     ("Ewa Gentry", "HI", 25000, False, 10.0),
     ("Kihei", "HI", 22000, False, 10.0),
-    
     # ALASKA - Más ciudades
     ("Anchorage", "AK", 291000, False, 9.0),
     ("Fairbanks", "AK", 32000, False, 6.0),
@@ -781,7 +744,6 @@ ADDITIONAL_CITIES = [
     ("Kodiak", "AK", 6000, False, 8.0),
     ("Bethel", "AK", 6500, False, 3.0),
     ("Palmer", "AK", 7500, False, 5.0),
-    
     # MAINE - Más ciudades
     ("Portland", "ME", 68000, False, 3.0),
     ("Lewiston", "ME", 37000, False, 2.0),
@@ -793,7 +755,6 @@ ADDITIONAL_CITIES = [
     ("Brunswick", "ME", 21000, False, 2.0),
     ("Augusta", "ME", 19000, True, 2.0),
     ("Scarborough", "ME", 22000, False, 2.0),
-    
     # VERMONT - Más ciudades
     ("Burlington", "VT", 45000, False, 3.0),
     ("South Burlington", "VT", 20000, False, 2.0),
@@ -805,7 +766,6 @@ ADDITIONAL_CITIES = [
     ("Newport", "VT", 4500, False, 2.0),
     ("Vergennes", "VT", 2700, False, 2.0),
     ("Middlebury", "VT", 9000, False, 2.0),
-    
     # NEW HAMPSHIRE - Más ciudades
     ("Manchester", "NH", 115000, False, 10.0),
     ("Nashua", "NH", 90000, False, 12.0),
@@ -822,7 +782,6 @@ ADDITIONAL_CITIES = [
     ("Portsmouth", "NH", 22000, False, 3.0),
     ("Goffstown", "NH", 18000, False, 3.0),
     ("Laconia", "NH", 17000, False, 3.0),
-    
     # RHODE ISLAND - Más ciudades
     ("Providence", "RI", 191000, True, 44.0),
     ("Warwick", "RI", 82000, False, 8.0),
@@ -839,7 +798,6 @@ ADDITIONAL_CITIES = [
     ("North Kingstown", "RI", 27000, False, 4.0),
     ("Newport", "RI", 25000, False, 8.0),
     ("Central Falls", "RI", 20000, False, 62.0),
-    
     # DELAWARE - Más ciudades
     ("Wilmington", "DE", 71000, False, 15.0),
     ("Dover", "DE", 40000, True, 12.0),

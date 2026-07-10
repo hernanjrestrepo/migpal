@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
@@ -12,7 +10,7 @@ from app.services.scheduler import sync_scheduler
 router = APIRouter(prefix="/planner", tags=["planner"])
 
 
-@router.get("", response_model=List[PlannerTask])
+@router.get("", response_model=list[PlannerTask])
 def list_tasks(session: Session = Depends(get_session)):
     tasks = session.exec(select(PlannerTask)).all()
     return tasks

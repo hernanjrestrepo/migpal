@@ -10,16 +10,15 @@ Features:
 - Seguimiento de progreso
 """
 
-import os
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from pathlib import Path
+from datetime import datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # ============== NOTIFICATION TYPES ==============
+
 
 class NotificationType:
     DOCUMENT_EXPIRY = "document_expiry"
@@ -56,7 +55,7 @@ NOTIFICATION_TEMPLATES = {
         NotificationType.MOTIVATIONAL: "🌟 *Mensagem do Dia*\n\n{message}\n\n_MigPAL acredita em você._",
         NotificationType.POLICY_ALERT: "🚨 *Alerta de Política Migratória*\n\n{alert}\n\n📰 Fonte: {source}\n📅 Data: {date}",
         NotificationType.DEADLINE_REMINDER: "⏰ *Lembrete de Prazo*\n\n{task} vence em {days} dias.\n\nNão deixe para a última hora!",
-    }
+    },
 }
 
 # ============== DAILY TIPS ==============
@@ -95,20 +94,22 @@ DAILY_TIPS = {
         "Keep your LinkedIn updated. Many employers look for international talent there.",
         "Learn about taxes in your destination country BEFORE arriving.",
         "Network with professionals in your industry in the destination country.",
-    ]
+    ],
 }
 
 # ============== NOTIFICATION QUEUE ==============
 
+
 class NotificationQueue:
     """Queue for pending notifications"""
-    
+
     def __init__(self):
-        self.pending: List[Dict[str, Any]] = []
-        self.sent: List[Dict[str, Any]] = []
-    
-    def add(self, user_id: int, notification_type: str, data: Dict[str, Any], 
-            scheduled_time: datetime = None):
+        self.pending: list[dict[str, Any]] = []
+        self.sent: list[dict[str, Any]] = []
+
+    def add(
+        self, user_id: int, notification_type: str, data: dict[str, Any], scheduled_time: datetime = None
+    ):
         """Add notification to queue"""
         notification = {
             "id": f"{user_id}_{notification_type}_{datetime.now().timestamp()}",
@@ -117,17 +118,17 @@ class NotificationQueue:
             "data": data,
             "scheduled_time": scheduled_time or datetime.now(),
             "created_at": datetime.now(),
-            "status": "pending"
+            "status": "pending",
         }
         self.pending.append(notification)
         return notification["id"]
-    
-    def get_due_notifications(self) -> List[Dict[str, Any]]:
+
+    def get_due_notifications(self) -> list[dict[str, Any]]:
         """Get notifications that are due to be sent"""
         now = datetime.now()
         due = [n for n in self.pending if n["scheduled_time"] <= now]
         return due
-    
+
     def mark_sent(self, notification_id: str):
         """Mark notification as sent"""
         for i, n in enumerate(self.pending):
@@ -137,8 +138,8 @@ class NotificationQueue:
                 self.sent.append(n)
                 self.pending.pop(i)
                 break
-    
-    def get_user_notifications(self, user_id: int) -> List[Dict[str, Any]]:
+
+    def get_user_notifications(self, user_id: int) -> list[dict[str, Any]]:
         """Get all notifications for a user"""
         return [n for n in self.pending + self.sent if n["user_id"] == user_id]
 
@@ -149,11 +150,12 @@ notification_queue = NotificationQueue()
 
 # ============== NOTIFICATION FUNCTIONS ==============
 
+
 def format_notification(notification_type: str, lang: str, **kwargs) -> str:
     """Format a notification message"""
     templates = NOTIFICATION_TEMPLATES.get(lang, NOTIFICATION_TEMPLATES["en"])
     template = templates.get(notification_type, "")
-    
+
     try:
         return template.format(**kwargs)
     except KeyError as e:
@@ -164,40 +166,43 @@ def format_notification(notification_type: str, lang: str, **kwargs) -> str:
 def get_daily_tip(lang: str = "es") -> str:
     """Get a random daily tip"""
     import random
+
     tips = DAILY_TIPS.get(lang, DAILY_TIPS["en"])
     return random.choice(tips)
 
 
-def check_document_expiry(user_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+def check_document_expiry(user_data: dict[str, Any]) -> list[dict[str, Any]]:
     """Check for documents that are expiring soon"""
     expiring = []
     documents = user_data.get("documents", [])
-    
+
     for doc in documents:
         expiry_date = doc.get("expiry_date")
         if expiry_date:
             try:
                 expiry = datetime.strptime(expiry_date, "%d/%m/%Y")
                 days_until = (expiry - datetime.now()).days
-                
+
                 if 0 < days_until <= 30:  # Expiring within 30 days
-                    expiring.append({
-                        "document": doc.get("name", "Documento"),
-                        "expiry_date": expiry_date,
-                        "days": days_until
-                    })
+                    expiring.append(
+                        {
+                            "document": doc.get("name", "Documento"),
+                            "expiry_date": expiry_date,
+                            "days": days_until,
+                        }
+                    )
             except ValueError:
                 pass
-    
+
     return expiring
 
 
-def check_progress_stale(user_data: Dict[str, Any], days_threshold: int = 7) -> bool:
+def check_progress_stale(user_data: dict[str, Any], days_threshold: int = 7) -> bool:
     """Check if user hasn't updated their profile in a while"""
     updated_at = user_data.get("updated_at")
     if not updated_at:
         return False
-    
+
     try:
         last_update = datetime.fromisoformat(updated_at)
         days_since = (datetime.now() - last_update).days
@@ -206,10 +211,10 @@ def check_progress_stale(user_data: Dict[str, Any], days_threshold: int = 7) -> 
         return False
 
 
-def schedule_user_notifications(user_id: int, user_data: Dict[str, Any]):
+def schedule_user_notifications(user_id: int, user_data: dict[str, Any]):
     """Schedule notifications for a user based on their data"""
     lang = user_data.get("language", "es")
-    
+
     # Check document expiry
     expiring_docs = check_document_expiry(user_data)
     for doc in expiring_docs:
@@ -220,10 +225,10 @@ def schedule_user_notifications(user_id: int, user_data: Dict[str, Any]):
                 "document": doc["document"],
                 "expiry_date": doc["expiry_date"],
                 "days": doc["days"],
-                "lang": lang
-            }
+                "lang": lang,
+            },
         )
-    
+
     # Check progress
     if check_progress_stale(user_data):
         updated_at = user_data.get("updated_at", "")
@@ -232,22 +237,18 @@ def schedule_user_notifications(user_id: int, user_data: Dict[str, Any]):
             days = (datetime.now() - last_update).days
         except:
             days = 7
-        
+
         notification_queue.add(
             user_id=user_id,
             notification_type=NotificationType.PROGRESS_REMINDER,
-            data={"days": days, "lang": lang}
+            data={"days": days, "lang": lang},
         )
 
 
 async def send_notification(bot, user_id: int, message: str) -> bool:
     """Send a notification to a user"""
     try:
-        await bot.send_message(
-            chat_id=user_id,
-            text=message,
-            parse_mode='Markdown'
-        )
+        await bot.send_message(chat_id=user_id, text=message, parse_mode="Markdown")
         logger.info(f"Notification sent to user {user_id}")
         return True
     except Exception as e:
@@ -258,16 +259,16 @@ async def send_notification(bot, user_id: int, message: str) -> bool:
 async def process_notification_queue(bot):
     """Process pending notifications"""
     due_notifications = notification_queue.get_due_notifications()
-    
+
     for notification in due_notifications:
         user_id = notification["user_id"]
         notification_type = notification["type"]
         data = notification["data"]
         lang = data.get("lang", "es")
-        
+
         # Format message
         message = format_notification(notification_type, lang, **data)
-        
+
         if message:
             success = await send_notification(bot, user_id, message)
             if success:
@@ -276,27 +277,28 @@ async def process_notification_queue(bot):
 
 # ============== SCHEDULER INTEGRATION ==============
 
+
 class NotificationScheduler:
     """Scheduler for periodic notification tasks"""
-    
+
     def __init__(self, bot=None):
         self.bot = bot
         self.running = False
-    
+
     async def start(self, bot):
         """Start the notification scheduler"""
         self.bot = bot
         self.running = True
         logger.info("📬 Notification scheduler started")
-        
+
         while self.running:
             try:
                 await process_notification_queue(self.bot)
             except Exception as e:
                 logger.error(f"Error processing notifications: {e}")
-            
+
             await asyncio.sleep(60)  # Check every minute
-    
+
     def stop(self):
         """Stop the scheduler"""
         self.running = False
@@ -310,16 +312,16 @@ notification_scheduler = NotificationScheduler()
 # ============== EXPORTS ==============
 
 __all__ = [
-    'NotificationType',
-    'notification_queue',
-    'notification_scheduler',
-    'format_notification',
-    'get_daily_tip',
-    'check_document_expiry',
-    'check_progress_stale',
-    'schedule_user_notifications',
-    'send_notification',
-    'process_notification_queue',
-    'DAILY_TIPS',
-    'NOTIFICATION_TEMPLATES'
+    "NotificationType",
+    "notification_queue",
+    "notification_scheduler",
+    "format_notification",
+    "get_daily_tip",
+    "check_document_expiry",
+    "check_progress_stale",
+    "schedule_user_notifications",
+    "send_notification",
+    "process_notification_queue",
+    "DAILY_TIPS",
+    "NOTIFICATION_TEMPLATES",
 ]

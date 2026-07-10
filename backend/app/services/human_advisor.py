@@ -27,20 +27,22 @@ Análisis:
 
 import logging
 import re
-from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
-from enum import Enum
 from datetime import datetime
+from enum import Enum
+from typing import Any
 
 # Análisis de sentimiento
 try:
     from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
     VADER_AVAILABLE = True
 except ImportError:
     VADER_AVAILABLE = False
 
 try:
     from textblob import TextBlob
+
     TEXTBLOB_AVAILABLE = True
 except ImportError:
     TEXTBLOB_AVAILABLE = False
@@ -50,74 +52,78 @@ logger = logging.getLogger(__name__)
 
 class ExplorationPhase(Enum):
     """Fases de exploración - general → particular"""
-    GREETING = "greeting"                    # Saludo inicial
-    DEEP_MOTIVATION = "deep_motivation"      # ¿Por qué REALMENTE quieres migrar?
-    WHO_MIGRATES = "who_migrates"            # ¿Quiénes van? Familia, edades
+
+    GREETING = "greeting"  # Saludo inicial
+    DEEP_MOTIVATION = "deep_motivation"  # ¿Por qué REALMENTE quieres migrar?
+    WHO_MIGRATES = "who_migrates"  # ¿Quiénes van? Familia, edades
     CURRENT_SITUATION = "current_situation"  # Situación actual
-    DESIRED_LIFE = "desired_life"            # Vida deseada
-    REAL_CONSTRAINTS = "real_constraints"    # Restricciones reales
+    DESIRED_LIFE = "desired_life"  # Vida deseada
+    REAL_CONSTRAINTS = "real_constraints"  # Restricciones reales
     UNDERSTANDING_SUMMARY = "understanding"  # Resumen de entendimiento
-    OPTIONS_EXPLORATION = "options"          # Explorar opciones (SOLO después del resumen)
-    PLAN_CREATION = "plan_creation"          # Crear plan
+    OPTIONS_EXPLORATION = "options"  # Explorar opciones (SOLO después del resumen)
+    PLAN_CREATION = "plan_creation"  # Crear plan
 
 
 class EmotionalState(Enum):
     """Estados emocionales detectados"""
-    EXCITED = "excited"           # Entusiasmado
-    HOPEFUL = "hopeful"           # Esperanzado
-    ANXIOUS = "anxious"           # Ansioso
-    FEARFUL = "fearful"           # Temeroso
-    CONFUSED = "confused"         # Confundido
-    FRUSTRATED = "frustrated"     # Frustrado
-    DETERMINED = "determined"     # Determinado
-    UNCERTAIN = "uncertain"       # Incierto
-    NEUTRAL = "neutral"           # Neutral
+
+    EXCITED = "excited"  # Entusiasmado
+    HOPEFUL = "hopeful"  # Esperanzado
+    ANXIOUS = "anxious"  # Ansioso
+    FEARFUL = "fearful"  # Temeroso
+    CONFUSED = "confused"  # Confundido
+    FRUSTRATED = "frustrated"  # Frustrado
+    DETERMINED = "determined"  # Determinado
+    UNCERTAIN = "uncertain"  # Incierto
+    NEUTRAL = "neutral"  # Neutral
 
 
 class DecisionStage(Enum):
     """Etapas de decisión del consumidor"""
-    AWARENESS = "awareness"       # Apenas considerando
-    INTEREST = "interest"         # Interesado, buscando info
+
+    AWARENESS = "awareness"  # Apenas considerando
+    INTEREST = "interest"  # Interesado, buscando info
     CONSIDERATION = "consideration"  # Evaluando opciones
-    INTENT = "intent"             # Decidido a actuar
-    EVALUATION = "evaluation"     # Comparando opciones específicas
-    PURCHASE = "purchase"         # Listo para comprometerse
+    INTENT = "intent"  # Decidido a actuar
+    EVALUATION = "evaluation"  # Comparando opciones específicas
+    PURCHASE = "purchase"  # Listo para comprometerse
 
 
 @dataclass
 class UserUnderstanding:
     """Entendimiento del usuario - debe ser confirmado antes de recomendar"""
+
     # Motivación profunda
-    deep_motivation: Optional[str] = None
-    underlying_fears: List[str] = field(default_factory=list)
-    underlying_hopes: List[str] = field(default_factory=list)
-    
+    deep_motivation: str | None = None
+    underlying_fears: list[str] = field(default_factory=list)
+    underlying_hopes: list[str] = field(default_factory=list)
+
     # Quiénes migran
-    migrating_alone: Optional[bool] = None
-    family_members: List[Dict[str, Any]] = field(default_factory=list)
+    migrating_alone: bool | None = None
+    family_members: list[dict[str, Any]] = field(default_factory=list)
     dependents_count: int = 0
-    
+
     # Situación actual
-    current_country: Optional[str] = None
-    current_profession: Optional[str] = None
-    years_experience: Optional[int] = None
-    education_level: Optional[str] = None
-    current_income: Optional[int] = None
-    
+    current_country: str | None = None
+    current_profession: str | None = None
+    years_experience: int | None = None
+    education_level: str | None = None
+    current_income: int | None = None
+
     # Vida deseada
-    desired_lifestyle: Optional[str] = None
-    career_goals: Optional[str] = None
-    family_priorities: List[str] = field(default_factory=list)
-    
+    desired_lifestyle: str | None = None
+    career_goals: str | None = None
+    family_priorities: list[str] = field(default_factory=list)
+
     # Restricciones
-    available_savings: Optional[int] = None
-    timeline_urgency: Optional[str] = None  # "urgent", "flexible", "no_rush"
-    document_status: Optional[str] = None
-    
+    available_savings: int | None = None
+    timeline_urgency: str | None = None  # "urgent", "flexible", "no_rush"
+    document_status: str | None = None
+
     # Estado
     confirmed_by_user: bool = False
     last_updated: datetime = field(default_factory=datetime.now)
-    
+
     def completeness_score(self) -> float:
         """Calcular qué tan completo está el entendimiento"""
         fields = [
@@ -128,8 +134,8 @@ class UserUnderstanding:
             self.available_savings is not None,
         ]
         return sum(1 for f in fields if f) / len(fields) * 100
-    
-    def missing_critical_info(self) -> List[str]:
+
+    def missing_critical_info(self) -> list[str]:
         """Identificar información crítica faltante"""
         missing = []
         if not self.deep_motivation:
@@ -148,158 +154,200 @@ class UserUnderstanding:
 @dataclass
 class ConversationContext:
     """Contexto de la conversación"""
+
     phase: ExplorationPhase = ExplorationPhase.GREETING
     emotional_state: EmotionalState = EmotionalState.NEUTRAL
     decision_stage: DecisionStage = DecisionStage.AWARENESS
     understanding: UserUnderstanding = field(default_factory=UserUnderstanding)
-    
+
     # Control de formularios
     interaction_count: int = 0
     form_count: int = 0
     last_form_interaction: int = 0
-    
+
     # Historial
-    topics_discussed: List[str] = field(default_factory=list)
-    pending_validations: List[str] = field(default_factory=list)
-    
+    topics_discussed: list[str] = field(default_factory=list)
+    pending_validations: list[str] = field(default_factory=list)
+
     def can_show_form(self) -> bool:
         """Verificar si se puede mostrar un formulario (máx 1 cada 5)"""
         if self.form_count == 0:
             return True
         return (self.interaction_count - self.last_form_interaction) >= 5
-    
+
     def record_form(self):
         """Registrar que se mostró un formulario"""
         self.form_count += 1
         self.last_form_interaction = self.interaction_count
-    
-    def can_recommend(self) -> Tuple[bool, str]:
+
+    def can_recommend(self) -> tuple[bool, str]:
         """Verificar si se puede hacer recomendaciones"""
         if not self.understanding.confirmed_by_user:
             return False, "El Resumen de Entendimiento no ha sido confirmado"
-        
+
         missing = self.understanding.missing_critical_info()
         if missing:
             return False, f"Falta información crítica: {', '.join(missing)}"
-        
+
         return True, ""
 
 
 class EmotionalAnalyzer:
     """Analizador emocional y psicológico"""
-    
+
     def __init__(self):
         self.vader = SentimentIntensityAnalyzer() if VADER_AVAILABLE else None
-    
+
     def analyze_emotion(self, text: str, lang: str = "es") -> EmotionalState:
         """Detectar estado emocional del texto"""
         text_lower = text.lower()
-        
+
         # Patrones emocionales en español
         emotion_patterns = {
             EmotionalState.EXCITED: [
-                r"emocionad[oa]", r"feliz", r"genial", r"increíble", r"fantástico",
-                r"no puedo esperar", r"muy ilusionad[oa]", r"🎉", r"😊", r"🚀"
+                r"emocionad[oa]",
+                r"feliz",
+                r"genial",
+                r"increíble",
+                r"fantástico",
+                r"no puedo esperar",
+                r"muy ilusionad[oa]",
+                r"🎉",
+                r"😊",
+                r"🚀",
             ],
             EmotionalState.ANXIOUS: [
-                r"nervios[oa]", r"ansios[oa]", r"preocupad[oa]", r"estresad[oa]",
-                r"no sé si", r"me da cosa", r"😰", r"😟"
+                r"nervios[oa]",
+                r"ansios[oa]",
+                r"preocupad[oa]",
+                r"estresad[oa]",
+                r"no sé si",
+                r"me da cosa",
+                r"😰",
+                r"😟",
             ],
             EmotionalState.FEARFUL: [
-                r"miedo", r"temor", r"asustado", r"terror", r"pánico",
-                r"me da miedo", r"tengo miedo", r"😨", r"😱"
+                r"miedo",
+                r"temor",
+                r"asustado",
+                r"terror",
+                r"pánico",
+                r"me da miedo",
+                r"tengo miedo",
+                r"😨",
+                r"😱",
             ],
             EmotionalState.CONFUSED: [
-                r"confundid[oa]", r"no entiendo", r"no sé", r"perdid[oa]",
-                r"no me queda claro", r"🤔", r"❓"
+                r"confundid[oa]",
+                r"no entiendo",
+                r"no sé",
+                r"perdid[oa]",
+                r"no me queda claro",
+                r"🤔",
+                r"❓",
             ],
             EmotionalState.FRUSTRATED: [
-                r"frustrad[oa]", r"harto", r"cansad[oa] de", r"ya no aguanto",
-                r"imposible", r"😤", r"😠"
+                r"frustrad[oa]",
+                r"harto",
+                r"cansad[oa] de",
+                r"ya no aguanto",
+                r"imposible",
+                r"😤",
+                r"😠",
             ],
             EmotionalState.DETERMINED: [
-                r"decidid[oa]", r"voy a", r"tengo que", r"necesito",
-                r"estoy list[oa]", r"💪", r"✊"
+                r"decidid[oa]",
+                r"voy a",
+                r"tengo que",
+                r"necesito",
+                r"estoy list[oa]",
+                r"💪",
+                r"✊",
             ],
             EmotionalState.HOPEFUL: [
-                r"espero", r"ojalá", r"sueño con", r"me gustaría",
-                r"tengo fe", r"🙏", r"✨"
+                r"espero",
+                r"ojalá",
+                r"sueño con",
+                r"me gustaría",
+                r"tengo fe",
+                r"🙏",
+                r"✨",
             ],
             EmotionalState.UNCERTAIN: [
-                r"no estoy segur[oa]", r"tal vez", r"quizás", r"puede ser",
-                r"no sé si", r"depende"
+                r"no estoy segur[oa]",
+                r"tal vez",
+                r"quizás",
+                r"puede ser",
+                r"no sé si",
+                r"depende",
             ],
         }
-        
+
         for emotion, patterns in emotion_patterns.items():
             for pattern in patterns:
                 if re.search(pattern, text_lower):
                     return emotion
-        
+
         # Usar VADER si está disponible
         if self.vader:
             scores = self.vader.polarity_scores(text)
-            if scores['compound'] >= 0.5:
+            if scores["compound"] >= 0.5:
                 return EmotionalState.EXCITED
-            elif scores['compound'] <= -0.5:
+            elif scores["compound"] <= -0.5:
                 return EmotionalState.ANXIOUS
-        
+
         return EmotionalState.NEUTRAL
-    
+
     def analyze_decision_stage(self, text: str, context: ConversationContext) -> DecisionStage:
         """Detectar etapa de decisión del consumidor"""
         text_lower = text.lower()
-        
+
         # Indicadores de cada etapa
         if any(w in text_lower for w in ["solo preguntando", "curiosidad", "qué es", "cómo funciona"]):
             return DecisionStage.AWARENESS
-        
+
         if any(w in text_lower for w in ["me interesa", "cuéntame más", "quiero saber"]):
             return DecisionStage.INTEREST
-        
+
         if any(w in text_lower for w in ["estoy considerando", "pensando en", "evaluando"]):
             return DecisionStage.CONSIDERATION
-        
+
         if any(w in text_lower for w in ["quiero hacerlo", "voy a", "decidí", "necesito empezar"]):
             return DecisionStage.INTENT
-        
+
         if any(w in text_lower for w in ["cuál es mejor", "comparar", "diferencia entre"]):
             return DecisionStage.EVALUATION
-        
+
         if any(w in text_lower for w in ["listo para", "empecemos", "cuánto cuesta", "cómo pago"]):
             return DecisionStage.PURCHASE
-        
+
         return context.decision_stage
 
 
 class HumanAdvisor:
     """
     Asesor Migratorio Humano
-    
+
     Actúa como un consultor humano, no como un bot.
     Escucha, entiende, valida y solo entonces recomienda.
     """
-    
+
     def __init__(self):
         self.emotional_analyzer = EmotionalAnalyzer()
-        self.contexts: Dict[int, ConversationContext] = {}
-    
+        self.contexts: dict[int, ConversationContext] = {}
+
     def get_context(self, user_id: int) -> ConversationContext:
         """Obtener o crear contexto de conversación"""
         if user_id not in self.contexts:
             self.contexts[user_id] = ConversationContext()
         return self.contexts[user_id]
-    
+
     async def process_message(
-        self,
-        user_id: int,
-        text: str,
-        user_data: Dict[str, Any],
-        lang: str = "es"
-    ) -> Dict[str, Any]:
+        self, user_id: int, text: str, user_data: dict[str, Any], lang: str = "es"
+    ) -> dict[str, Any]:
         """
         Procesar mensaje del usuario como asesor humano.
-        
+
         Returns:
             {
                 "response": str,
@@ -312,41 +360,43 @@ class HumanAdvisor:
         """
         ctx = self.get_context(user_id)
         ctx.interaction_count += 1
-        
+
         # Analizar emoción y etapa de decisión
         ctx.emotional_state = self.emotional_analyzer.analyze_emotion(text, lang)
         ctx.decision_stage = self.emotional_analyzer.analyze_decision_stage(text, ctx)
-        
-        logger.info(f"🧠 HumanAdvisor | user={user_id} | phase={ctx.phase.value} | emotion={ctx.emotional_state.value} | stage={ctx.decision_stage.value}")
-        
+
+        logger.info(
+            f"🧠 HumanAdvisor | user={user_id} | phase={ctx.phase.value} | emotion={ctx.emotional_state.value} | stage={ctx.decision_stage.value}"
+        )
+
         # Extraer datos del texto
         extracted = self._extract_data(text, ctx, lang)
-        
+
         # Verificar si el usuario está corrigiendo o dudando
         if self._is_correction_or_doubt(text, lang, ctx):
             return await self._handle_correction_or_doubt(text, ctx, lang)
-        
+
         # Verificar si intenta saltar fases
         if self._is_premature_request(text, ctx, lang):
             return await self._handle_premature_request(text, ctx, lang)
-        
+
         # Procesar según la fase actual
         response = await self._process_by_phase(text, ctx, extracted, lang)
-        
+
         # Si hay datos extraídos, validarlos antes de avanzar
         if extracted and not response.get("needs_validation"):
             validation = self._create_validation_summary(extracted, lang)
             if validation:
                 response["needs_validation"] = True
                 response["validation_summary"] = validation
-        
+
         return response
-    
-    def _extract_data(self, text: str, ctx: ConversationContext, lang: str) -> Dict[str, Any]:
+
+    def _extract_data(self, text: str, ctx: ConversationContext, lang: str) -> dict[str, Any]:
         """Extraer datos del texto libre"""
         extracted = {}
         text_lower = text.lower()
-        
+
         # Motivación profunda
         motivation_patterns = {
             "better_life": [r"mejor vida", r"futuro mejor", r"calidad de vida"],
@@ -356,13 +406,13 @@ class HumanAdvisor:
             "education": [r"estudiar", r"universidad", r"educación para"],
             "adventure": [r"conocer", r"experiencia", r"aventura", r"nuevo comienzo"],
         }
-        
+
         for motivation, patterns in motivation_patterns.items():
             for pattern in patterns:
                 if re.search(pattern, text_lower):
                     extracted["motivation_type"] = motivation
                     break
-        
+
         # Familia
         family_patterns = [
             (r"solo|soltero|soltera", "alone"),
@@ -370,42 +420,42 @@ class HumanAdvisor:
             (r"hijos?|niños?|bebé", "with_children"),
             (r"familia completa|todos", "whole_family"),
         ]
-        
+
         for pattern, family_type in family_patterns:
             if re.search(pattern, text_lower):
                 extracted["family_situation"] = family_type
                 break
-        
+
         # Edades de hijos
         age_match = re.search(r"(\d+)\s*(?:años?|year)", text_lower)
         if age_match and "hijo" in text_lower or "niño" in text_lower:
             extracted["child_age"] = int(age_match.group(1))
-        
+
         # Profesión
         profession_patterns = [
             r"soy\s+(ingeniero|doctor|abogado|contador|profesor|enfermero|programador|diseñador)[a-z]*",
             r"trabajo\s+(?:como|de)\s+(\w+)",
             r"me\s+dedico\s+a\s+(\w+)",
         ]
-        
+
         for pattern in profession_patterns:
             match = re.search(pattern, text_lower)
             if match:
                 extracted["profession"] = match.group(1)
                 break
-        
+
         # Experiencia
         exp_match = re.search(r"(\d+)\s*años?\s*(?:de\s+)?experiencia", text_lower)
         if exp_match:
             extracted["years_experience"] = int(exp_match.group(1))
-        
+
         # Dinero
         money_patterns = [
             (r"(?:tengo|cuento con|dispongo de)[^\d]*\$?([\d,]+)", "savings"),
             (r"(?:gano|salario|sueldo)[^\d]*\$?([\d,]+)", "income"),
             (r"(?:ahorr[oa]d?[oa]?s?)[^\d]*\$?([\d,]+)", "savings"),
         ]
-        
+
         for pattern, money_type in money_patterns:
             match = re.search(pattern, text_lower)
             if match and match.group(1):
@@ -415,19 +465,19 @@ class HumanAdvisor:
                         extracted[money_type] = int(amount_str)
                     except ValueError:
                         pass
-        
+
         # Urgencia
         if any(w in text_lower for w in ["urgente", "pronto", "ya", "inmediato", "este año"]):
             extracted["urgency"] = "urgent"
         elif any(w in text_lower for w in ["sin prisa", "cuando sea", "no hay apuro", "flexible"]):
             extracted["urgency"] = "flexible"
-        
+
         return extracted
-    
-    def _is_correction_or_doubt(self, text: str, lang: str, ctx: 'ConversationContext' = None) -> bool:
+
+    def _is_correction_or_doubt(self, text: str, lang: str, ctx: "ConversationContext" = None) -> bool:
         """Detectar si el usuario está corrigiendo o dudando"""
         text_lower = text.lower()
-        
+
         # En la fase de saludo, "no sé si quiero migrar" es válido, no es duda bloqueante
         if ctx and ctx.phase == ExplorationPhase.GREETING:
             # Solo bloquear si es una corrección explícita
@@ -442,7 +492,7 @@ class HumanAdvisor:
                 if re.search(pattern, text_lower):
                     return True
             return False
-        
+
         correction_patterns = [
             r"no,?\s*(en realidad|quise decir|me equivoqué)",
             r"corrijo|corrección",
@@ -452,23 +502,23 @@ class HumanAdvisor:
             r"no,?\s*espera",  # "no, espera" en cualquier parte
             r"\.\.\.[^.]*espera",  # "... espera"
         ]
-        
+
         doubt_patterns = [
             r"déjame pensar",
             r"un momento",
             r"^espera$",  # Solo "espera"
         ]
-        
+
         for pattern in correction_patterns + doubt_patterns:
             if re.search(pattern, text_lower):
                 return True
-        
+
         return False
-    
+
     def _is_premature_request(self, text: str, ctx: ConversationContext, lang: str) -> bool:
         """Detectar si el usuario intenta saltar a recomendaciones sin contexto"""
         text_lower = text.lower()
-        
+
         # Solicitudes prematuras
         premature_patterns = [
             r"qué visa",
@@ -478,20 +528,20 @@ class HumanAdvisor:
             r"cuál es el plan",
             r"a qué país",
         ]
-        
+
         # Solo es prematuro si no hemos completado el entendimiento
         if ctx.understanding.completeness_score() < 60:
             for pattern in premature_patterns:
                 if re.search(pattern, text_lower):
                     return True
-        
+
         return False
-    
+
     async def _handle_correction_or_doubt(
         self, text: str, ctx: ConversationContext, lang: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Manejar corrección o duda - NO avanzar de estado"""
-        
+
         if lang == "es":
             response = (
                 "Entiendo, tomemos un momento. 🤔\n\n"
@@ -506,7 +556,7 @@ class HumanAdvisor:
                 "This is important and I want to make sure I understand you correctly.\n\n"
                 "Could you tell me more about what you're thinking?"
             )
-        
+
         return {
             "response": response,
             "buttons": None,
@@ -514,14 +564,14 @@ class HumanAdvisor:
             "phase_changed": False,
             "needs_validation": False,
         }
-    
+
     async def _handle_premature_request(
         self, text: str, ctx: ConversationContext, lang: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Manejar solicitud prematura de recomendaciones"""
-        
+
         missing = ctx.understanding.missing_critical_info()
-        
+
         if lang == "es":
             response = (
                 "Entiendo que quieres avanzar, y me encanta tu entusiasmo. 🌟\n\n"
@@ -530,12 +580,12 @@ class HumanAdvisor:
                 "Imagina que voy a un doctor y le digo 'recétame algo'. "
                 "Un buen doctor primero pregunta, examina, y luego recomienda.\n\n"
             )
-            
+
             if missing:
                 response += f"Todavía me falta entender: {', '.join(missing)}.\n\n"
-            
+
             response += "¿Me cuentas un poco más sobre tu situación?"
-            
+
         else:
             response = (
                 "I understand you want to move forward, and I love your enthusiasm. 🌟\n\n"
@@ -544,12 +594,12 @@ class HumanAdvisor:
                 "Imagine going to a doctor and saying 'prescribe me something'. "
                 "A good doctor first asks, examines, and then recommends.\n\n"
             )
-            
+
             if missing:
                 response += f"I still need to understand: {', '.join(missing)}.\n\n"
-            
+
             response += "Could you tell me a bit more about your situation?"
-        
+
         return {
             "response": response,
             "buttons": None,
@@ -557,12 +607,12 @@ class HumanAdvisor:
             "phase_changed": False,
             "needs_validation": False,
         }
-    
+
     async def _process_by_phase(
-        self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
-    ) -> Dict[str, Any]:
+        self, text: str, ctx: ConversationContext, extracted: dict, lang: str
+    ) -> dict[str, Any]:
         """Procesar según la fase actual"""
-        
+
         phase_handlers = {
             ExplorationPhase.GREETING: self._phase_greeting,
             ExplorationPhase.DEEP_MOTIVATION: self._phase_deep_motivation,
@@ -573,25 +623,25 @@ class HumanAdvisor:
             ExplorationPhase.UNDERSTANDING_SUMMARY: self._phase_understanding_summary,
             ExplorationPhase.OPTIONS_EXPLORATION: self._phase_options,
         }
-        
+
         handler = phase_handlers.get(ctx.phase, self._phase_greeting)
         return await handler(text, ctx, extracted, lang)
-    
+
     async def _phase_greeting(
-        self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
-    ) -> Dict[str, Any]:
+        self, text: str, ctx: ConversationContext, extracted: dict, lang: str
+    ) -> dict[str, Any]:
         """
         SEGMENTO 1: Inicio humano y contención
-        
+
         GUIÓN OFICIAL:
         - Escuchar sin pedir datos
         - No avanzar hasta que el usuario haya compartido
         - Respuestas empáticas según estado emocional
         """
         from app.services.migpal_script_usa import get_migpal_script_usa
-        
+
         script = get_migpal_script_usa()
-        
+
         # Si es la primera interacción, dar el saludo oficial
         if ctx.interaction_count <= 1:
             greeting = script.get_greeting(lang)
@@ -602,11 +652,11 @@ class HumanAdvisor:
                 "phase_changed": False,
                 "needs_validation": False,
             }
-        
+
         # Procesar respuesta del usuario en Segmento 1
         emotional_state = ctx.emotional_state.value
         script_response = script.process_segment_1(text, emotional_state, lang)
-        
+
         # Si el guion indica transición a Segmento 2, cambiar fase
         if script_response.segment.value == "s2_escucha_profunda":
             ctx.phase = ExplorationPhase.DEEP_MOTIVATION
@@ -617,7 +667,7 @@ class HumanAdvisor:
                 "phase_changed": True,
                 "needs_validation": False,
             }
-        
+
         # Seguir en Segmento 1 - escuchando
         return {
             "response": script_response.message,
@@ -626,19 +676,19 @@ class HumanAdvisor:
             "phase_changed": False,
             "needs_validation": False,
         }
-    
+
     async def _phase_deep_motivation(
-        self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
-    ) -> Dict[str, Any]:
+        self, text: str, ctx: ConversationContext, extracted: dict, lang: str
+    ) -> dict[str, Any]:
         """Fase de motivación profunda"""
-        
+
         # Guardar motivación
         if extracted.get("motivation_type"):
             ctx.understanding.deep_motivation = extracted["motivation_type"]
         else:
             # Guardar el texto como motivación si no se detectó patrón
             ctx.understanding.deep_motivation = text[:200]
-        
+
         # Parafrasear y validar
         motivation_paraphrases = {
             "better_life": "buscar una mejor calidad de vida para ti y los tuyos",
@@ -648,12 +698,9 @@ class HumanAdvisor:
             "education": "acceder a mejor educación",
             "adventure": "vivir una nueva experiencia",
         }
-        
-        paraphrase = motivation_paraphrases.get(
-            extracted.get("motivation_type", ""),
-            "lo que me cuentas"
-        )
-        
+
+        paraphrase = motivation_paraphrases.get(extracted.get("motivation_type", ""), "lo que me cuentas")
+
         if lang == "es":
             response = (
                 f"Entiendo... {paraphrase}. 💭\n\n"
@@ -670,10 +717,10 @@ class HumanAdvisor:
                 "Are you traveling alone, with a partner, with children? "
                 "If there are children, what ages are they?"
             )
-        
+
         ctx.phase = ExplorationPhase.WHO_MIGRATES
         ctx.topics_discussed.append("motivation")
-        
+
         return {
             "response": response,
             "buttons": None,
@@ -681,52 +728,50 @@ class HumanAdvisor:
             "phase_changed": True,
             "needs_validation": False,
         }
-    
+
     async def _phase_who_migrates(
-        self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
-    ) -> Dict[str, Any]:
+        self, text: str, ctx: ConversationContext, extracted: dict, lang: str
+    ) -> dict[str, Any]:
         """
         SEGMENTO 3: Familia y realidad humana
-        
+
         GUIÓN OFICIAL:
         - Cuéntame un poco más sobre eso
         - ¿Quiénes serían? ¿Pareja, hijos, padres? ¿Edades aproximadas?
         - No necesito exactitud, solo contexto humano
         - Conversación libre. Extraer datos sin formularios.
         """
-        from app.services.migpal_script_usa import get_migpal_script_usa, MigPALScriptUSA
-        
+        from app.services.migpal_script_usa import MigPALScriptUSA
+
         # Detectar información familiar del texto
         script = MigPALScriptUSA()  # Nueva instancia para este segmento
         family_type = script._detect_family_type(text.lower(), extracted)
-        
+
         # Guardar información familiar
         if family_type == "solo":
             ctx.understanding.migrating_alone = True
         else:
             ctx.understanding.migrating_alone = False
-        
+
         # Detectar edades de hijos
         import re
-        age_matches = re.findall(r'(\d+)\s*(?:años?|years?)', text.lower())
+
+        age_matches = re.findall(r"(\d+)\s*(?:años?|years?)", text.lower())
         for age in age_matches:
-            ctx.understanding.family_members.append({
-                "type": "child",
-                "age": int(age)
-            })
-        
+            ctx.understanding.family_members.append({"type": "child", "age": int(age)})
+
         # Respuesta según tipo de familia detectado
         responses = script.SEGMENT_3_RESPONSES.get(lang, script.SEGMENT_3_RESPONSES["es"])
         response_template = responses.get(family_type, responses["default"])
-        
+
         # Transición al Segmento 4
         transition = script.SEGMENT_3_ACKNOWLEDGMENT.get(lang, script.SEGMENT_3_ACKNOWLEDGMENT["es"])
         response_text = response_template.format(transition=transition)
-        
+
         # Avanzar a la siguiente fase
         ctx.phase = ExplorationPhase.CURRENT_SITUATION
         ctx.topics_discussed.append("family")
-        
+
         return {
             "response": response_text,
             "buttons": None,
@@ -734,17 +779,17 @@ class HumanAdvisor:
             "phase_changed": True,
             "needs_validation": False,
         }
-    
+
     async def _phase_current_situation(
-        self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
-    ) -> Dict[str, Any]:
+        self, text: str, ctx: ConversationContext, extracted: dict, lang: str
+    ) -> dict[str, Any]:
         """
         Fase de situación actual - Transición a Segmento 4
-        
+
         Después de conocer la situación actual, pasamos a vida deseada.
         """
         from app.services.migpal_script_usa import MigPALScriptUSA
-        
+
         # Guardar datos
         if extracted.get("profession"):
             ctx.understanding.current_profession = extracted["profession"]
@@ -752,23 +797,24 @@ class HumanAdvisor:
             ctx.understanding.years_experience = extracted["years_experience"]
         if extracted.get("income"):
             ctx.understanding.current_income = extracted["income"]
-        
+
         # Detectar profesión del texto si no se extrajo
         import re
+
         if not ctx.understanding.current_profession:
-            prof_match = re.search(r'soy\s+(\w+)', text.lower())
+            prof_match = re.search(r"soy\s+(\w+)", text.lower())
             if prof_match:
                 ctx.understanding.current_profession = prof_match.group(1)
-        
+
         # Parafrasear
         profession = ctx.understanding.current_profession or "profesional"
         years = ctx.understanding.years_experience
         years_text = f" con {years} años de experiencia" if years else ""
-        
+
         # Usar el guion del Segmento 4
         script = MigPALScriptUSA()
         segment_4_intro = script.SEGMENT_4_INITIAL.get(lang, script.SEGMENT_4_INITIAL["es"])
-        
+
         if lang == "es":
             response = (
                 f"¡Excelente! Eres {profession}{years_text}. 💼\n\n"
@@ -783,10 +829,10 @@ class HumanAdvisor:
                 f"---\n\n"
                 f"{segment_4_intro}"
             )
-        
+
         ctx.phase = ExplorationPhase.DESIRED_LIFE
         ctx.topics_discussed.append("current_situation")
-        
+
         return {
             "response": response,
             "buttons": None,
@@ -794,13 +840,13 @@ class HumanAdvisor:
             "phase_changed": True,
             "needs_validation": False,
         }
-    
+
     async def _phase_desired_life(
-        self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
-    ) -> Dict[str, Any]:
+        self, text: str, ctx: ConversationContext, extracted: dict, lang: str
+    ) -> dict[str, Any]:
         """
         SEGMENTO 4: Vida deseada en USA (antes que visa)
-        
+
         GUIÓN OFICIAL:
         - Antes de hablar de visas, pensemos en la vida
         - Imagináte dentro de 3 a 5 años en USA
@@ -808,17 +854,17 @@ class HumanAdvisor:
         - Respóndeme como te salga. Yo luego lo organizo.
         """
         from app.services.migpal_script_usa import MigPALScriptUSA
-        
+
         # Guardar sueños
         ctx.understanding.desired_lifestyle = text[:300]
-        
+
         # Procesar con el guion del Segmento 4
         script = MigPALScriptUSA()
         script_response = script.process_segment_4(text, extracted, lang)
-        
+
         ctx.phase = ExplorationPhase.REAL_CONSTRAINTS
         ctx.topics_discussed.append("desired_life")
-        
+
         return {
             "response": script_response.message,
             "buttons": None,
@@ -826,13 +872,13 @@ class HumanAdvisor:
             "phase_changed": True,
             "needs_validation": False,
         }
-    
+
     async def _phase_real_constraints(
-        self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
-    ) -> Dict[str, Any]:
+        self, text: str, ctx: ConversationContext, extracted: dict, lang: str
+    ) -> dict[str, Any]:
         """
         SEGMENTO 5: Restricciones reales + RESUMEN OBLIGATORIO
-        
+
         GUIÓN OFICIAL:
         - Gracias. Ahora déjame detenerme un momento.
         - 📌 Resumen de lo que entiendo hasta ahora
@@ -840,18 +886,18 @@ class HumanAdvisor:
         - ⚠️ NO avanzar hasta que el usuario confirme o corrija.
         """
         from app.services.migpal_script_usa import MigPALScriptUSA
-        
+
         # Guardar restricciones
         if extracted.get("savings"):
             ctx.understanding.available_savings = extracted["savings"]
         if extracted.get("urgency"):
             ctx.understanding.timeline_urgency = extracted["urgency"]
-        
+
         ctx.topics_discussed.append("constraints")
-        
+
         # Usar el guion del Segmento 5 para generar el resumen
         script = MigPALScriptUSA()
-        
+
         # Convertir understanding a dict para el guion
         understanding_dict = {
             "deep_motivation": ctx.understanding.deep_motivation,
@@ -863,14 +909,14 @@ class HumanAdvisor:
             "available_savings": ctx.understanding.available_savings,
             "timeline_urgency": ctx.understanding.timeline_urgency,
         }
-        
+
         # Generar resumen con el guion oficial
         script_response = script.process_segment_5(
             text, understanding_dict, is_confirmation_phase=False, lang=lang
         )
-        
+
         ctx.phase = ExplorationPhase.UNDERSTANDING_SUMMARY
-        
+
         return {
             "response": script_response.message,
             "buttons": script_response.buttons,
@@ -878,27 +924,27 @@ class HumanAdvisor:
             "phase_changed": True,
             "needs_validation": True,
         }
-    
+
     async def _phase_understanding_summary(
-        self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
-    ) -> Dict[str, Any]:
+        self, text: str, ctx: ConversationContext, extracted: dict, lang: str
+    ) -> dict[str, Any]:
         """
         SEGMENTO 5 (continuación): Confirmación del resumen
-        
+
         REGLA CRÍTICA: ⚠️ NO avanzar hasta que el usuario confirme o corrija.
         """
         from app.services.migpal_script_usa import MigPALScriptUSA
-        
+
         script = MigPALScriptUSA()
-        
+
         # Procesar confirmación/corrección
         script_response = script._process_summary_confirmation(text.lower(), lang)
-        
+
         # Si el usuario confirmó, marcar y avanzar
         if script_response.segment.value == "s8_opciones":
             ctx.understanding.confirmed_by_user = True
             ctx.phase = ExplorationPhase.OPTIONS_EXPLORATION
-            
+
             return {
                 "response": script_response.message,
                 "buttons": None,
@@ -906,7 +952,7 @@ class HumanAdvisor:
                 "phase_changed": True,
                 "needs_validation": False,
             }
-        
+
         # Si necesita corrección, quedarse en esta fase
         # Regenerar el resumen si el usuario quiere corregir
         if "corregir" in text.lower() or "agregar" in text.lower() or "cambiar" in text.lower():
@@ -922,7 +968,7 @@ class HumanAdvisor:
                     "It's important that I have the correct information.\n\n"
                     "What part would you like to correct or add?"
                 )
-            
+
             return {
                 "response": response,
                 "buttons": None,
@@ -930,7 +976,7 @@ class HumanAdvisor:
                 "phase_changed": False,
                 "needs_validation": True,
             }
-        
+
         # Respuesta ambigua - pedir clarificación
         if lang == "es":
             response = (
@@ -950,7 +996,7 @@ class HumanAdvisor:
                 ("✅ Yes, it's correct", "confirm_summary"),
                 ("✏️ I want to correct something", "correct_summary"),
             ]
-        
+
         return {
             "response": response,
             "buttons": buttons,
@@ -958,21 +1004,21 @@ class HumanAdvisor:
             "phase_changed": False,
             "needs_validation": True,
         }
-    
+
     async def _phase_options(
-        self, text: str, ctx: ConversationContext, extracted: Dict, lang: str
-    ) -> Dict[str, Any]:
+        self, text: str, ctx: ConversationContext, extracted: dict, lang: str
+    ) -> dict[str, Any]:
         """
         SEGMENTO 6 y 8: Introducción al sistema migratorio + Opciones
-        
+
         FLUJO:
         1. Primera vez: Mostrar Segmento 6 (introducción, pedir consentimiento)
         2. Con consentimiento: Mostrar análisis de visas
-        
+
         REGLA: Solo con consentimiento se pasa a análisis de visas.
         """
         from app.services.migpal_script_usa import MigPALScriptUSA
-        
+
         # Verificar que el resumen fue confirmado
         if not ctx.understanding.confirmed_by_user:
             if lang == "es":
@@ -983,15 +1029,15 @@ class HumanAdvisor:
                     "phase_changed": False,
                     "needs_validation": True,
                 }
-        
+
         script = MigPALScriptUSA()
-        
+
         # Verificar si ya mostramos la introducción del Segmento 6
         if "segment_6_shown" not in ctx.topics_discussed:
             # Primera vez en esta fase: mostrar Segmento 6
             ctx.topics_discussed.append("segment_6_shown")
             intro = script.get_segment_6_intro(lang)
-            
+
             return {
                 "response": intro.message,
                 "buttons": intro.buttons,
@@ -999,14 +1045,14 @@ class HumanAdvisor:
                 "phase_changed": False,
                 "needs_validation": True,
             }
-        
+
         # Ya mostramos la intro, procesar respuesta del usuario
         script_response = script.process_segment_6(text, lang)
-        
+
         # Si el usuario dio consentimiento, mostrar análisis
         if script_response.can_advance:
             ctx.topics_discussed.append("visa_analysis_started")
-            
+
             # Aquí iría el análisis real de visas basado en el perfil
             # Por ahora, mensaje de transición
             if lang == "es":
@@ -1016,7 +1062,9 @@ class HumanAdvisor:
                     f"- Profesión: {ctx.understanding.current_profession or 'No especificada'}\n"
                     f"- Experiencia: {ctx.understanding.years_experience or '?'} años\n"
                     f"- Familia: {'Solo/a' if ctx.understanding.migrating_alone else 'Con familia'}\n"
-                    f"- Recursos: ${ctx.understanding.available_savings:,}" if ctx.understanding.available_savings else "- Recursos: No especificados"
+                    f"- Recursos: ${ctx.understanding.available_savings:,}"
+                    if ctx.understanding.available_savings
+                    else "- Recursos: No especificados"
                 )
                 analysis_intro += "\n\n"
                 analysis_intro += (
@@ -1038,10 +1086,9 @@ class HumanAdvisor:
                 )
                 analysis_intro += "\n\n"
                 analysis_intro += (
-                    "🎯 *VIABLE MIGRATION OPTIONS*\n\n"
-                    "_(Detailed visa analysis in development...)_"
+                    "🎯 *VIABLE MIGRATION OPTIONS*\n\n" "_(Detailed visa analysis in development...)_"
                 )
-            
+
             return {
                 "response": analysis_intro,
                 "buttons": None,
@@ -1049,7 +1096,7 @@ class HumanAdvisor:
                 "phase_changed": False,
                 "needs_validation": False,
             }
-        
+
         # Usuario tiene preguntas o prefiere esperar
         return {
             "response": script_response.message,
@@ -1058,14 +1105,14 @@ class HumanAdvisor:
             "phase_changed": False,
             "needs_validation": script_response.requires_confirmation,
         }
-    
-    def _create_validation_summary(self, extracted: Dict, lang: str) -> Optional[str]:
+
+    def _create_validation_summary(self, extracted: dict, lang: str) -> str | None:
         """Crear resumen de validación para datos extraídos"""
         if not extracted:
             return None
-        
+
         parts = []
-        
+
         if lang == "es":
             if "profession" in extracted:
                 parts.append(f"Eres {extracted['profession']}")
@@ -1080,15 +1127,16 @@ class HumanAdvisor:
                     "with_children": "viajas con hijos",
                 }
                 parts.append(situations.get(extracted["family_situation"], ""))
-            
+
             if parts:
                 return "Entiendo que " + ", ".join(parts) + ". ¿Es correcto?"
-        
+
         return None
 
 
 # Singleton
 _human_advisor = None
+
 
 def get_human_advisor() -> HumanAdvisor:
     """Obtener instancia del asesor humano"""

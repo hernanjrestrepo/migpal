@@ -21,17 +21,17 @@ REGLAS DURAS:
 
 import logging
 import re
-import asyncio
-from typing import Dict, Any, List, Tuple, Optional
 from dataclasses import dataclass, field
-from enum import Enum
 from datetime import datetime
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class ReasoningTask(Enum):
     """Tipos de tareas que requieren razonamiento controlado"""
+
     VISA_ANALYSIS = "visa_analysis"
     MIGRATION_PLAN = "migration_plan"
     INCONSISTENCY_CHECK = "inconsistency_check"
@@ -40,22 +40,24 @@ class ReasoningTask(Enum):
 
 class DraftApproach(Enum):
     """Enfoques para generación de borradores"""
-    CONSERVATIVE = "conservative"      # Enfoque conservador, requisitos estrictos
-    OPTIMISTIC = "optimistic"          # Enfoque optimista, mejores escenarios
-    ALTERNATIVE = "alternative"        # Rutas alternativas
-    EDGE_CASE = "edge_case"           # Consideración de casos límite
+
+    CONSERVATIVE = "conservative"  # Enfoque conservador, requisitos estrictos
+    OPTIMISTIC = "optimistic"  # Enfoque optimista, mejores escenarios
+    ALTERNATIVE = "alternative"  # Rutas alternativas
+    EDGE_CASE = "edge_case"  # Consideración de casos límite
 
 
 @dataclass
 class Draft:
     """Borrador generado"""
+
     id: int
     approach: DraftApproach
     content: str
     reasoning: str
     coherence_score: float = 0.0
-    invented_data_found: List[str] = field(default_factory=list)
-    logical_issues: List[str] = field(default_factory=list)
+    invented_data_found: list[str] = field(default_factory=list)
+    logical_issues: list[str] = field(default_factory=list)
     final_score: float = 0.0
     generated_at: datetime = field(default_factory=datetime.now)
 
@@ -63,85 +65,82 @@ class Draft:
 @dataclass
 class ReasoningResult:
     """Resultado del proceso de razonamiento"""
+
     task_type: ReasoningTask
     selected_draft: Draft
-    all_drafts: List[Draft]
+    all_drafts: list[Draft]
     confidence: float
-    warnings: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     processing_time_ms: float = 0.0
 
 
 class TestTimeReasoner:
     """
     Motor de razonamiento en tiempo de inferencia.
-    
+
     Genera múltiples borradores, los evalúa y selecciona el mejor.
     NO aprende de usuarios - solo usa lógica y datos confirmados.
     """
-    
+
     def __init__(self, num_drafts: int = 3):
         self.num_drafts = min(max(num_drafts, 2), 4)  # Entre 2 y 4
         self.approaches = [
             DraftApproach.CONSERVATIVE,
             DraftApproach.OPTIMISTIC,
             DraftApproach.ALTERNATIVE,
-            DraftApproach.EDGE_CASE
-        ][:self.num_drafts]
-    
+            DraftApproach.EDGE_CASE,
+        ][: self.num_drafts]
+
     async def reason(
         self,
         task_type: ReasoningTask,
-        user_data: Dict[str, Any],
-        context: Dict[str, Any],
-        ai_client: Any = None
+        user_data: dict[str, Any],
+        context: dict[str, Any],
+        ai_client: Any = None,
     ) -> ReasoningResult:
         """
         Ejecuta el proceso de razonamiento controlado.
-        
+
         1. Genera múltiples borradores
         2. Valida coherencia de cada uno
         3. Selecciona el mejor
         """
         start_time = datetime.now()
-        
+
         # 1. Generar borradores
         drafts = await self._generate_drafts(task_type, user_data, context, ai_client)
-        
+
         # 2. Validar coherencia de cada borrador
         for draft in drafts:
             self._validate_coherence(draft, user_data)
             self._calculate_final_score(draft)
-        
+
         # 3. Seleccionar el mejor
         selected = self._select_best(drafts)
-        
+
         # 4. Generar warnings si hay problemas
         warnings = self._generate_warnings(drafts, selected)
-        
+
         processing_time = (datetime.now() - start_time).total_seconds() * 1000
-        
+
         return ReasoningResult(
             task_type=task_type,
             selected_draft=selected,
             all_drafts=drafts,
             confidence=selected.final_score,
             warnings=warnings,
-            processing_time_ms=processing_time
+            processing_time_ms=processing_time,
         )
-    
+
     async def _generate_drafts(
-        self,
-        task_type: ReasoningTask,
-        user_data: Dict[str, Any],
-        context: Dict[str, Any],
-        ai_client: Any
-    ) -> List[Draft]:
+        self, task_type: ReasoningTask, user_data: dict[str, Any], context: dict[str, Any], ai_client: Any
+    ) -> list[Draft]:
         """Genera múltiples borradores con diferentes enfoques"""
         drafts = []
-        
+
         for i, approach in enumerate(self.approaches):
             prompt = self._build_prompt(task_type, approach, user_data, context)
-            
+
             if ai_client:
                 # Usar IA para generar
                 try:
@@ -152,30 +151,30 @@ class TestTimeReasoner:
             else:
                 # Fallback sin IA
                 content = self._generate_fallback(task_type, approach, user_data, context)
-            
+
             draft = Draft(
                 id=i + 1,
                 approach=approach,
                 content=content,
-                reasoning=f"Generated with {approach.value} approach"
+                reasoning=f"Generated with {approach.value} approach",
             )
             drafts.append(draft)
-        
+
         return drafts
-    
+
     def _build_prompt(
         self,
         task_type: ReasoningTask,
         approach: DraftApproach,
-        user_data: Dict[str, Any],
-        context: Dict[str, Any]
+        user_data: dict[str, Any],
+        context: dict[str, Any],
     ) -> str:
         """Construye el prompt para generación"""
-        profile = user_data.get("profile", {})
-        
+        user_data.get("profile", {})
+
         # Extraer datos confirmados
         confirmed_data = self._extract_confirmed_data(user_data)
-        
+
         base_prompt = f"""
 TAREA: {task_type.value}
 ENFOQUE: {approach.value}
@@ -192,7 +191,7 @@ REGLAS ESTRICTAS:
 CONTEXTO ADICIONAL:
 {context}
 """
-        
+
         # Instrucciones específicas por enfoque
         approach_instructions = {
             DraftApproach.CONSERVATIVE: """
@@ -222,16 +221,16 @@ INSTRUCCIONES (CASOS LÍMITE):
 - Identificar posibles complicaciones
 - Preparar para escenarios adversos
 - Incluir contingencias
-"""
+""",
         }
-        
+
         return base_prompt + approach_instructions.get(approach, "")
-    
-    def _extract_confirmed_data(self, user_data: Dict[str, Any]) -> str:
+
+    def _extract_confirmed_data(self, user_data: dict[str, Any]) -> str:
         """Extrae solo los datos confirmados del perfil"""
         profile = user_data.get("profile", {})
         confirmed = []
-        
+
         # Personal
         personal = profile.get("personal", {})
         if personal.get("name"):
@@ -241,67 +240,62 @@ INSTRUCCIONES (CASOS LÍMITE):
             confirmed.append(f"- Edad: {age}")
         if personal.get("nationality"):
             confirmed.append(f"- Nacionalidad: {personal['nationality']}")
-        
+
         # Educación
         education = profile.get("education", {})
         if education.get("level"):
             confirmed.append(f"- Nivel educativo: {education['level']}")
         if education.get("career"):
             confirmed.append(f"- Carrera: {education['career']}")
-        
+
         # Trabajo
         work = profile.get("work", {})
         if work.get("profession"):
             confirmed.append(f"- Profesión: {work['profession']}")
         if work.get("experience_years"):
             confirmed.append(f"- Años de experiencia: {work['experience_years']}")
-        
+
         # Idiomas
         languages = profile.get("languages", {})
         if languages.get("english"):
             confirmed.append(f"- Nivel de inglés: {languages['english']}")
-        
+
         # Financiero
         financial = profile.get("financial", {})
         if financial.get("savings"):
             confirmed.append(f"- Ahorros: {financial['savings']}")
-        
+
         # Migración
         migration = profile.get("migration", {})
         if migration.get("reason"):
             confirmed.append(f"- Razón de migración: {migration['reason']}")
         if migration.get("timeline"):
             confirmed.append(f"- Timeline: {migration['timeline']}")
-        
+
         # Historial
         history = profile.get("history", {})
         if history.get("visa_history"):
             confirmed.append(f"- Historial de visas: {history['visa_history']}")
         if history.get("visa_denials") is not None:
             confirmed.append(f"- Negaciones de visa: {history['visa_denials']}")
-        
+
         if not confirmed:
             return "⚠️ No hay datos confirmados del usuario"
-        
+
         return "\n".join(confirmed)
-    
-    async def _generate_with_ai(
-        self,
-        ai_client: Any,
-        prompt: str,
-        approach: DraftApproach
-    ) -> str:
+
+    async def _generate_with_ai(self, ai_client: Any, prompt: str, approach: DraftApproach) -> str:
         """Genera contenido usando el cliente de IA"""
         # Implementación depende del cliente de IA específico
         # Por ahora, usar fallback
         return f"[AI-generated content for {approach.value} approach]"
-    
+
     def _generate_fallback(
         self,
         task_type: ReasoningTask,
         approach: DraftApproach,
-        user_data: Dict[str, Any],
-        context: Dict[str, Any]
+        user_data: dict[str, Any],
+        context: dict[str, Any],
     ) -> str:
         """Genera contenido de fallback sin IA"""
         profile = user_data.get("profile", {})
@@ -309,7 +303,7 @@ INSTRUCCIONES (CASOS LÍMITE):
         profession = profile.get("work", {}).get("profession", "")
         education = profile.get("education", {}).get("level", "")
         english = profile.get("languages", {}).get("english", "")
-        
+
         if task_type == ReasoningTask.VISA_ANALYSIS:
             return self._generate_visa_analysis_fallback(approach, name, profession, education, english)
         elif task_type == ReasoningTask.MIGRATION_PLAN:
@@ -318,18 +312,13 @@ INSTRUCCIONES (CASOS LÍMITE):
             return self._generate_inconsistency_check_fallback(user_data)
         else:
             return self._generate_summary_fallback(user_data)
-    
+
     def _generate_visa_analysis_fallback(
-        self,
-        approach: DraftApproach,
-        name: str,
-        profession: str,
-        education: str,
-        english: str
+        self, approach: DraftApproach, name: str, profession: str, education: str, english: str
     ) -> str:
         """Genera análisis de visa de fallback"""
         name_str = f", {name}" if name else ""
-        
+
         if approach == DraftApproach.CONSERVATIVE:
             return f"""📋 **Análisis de Visa (Conservador)**{name_str}
 
@@ -394,13 +383,9 @@ Consideraciones importantes:
 • Si timeline es urgente → Considerar otras opciones
 
 **Siguiente paso:** Confirmar historial migratorio completo."""
-    
+
     def _generate_plan_fallback(
-        self,
-        approach: DraftApproach,
-        name: str,
-        profession: str,
-        education: str
+        self, approach: DraftApproach, name: str, profession: str, education: str
     ) -> str:
         """Genera plan de migración de fallback"""
         return f"""📋 **Plan de Migración** ({approach.value})
@@ -412,47 +397,47 @@ Este plan requiere más información confirmada para ser específico.
 {"• Educación: " + education if education else "• Educación: Pendiente"}
 
 **Siguiente paso:** Completar el checklist de perfil."""
-    
-    def _generate_inconsistency_check_fallback(self, user_data: Dict[str, Any]) -> str:
+
+    def _generate_inconsistency_check_fallback(self, user_data: dict[str, Any]) -> str:
         """Genera verificación de inconsistencias"""
         issues = []
         profile = user_data.get("profile", {})
-        
+
         # Verificar edad vs educación
         age = profile.get("personal", {}).get("age")
         education = profile.get("education", {}).get("level")
         if age and education:
             if age < 22 and education in ["Maestría", "Doctorado"]:
                 issues.append("⚠️ Edad muy joven para nivel educativo declarado")
-        
+
         # Verificar experiencia vs edad
         experience = profile.get("work", {}).get("experience_years")
         if age and experience:
-            if isinstance(experience, (int, float)) and isinstance(age, (int, float)):
+            if isinstance(experience, int | float) and isinstance(age, int | float):
                 if experience > age - 18:
                     issues.append("⚠️ Años de experiencia inconsistentes con edad")
-        
+
         if issues:
             return "**Inconsistencias detectadas:**\n" + "\n".join(issues)
         else:
             return "✅ No se detectaron inconsistencias en los datos confirmados."
-    
-    def _generate_summary_fallback(self, user_data: Dict[str, Any]) -> str:
+
+    def _generate_summary_fallback(self, user_data: dict[str, Any]) -> str:
         """Genera resumen de perfil"""
         return self._extract_confirmed_data(user_data)
-    
-    def _validate_coherence(self, draft: Draft, user_data: Dict[str, Any]):
+
+    def _validate_coherence(self, draft: Draft, user_data: dict[str, Any]):
         """
         Valida la coherencia del borrador con el perfil confirmado.
-        
+
         REGLA DURA: Detectar datos inventados.
         """
         profile = user_data.get("profile", {})
         content_lower = draft.content.lower()
-        
+
         # 1. Detectar datos inventados
         invented = []
-        
+
         # Verificar si menciona nombre no confirmado
         confirmed_name = profile.get("personal", {}).get("name", "")
         if not confirmed_name:
@@ -465,7 +450,7 @@ Este plan requiere más información confirmada para ser específico.
                 match = re.search(pattern, draft.content, re.IGNORECASE)
                 if match:
                     invented.append(f"Nombre no confirmado: {match.group(1)}")
-        
+
         # Verificar si menciona profesión no confirmada
         confirmed_profession = profile.get("work", {}).get("profession", "")
         if not confirmed_profession:
@@ -477,7 +462,7 @@ Este plan requiere más información confirmada para ser específico.
                 match = re.search(pattern, content_lower)
                 if match:
                     invented.append(f"Profesión no confirmada: {match.group(1)}")
-        
+
         # Verificar si menciona datos financieros no confirmados
         confirmed_savings = profile.get("financial", {}).get("savings")
         if not confirmed_savings:
@@ -489,90 +474,90 @@ Este plan requiere más información confirmada para ser específico.
                 if re.search(pattern, content_lower):
                     invented.append("Datos financieros no confirmados mencionados")
                     break
-        
+
         draft.invented_data_found = invented
-        
+
         # 2. Verificar consistencia lógica
         logical_issues = []
-        
+
         # Verificar que no contradiga datos confirmados
         if confirmed_name and confirmed_name.lower() not in content_lower:
             # No es un problema si no menciona el nombre
             pass
-        
+
         draft.logical_issues = logical_issues
-        
+
         # 3. Calcular score de coherencia
         base_score = 1.0
-        
+
         # Penalizar por datos inventados
         base_score -= len(invented) * 0.2
-        
+
         # Penalizar por problemas lógicos
         base_score -= len(logical_issues) * 0.15
-        
+
         draft.coherence_score = max(0.0, min(1.0, base_score))
-    
+
     def _calculate_final_score(self, draft: Draft):
         """Calcula el score final del borrador"""
         # Peso de coherencia: 60%
         # Peso de enfoque: 40% (conservador tiene bonus)
-        
+
         approach_bonus = {
             DraftApproach.CONSERVATIVE: 0.1,
             DraftApproach.OPTIMISTIC: 0.0,
             DraftApproach.ALTERNATIVE: 0.05,
             DraftApproach.EDGE_CASE: 0.05,
         }
-        
+
         draft.final_score = (
-            draft.coherence_score * 0.6 +
-            (1.0 - len(draft.invented_data_found) * 0.1) * 0.3 +
-            approach_bonus.get(draft.approach, 0) +
-            0.1  # Base score
+            draft.coherence_score * 0.6
+            + (1.0 - len(draft.invented_data_found) * 0.1) * 0.3
+            + approach_bonus.get(draft.approach, 0)
+            + 0.1  # Base score
         )
-        
+
         draft.final_score = max(0.0, min(1.0, draft.final_score))
-    
-    def _select_best(self, drafts: List[Draft]) -> Draft:
+
+    def _select_best(self, drafts: list[Draft]) -> Draft:
         """Selecciona el mejor borrador"""
         if not drafts:
             raise ValueError("No drafts to select from")
-        
+
         # Ordenar por score final descendente
         sorted_drafts = sorted(drafts, key=lambda d: d.final_score, reverse=True)
-        
+
         best = sorted_drafts[0]
         logger.info(f"🎯 REASONING | selected={best.approach.value} | score={best.final_score:.2f}")
-        
+
         return best
-    
-    def _generate_warnings(self, drafts: List[Draft], selected: Draft) -> List[str]:
+
+    def _generate_warnings(self, drafts: list[Draft], selected: Draft) -> list[str]:
         """Genera warnings basados en el análisis"""
         warnings = []
-        
+
         # Warning si hay datos inventados en algún borrador
         all_invented = set()
         for draft in drafts:
             all_invented.update(draft.invented_data_found)
-        
+
         if all_invented:
             warnings.append(f"⚠️ Se detectaron {len(all_invented)} datos no confirmados en los borradores")
-        
+
         # Warning si el score es bajo
         if selected.final_score < 0.5:
             warnings.append("⚠️ Confianza baja en la respuesta - considerar pedir más información")
-        
+
         # Warning si todos los borradores tienen problemas
         avg_score = sum(d.final_score for d in drafts) / len(drafts)
         if avg_score < 0.6:
             warnings.append("⚠️ Todos los enfoques tienen limitaciones - perfil incompleto")
-        
+
         return warnings
 
 
 # Singleton instance
-_test_time_reasoner: Optional[TestTimeReasoner] = None
+_test_time_reasoner: TestTimeReasoner | None = None
 
 
 def get_test_time_reasoner(num_drafts: int = 3) -> TestTimeReasoner:
@@ -584,44 +569,22 @@ def get_test_time_reasoner(num_drafts: int = 3) -> TestTimeReasoner:
 
 
 async def reason_visa_analysis(
-    user_data: Dict[str, Any],
-    context: Dict[str, Any] = None,
-    ai_client: Any = None
+    user_data: dict[str, Any], context: dict[str, Any] = None, ai_client: Any = None
 ) -> ReasoningResult:
     """Función de conveniencia para análisis de visa"""
     reasoner = get_test_time_reasoner()
-    return await reasoner.reason(
-        ReasoningTask.VISA_ANALYSIS,
-        user_data,
-        context or {},
-        ai_client
-    )
+    return await reasoner.reason(ReasoningTask.VISA_ANALYSIS, user_data, context or {}, ai_client)
 
 
 async def reason_migration_plan(
-    user_data: Dict[str, Any],
-    context: Dict[str, Any] = None,
-    ai_client: Any = None
+    user_data: dict[str, Any], context: dict[str, Any] = None, ai_client: Any = None
 ) -> ReasoningResult:
     """Función de conveniencia para plan de migración"""
     reasoner = get_test_time_reasoner()
-    return await reasoner.reason(
-        ReasoningTask.MIGRATION_PLAN,
-        user_data,
-        context or {},
-        ai_client
-    )
+    return await reasoner.reason(ReasoningTask.MIGRATION_PLAN, user_data, context or {}, ai_client)
 
 
-async def check_inconsistencies(
-    user_data: Dict[str, Any],
-    context: Dict[str, Any] = None
-) -> ReasoningResult:
+async def check_inconsistencies(user_data: dict[str, Any], context: dict[str, Any] = None) -> ReasoningResult:
     """Función de conveniencia para verificar inconsistencias"""
     reasoner = get_test_time_reasoner()
-    return await reasoner.reason(
-        ReasoningTask.INCONSISTENCY_CHECK,
-        user_data,
-        context or {},
-        None
-    )
+    return await reasoner.reason(ReasoningTask.INCONSISTENCY_CHECK, user_data, context or {}, None)

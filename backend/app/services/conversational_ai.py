@@ -18,40 +18,42 @@ Cuando el usuario dice:
 
 import logging
 import re
-from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class UserIntent(Enum):
     """Intenciones del usuario detectadas por IA"""
-    NEEDS_HELP = "needs_help"           # Necesita ayuda/orientación
-    NOT_READY = "not_ready"             # No está listo para decidir
-    CONFUSED = "confused"               # Está confundido
-    WANTS_INFO = "wants_info"           # Quiere más información
+
+    NEEDS_HELP = "needs_help"  # Necesita ayuda/orientación
+    NOT_READY = "not_ready"  # No está listo para decidir
+    CONFUSED = "confused"  # Está confundido
+    WANTS_INFO = "wants_info"  # Quiere más información
     WANTS_EXPLANATION = "wants_explanation"  # Quiere que le expliquen algo ("explícame")
-    ASKING_QUESTION = "asking_question" # Hace una pregunta
-    EXPRESSING_CONCERN = "concern"      # Expresa preocupación
-    READY_TO_CONTINUE = "ready"         # Listo para continuar
-    CORRECTION = "correction"           # Quiere corregir algo
-    OFF_TOPIC = "off_topic"             # Tema no relacionado
-    PROVIDING_INFO = "providing_info"   # Dando información (nombre, profesión, etc)
-    GREETING = "greeting"               # Saludo
-    GRATITUDE = "gratitude"             # Agradecimiento
-    UNKNOWN = "unknown"                 # No se pudo determinar
+    ASKING_QUESTION = "asking_question"  # Hace una pregunta
+    EXPRESSING_CONCERN = "concern"  # Expresa preocupación
+    READY_TO_CONTINUE = "ready"  # Listo para continuar
+    CORRECTION = "correction"  # Quiere corregir algo
+    OFF_TOPIC = "off_topic"  # Tema no relacionado
+    PROVIDING_INFO = "providing_info"  # Dando información (nombre, profesión, etc)
+    GREETING = "greeting"  # Saludo
+    GRATITUDE = "gratitude"  # Agradecimiento
+    UNKNOWN = "unknown"  # No se pudo determinar
 
 
 @dataclass
 class ConversationalResponse:
     """Respuesta conversacional de la IA"""
+
     message: str
-    follow_up_question: Optional[str] = None
-    suggested_actions: List[Tuple[str, str]] = None  # [(texto, callback)]
+    follow_up_question: str | None = None
+    suggested_actions: list[tuple[str, str]] = None  # [(texto, callback)]
     should_advance_state: bool = False
-    new_state: Optional[str] = None
-    extracted_data: Dict[str, Any] = None
+    new_state: str | None = None
+    extracted_data: dict[str, Any] = None
 
 
 class ConversationalAI:
@@ -59,7 +61,7 @@ class ConversationalAI:
     IA Conversacional para MigPAL.
     El cerebro que entiende al usuario y responde con inteligencia.
     """
-    
+
     # Patrones para detectar intenciones
     INTENT_PATTERNS = {
         UserIntent.NOT_READY: [
@@ -198,7 +200,7 @@ class ConversationalAI:
             r"actually",
         ],
     }
-    
+
     # Respuestas empáticas por intención
     EMPATHIC_RESPONSES = {
         "es": {
@@ -215,13 +217,10 @@ class ConversationalAI:
                 "¿Hay algo específico que te gustaría que te explique mejor?"
             ),
             UserIntent.WANTS_INFO: (
-                "¡Claro! Con gusto te cuento más. 📚\n\n"
-                "{context_info}\n\n"
-                "¿Qué más te gustaría saber?"
+                "¡Claro! Con gusto te cuento más. 📚\n\n" "{context_info}\n\n" "¿Qué más te gustaría saber?"
             ),
             UserIntent.ASKING_QUESTION: (
-                "{ai_response}\n\n"
-                "¿Eso responde tu pregunta? ¿Hay algo más que quieras saber?"
+                "{ai_response}\n\n" "¿Eso responde tu pregunta? ¿Hay algo más que quieras saber?"
             ),
             UserIntent.EXPRESSING_CONCERN: (
                 "Entiendo tu preocupación, {name}. Es completamente válido sentirse así. 💙\n\n"
@@ -268,9 +267,9 @@ class ConversationalAI:
                 "{context_help}\n\n"
                 "Tell me more about what you need."
             ),
-        }
+        },
     }
-    
+
     # Información contextual por tema
     CONTEXT_INFO = {
         "es": {
@@ -356,31 +355,31 @@ class ConversationalAI:
                 "I can help you calculate a more specific budget "
                 "based on your situation."
             ),
-        }
+        },
     }
-    
+
     def __init__(self):
         self.ai_client = None  # Se inicializa con el cliente de IA
-    
+
     def detect_intent(self, text: str) -> UserIntent:
         """Detectar la intención del usuario"""
         text_lower = text.lower().strip()
-        
+
         for intent, patterns in self.INTENT_PATTERNS.items():
             for pattern in patterns:
                 if re.search(pattern, text_lower):
                     return intent
-        
+
         # Si tiene signo de pregunta, probablemente es una pregunta
         if "?" in text:
             return UserIntent.ASKING_QUESTION
-        
+
         # Si parece estar dando información (nombre, profesión, números)
         if self._looks_like_info(text):
             return UserIntent.PROVIDING_INFO
-        
+
         return UserIntent.UNKNOWN
-    
+
     def _looks_like_info(self, text: str) -> bool:
         """Detectar si el texto parece información del usuario"""
         # Patrones que indican que está dando información
@@ -395,37 +394,37 @@ class ConversationalAI:
             r"gano\s+",  # "Gano X"
             r"mi\s+(nombre|profesión|trabajo|salario)",  # "Mi nombre/profesión es"
         ]
-        
+
         text_lower = text.lower()
         for pattern in info_patterns:
             if re.search(pattern, text_lower, re.IGNORECASE):
                 return True
-        
+
         return False
-    
-    def extract_data(self, text: str, current_state: str) -> Dict[str, Any]:
+
+    def extract_data(self, text: str, current_state: str) -> dict[str, Any]:
         """
         V3.1.0 - HARDENED data extraction
         Extraer datos del texto libre del usuario.
-        
+
         REGLA CRÍTICA para nombres:
         - SOLO extraer nombre si hay señal fuerte ('me llamo', 'mi nombre es')
         - O si estamos en estado ask_name/name
         - Si no, NO guardar nombre para evitar datos fantasma
         """
         from app.services.ux_improvements import NameValidator
-        
+
         extracted = {}
         text_lower = text.lower()
-        
+
         # V3.1.0 - HARDENED name extraction
         # REGLA: SOLO extraer nombre si:
         # 1. Hay señal fuerte ('me llamo', 'mi nombre es', etc.)
         # 2. O estamos en estado ask_name/name
-        
-        is_name_state = current_state in ['name', 'ask_name', 'NAME_REQUEST', 'confirm_name']
+
+        is_name_state = current_state in ["name", "ask_name", "NAME_REQUEST", "confirm_name"]
         has_strong_signal = NameValidator.has_strong_name_signal(text)
-        
+
         if has_strong_signal:
             # Extraer nombre usando el método seguro
             extracted_name = NameValidator.extract_name_from_signal(text)
@@ -444,7 +443,7 @@ class ConversationalAI:
             # NO extraer nombre fuera de contexto - evitar datos fantasma
             logger.debug(f"🚫 NAME NOT EXTRACTED (no signal, wrong state) | state={current_state}")
             pass
-        
+
         # Extraer profesión
         profession_patterns = [
             r"soy\s+(ingeniero|doctor|abogado|contador|profesor|diseñador|programador|desarrollador)[^.]*",
@@ -456,12 +455,12 @@ class ConversationalAI:
             if match:
                 extracted["profession"] = match.group(0).strip()
                 break
-        
+
         # Extraer años de experiencia
         exp_match = re.search(r"(\d+)\s*años?\s*(de\s+experiencia)", text_lower)
         if exp_match:
             extracted["experience_years"] = int(exp_match.group(1))
-        
+
         # Extraer salario (solo si tiene indicador de dinero)
         salary_match = re.search(r"(gano|salario|sueldo)[^\d]*\$?([\d,]+)", text_lower)
         if salary_match:
@@ -481,7 +480,7 @@ class ConversationalAI:
                         extracted["salary"] = val
                 except:
                     pass
-        
+
         # Extraer ahorros
         savings_match = re.search(r"(ahorr[oa]d?[oa]?s?|tengo)\s*[^\d]*\$?([\d,]+)", text_lower)
         if savings_match:
@@ -490,7 +489,7 @@ class ConversationalAI:
                 extracted["savings"] = int(savings_str)
             except:
                 pass
-        
+
         # Extraer motivación
         motivation_keywords = {
             "trabajo": "work",
@@ -517,23 +516,29 @@ class ConversationalAI:
             if keyword in text_lower:
                 extracted["motivation"] = motivation
                 break
-        
+
         return extracted
-    
+
     def detect_topic(self, text: str, current_state: str) -> str:
         """Detectar el tema de la conversación"""
         text_lower = text.lower()
-        
+
         # Detectar por palabras clave
-        if any(w in text_lower for w in ["región", "region", "estado", "state", "zona", "área", "area", "ciudad", "city"]):
+        if any(
+            w in text_lower
+            for w in ["región", "region", "estado", "state", "zona", "área", "area", "ciudad", "city"]
+        ):
             return "regions"
         if any(w in text_lower for w in ["visa", "permiso", "permit", "documento", "document"]):
             return "visas"
         if any(w in text_lower for w in ["proceso", "process", "paso", "step", "cómo", "how"]):
             return "process"
-        if any(w in text_lower for w in ["costo", "cost", "precio", "price", "dinero", "money", "cuánto", "how much"]):
+        if any(
+            w in text_lower
+            for w in ["costo", "cost", "precio", "price", "dinero", "money", "cuánto", "how much"]
+        ):
             return "costs"
-        
+
         # Detectar por estado actual
         state_topics = {
             "location_region": "regions",
@@ -542,15 +547,11 @@ class ConversationalAI:
             "visa_analysis": "visas",
             "visa_recommendation": "visas",
         }
-        
+
         return state_topics.get(current_state, "process")
-    
+
     async def process_free_text(
-        self,
-        text: str,
-        user: Dict[str, Any],
-        current_state: str,
-        lang: str = "es"
+        self, text: str, user: dict[str, Any], current_state: str, lang: str = "es"
     ) -> ConversationalResponse:
         """
         Procesar texto libre del usuario con inteligencia.
@@ -559,85 +560,87 @@ class ConversationalAI:
         name = user.get("profile", {}).get("personal", {}).get("name", "amigo/a")
         intent = self.detect_intent(text)
         topic = self.detect_topic(text, current_state)
-        
+
         # Extraer datos del texto
         extracted_data = self.extract_data(text, current_state)
-        
-        logger.info(f"🧠 AI Processing | user={user.get('telegram_id')} | intent={intent.value} | topic={topic} | extracted={extracted_data}")
-        
+
+        logger.info(
+            f"🧠 AI Processing | user={user.get('telegram_id')} | intent={intent.value} | topic={topic} | extracted={extracted_data}"
+        )
+
         # Obtener información contextual
         context_info = self.CONTEXT_INFO.get(lang, self.CONTEXT_INFO["es"]).get(topic, "")
-        
+
         # Si el usuario está dando información, procesarla y confirmar
         if intent == UserIntent.PROVIDING_INFO and extracted_data:
             return await self._handle_providing_info(name, text, extracted_data, lang, user)
-        
+
         # Construir respuesta según intención
         if intent == UserIntent.NOT_READY:
             return await self._handle_not_ready(name, text, topic, context_info, lang, current_state)
-        
+
         elif intent == UserIntent.CONFUSED:
             return await self._handle_confused(name, text, topic, context_info, lang)
-        
+
         elif intent == UserIntent.WANTS_INFO:
             return await self._handle_wants_info(name, text, topic, context_info, lang)
-        
+
         elif intent == UserIntent.WANTS_EXPLANATION:
             # REGLA: "explícame" SIEMPRE explica, NUNCA redirige
             return await self._handle_explanation_request(name, text, topic, context_info, lang, user)
-        
+
         elif intent == UserIntent.GREETING:
             return await self._handle_greeting(name, lang, user)
-        
+
         elif intent == UserIntent.GRATITUDE:
             return await self._handle_gratitude(name, lang)
-        
+
         elif intent == UserIntent.ASKING_QUESTION:
             return await self._handle_question(name, text, topic, context_info, lang, user)
-        
+
         elif intent == UserIntent.EXPRESSING_CONCERN:
             return await self._handle_concern(name, text, topic, context_info, lang)
-        
+
         elif intent == UserIntent.NEEDS_HELP:
             return await self._handle_needs_help(name, text, topic, context_info, lang)
-        
+
         else:
             # Intención desconocida - intentar extraer datos de todas formas
             if extracted_data:
                 return await self._handle_providing_info(name, text, extracted_data, lang, user)
             # Si no hay datos, usar respuesta genérica amigable
             return await self._handle_unknown(name, text, topic, context_info, lang, user)
-    
+
     async def _handle_providing_info(
-        self, name: str, text: str, extracted_data: Dict[str, Any], lang: str, user: Dict
+        self, name: str, text: str, extracted_data: dict[str, Any], lang: str, user: dict
     ) -> ConversationalResponse:
         """Manejar cuando el usuario da información"""
-        
+
         confirmations = []
         follow_up = None
-        
+
         if lang == "es":
             # Confirmar datos extraídos
             if "name" in extracted_data:
                 new_name = extracted_data["name"]
                 confirmations.append(f"¡Mucho gusto, {new_name}! 😊")
                 name = new_name
-            
+
             if "profession" in extracted_data:
                 confirmations.append(f"¡Excelente! Eres {extracted_data['profession']}. 💼")
-            
+
             if "experience_years" in extracted_data:
                 years = extracted_data["experience_years"]
                 confirmations.append(f"Con {years} años de experiencia, tienes un perfil muy sólido. 💪")
-            
+
             if "salary" in extracted_data:
                 salary = extracted_data["salary"]
                 confirmations.append(f"Entendido, tu salario actual es ${salary:,}. 💰")
-            
+
             if "savings" in extracted_data:
                 savings = extracted_data["savings"]
                 confirmations.append(f"Tienes ${savings:,} en ahorros. ¡Eso es un buen comienzo! 🎯")
-            
+
             if "motivation" in extracted_data:
                 motivation_texts = {
                     "work": "Buscar mejores oportunidades laborales es una razón muy válida.",
@@ -648,25 +651,25 @@ class ConversationalAI:
                 }
                 mot = extracted_data["motivation"]
                 confirmations.append(motivation_texts.get(mot, "Entiendo tu motivación."))
-            
+
             # Determinar siguiente pregunta
             if not confirmations:
                 confirmations.append(f"Gracias por compartir eso, {name}. 😊")
-            
+
             # Construir mensaje
             message = "\n\n".join(confirmations)
-            
+
             # Determinar qué preguntar a continuación
             profile = user.get("profile", {})
             personal = profile.get("personal", {})
             professional = profile.get("professional", {})
-            
+
             # Si acabamos de recibir el nombre, no preguntar nombre de nuevo
             has_name = personal.get("name") or "name" in extracted_data
             has_motivation = extracted_data.get("motivation")
             has_profession = professional.get("profession") or "profession" in extracted_data
             has_experience = "experience_years" in extracted_data
-            
+
             if not has_name:
                 follow_up = "¿Cómo te llamas?"
             elif not has_motivation:
@@ -677,41 +680,41 @@ class ConversationalAI:
                 follow_up = "¿Cuántos años de experiencia tienes en tu campo?"
             else:
                 follow_up = "¡Excelente! Ya tengo una buena idea de tu perfil. ¿Te gustaría que exploremos opciones de destino?"
-            
+
             message += f"\n\n{follow_up}"
-            
+
         else:
             # English version
             if "name" in extracted_data:
                 new_name = extracted_data["name"]
                 confirmations.append(f"Nice to meet you, {new_name}! 😊")
                 name = new_name
-            
+
             if "profession" in extracted_data:
                 confirmations.append(f"Great! You're a {extracted_data['profession']}. 💼")
-            
+
             if "experience_years" in extracted_data:
                 years = extracted_data["experience_years"]
                 confirmations.append(f"With {years} years of experience, you have a solid profile. 💪")
-            
+
             if not confirmations:
                 confirmations.append(f"Thanks for sharing that, {name}. 😊")
-            
+
             message = "\n\n".join(confirmations)
             follow_up = "Is there anything else you'd like to tell me about your situation?"
             message += f"\n\n{follow_up}"
-        
+
         return ConversationalResponse(
             message=message,
             extracted_data=extracted_data,
-            should_advance_state=False  # No avanzar automáticamente, seguir conversando
+            should_advance_state=False,  # No avanzar automáticamente, seguir conversando
         )
-    
+
     async def _handle_not_ready(
         self, name: str, text: str, topic: str, context_info: str, lang: str, current_state: str
     ) -> ConversationalResponse:
         """Manejar cuando el usuario no está listo"""
-        
+
         # Respuesta empática
         if lang == "es":
             message = (
@@ -719,7 +722,7 @@ class ConversationalAI:
                 f"Tomar decisiones sobre migración es algo importante y es completamente "
                 f"normal necesitar tiempo para pensar.\n\n"
             )
-            
+
             if topic == "regions":
                 message += (
                     "Si no conoces bien Estados Unidos, puedo ayudarte a entender "
@@ -749,7 +752,7 @@ class ConversationalAI:
                 f"Making decisions about migration is important and it's completely "
                 f"normal to need time to think.\n\n"
             )
-            
+
             if topic == "regions":
                 message += (
                     "If you're not familiar with the United States, I can help you understand "
@@ -773,18 +776,14 @@ class ConversationalAI:
                     ("📚 I want to learn more", "ai_learn_more"),
                     ("⏰ I'll come back later", "ai_later"),
                 ]
-        
-        return ConversationalResponse(
-            message=message,
-            suggested_actions=actions,
-            should_advance_state=False
-        )
-    
+
+        return ConversationalResponse(message=message, suggested_actions=actions, should_advance_state=False)
+
     async def _handle_confused(
         self, name: str, text: str, topic: str, context_info: str, lang: str
     ) -> ConversationalResponse:
         """Manejar cuando el usuario está confundido"""
-        
+
         if lang == "es":
             message = (
                 f"No te preocupes, {name}. Es completamente normal tener dudas. 💭\n\n"
@@ -809,89 +808,55 @@ class ConversationalAI:
                 ("🔄 Explain it differently", "ai_explain_different"),
                 ("❓ I have more questions", "ai_more_questions"),
             ]
-        
-        return ConversationalResponse(
-            message=message,
-            suggested_actions=actions,
-            should_advance_state=False
-        )
-    
+
+        return ConversationalResponse(message=message, suggested_actions=actions, should_advance_state=False)
+
     async def _handle_wants_info(
         self, name: str, text: str, topic: str, context_info: str, lang: str
     ) -> ConversationalResponse:
         """Manejar cuando el usuario quiere más información"""
-        
+
         if lang == "es":
-            message = (
-                f"¡Con gusto, {name}! 📚\n\n"
-                f"{context_info}\n\n"
-                "¿Qué más te gustaría saber?"
-            )
+            message = f"¡Con gusto, {name}! 📚\n\n" f"{context_info}\n\n" "¿Qué más te gustaría saber?"
         else:
-            message = (
-                f"Of course, {name}! 📚\n\n"
-                f"{context_info}\n\n"
-                "What else would you like to know?"
-            )
-        
-        return ConversationalResponse(
-            message=message,
-            should_advance_state=False
-        )
-    
+            message = f"Of course, {name}! 📚\n\n" f"{context_info}\n\n" "What else would you like to know?"
+
+        return ConversationalResponse(message=message, should_advance_state=False)
+
     async def _handle_question(
-        self, name: str, text: str, topic: str, context_info: str, lang: str, user: Dict
+        self, name: str, text: str, topic: str, context_info: str, lang: str, user: dict
     ) -> ConversationalResponse:
         """Manejar preguntas del usuario usando IA"""
-        
+
         # Usar IA para responder la pregunta
         try:
             from app.services.ai_chat import chat_with_ai
-            
-            context = f"""
-            Usuario: {name}
-            Tema actual: {topic}
-            Pregunta: {text}
-            
-            Información de contexto:
-            {context_info}
-            
-            Responde de forma amigable, empática y útil. 
-            Eres MigPAL, el amigo de los migrantes.
-            """
-            
+
             ai_response = await chat_with_ai(
-                message=text,
-                context={"profile": user.get("profile", {}), "topic": topic}
+                message=text, context={"profile": user.get("profile", {}), "topic": topic}
             )
-            
+
             response_text = ai_response.get("response", context_info)
-            
+
         except Exception as e:
             logger.warning(f"AI chat error: {e}")
             response_text = context_info
-        
+
         if lang == "es":
-            message = (
-                f"{response_text}\n\n"
-                "¿Eso responde tu pregunta? ¿Hay algo más que quieras saber?"
-            )
+            message = f"{response_text}\n\n" "¿Eso responde tu pregunta? ¿Hay algo más que quieras saber?"
         else:
             message = (
                 f"{response_text}\n\n"
                 "Does that answer your question? Is there anything else you'd like to know?"
             )
-        
-        return ConversationalResponse(
-            message=message,
-            should_advance_state=False
-        )
-    
+
+        return ConversationalResponse(message=message, should_advance_state=False)
+
     async def _handle_concern(
         self, name: str, text: str, topic: str, context_info: str, lang: str
     ) -> ConversationalResponse:
         """Manejar preocupaciones del usuario"""
-        
+
         if lang == "es":
             message = (
                 f"Entiendo tu preocupación, {name}. Es completamente válido sentirse así. 💙\n\n"
@@ -908,17 +873,14 @@ class ConversationalAI:
                 "I'm here to help you navigate every step.\n\n"
                 "What worries you the most? Tell me and let's see how we can address it together."
             )
-        
-        return ConversationalResponse(
-            message=message,
-            should_advance_state=False
-        )
-    
+
+        return ConversationalResponse(message=message, should_advance_state=False)
+
     async def _handle_needs_help(
         self, name: str, text: str, topic: str, context_info: str, lang: str
     ) -> ConversationalResponse:
         """Manejar cuando el usuario necesita ayuda"""
-        
+
         if lang == "es":
             message = (
                 f"¡Aquí estoy para ayudarte, {name}! 🌟\n\n"
@@ -953,24 +915,20 @@ class ConversationalAI:
                 ("💰 Costs", "ai_costs"),
                 ("❓ I have a question", "ai_question"),
             ]
-        
-        return ConversationalResponse(
-            message=message,
-            suggested_actions=actions,
-            should_advance_state=False
-        )
-    
+
+        return ConversationalResponse(message=message, suggested_actions=actions, should_advance_state=False)
+
     async def _handle_explanation_request(
-        self, name: str, text: str, topic: str, context_info: str, lang: str, user: Dict
+        self, name: str, text: str, topic: str, context_info: str, lang: str, user: dict
     ) -> ConversationalResponse:
         """
         Manejar solicitudes de explicación.
         REGLA CRÍTICA: "explícame" SIEMPRE debe explicar, NUNCA redirigir.
         """
-        
+
         # Detectar qué quiere que le expliquen
         text_lower = text.lower()
-        
+
         # Explicaciones específicas por tema detectado
         explanations = {
             "es": {
@@ -1035,7 +993,7 @@ class ConversationalAI:
                     f"📝 *CON GUSTO TE EXPLICO, {name}*\n\n"
                     f"{context_info}\n\n"
                     "¿Hay algo específico que quieras que te aclare?"
-                )
+                ),
             },
             "en": {
                 "visa": (
@@ -1055,12 +1013,12 @@ class ConversationalAI:
                     f"📝 *I'M HAPPY TO EXPLAIN, {name}*\n\n"
                     f"{context_info}\n\n"
                     "Is there something specific you'd like me to clarify?"
-                )
-            }
+                ),
+            },
         }
-        
+
         lang_explanations = explanations.get(lang, explanations["es"])
-        
+
         # Detectar tema de la explicación
         if any(w in text_lower for w in ["visa", "permiso", "h1b", "h-1b", "f1", "f-1"]):
             message = lang_explanations.get("visa", lang_explanations["default"])
@@ -1072,26 +1030,18 @@ class ConversationalAI:
             message = lang_explanations.get("regiones", lang_explanations["default"])
         else:
             message = lang_explanations["default"]
-        
-        return ConversationalResponse(
-            message=message,
-            should_advance_state=False
-        )
-    
-    async def _handle_greeting(
-        self, name: str, lang: str, user: Dict
-    ) -> ConversationalResponse:
+
+        return ConversationalResponse(message=message, should_advance_state=False)
+
+    async def _handle_greeting(self, name: str, lang: str, user: dict) -> ConversationalResponse:
         """Manejar saludos del usuario"""
-        
+
         # Verificar si es usuario nuevo o recurrente
         has_profile = bool(user.get("profile", {}).get("personal", {}).get("name"))
-        
+
         if lang == "es":
             if has_profile:
-                message = (
-                    f"¡Hola de nuevo, {name}! 👋\n\n"
-                    "¿En qué puedo ayudarte hoy?"
-                )
+                message = f"¡Hola de nuevo, {name}! 👋\n\n" "¿En qué puedo ayudarte hoy?"
             else:
                 message = (
                     "¡Hola! 👋 Soy MigPAL, tu amigo en el proceso de migración.\n\n"
@@ -1102,10 +1052,7 @@ class ConversationalAI:
                 )
         else:
             if has_profile:
-                message = (
-                    f"Hello again, {name}! 👋\n\n"
-                    "How can I help you today?"
-                )
+                message = f"Hello again, {name}! 👋\n\n" "How can I help you today?"
             else:
                 message = (
                     "Hello! 👋 I'm MigPAL, your friend in the migration process.\n\n"
@@ -1114,17 +1061,12 @@ class ConversationalAI:
                     "and help you find the best option for you.\n\n"
                     "Tell me, what brings you here today? 💭"
                 )
-        
-        return ConversationalResponse(
-            message=message,
-            should_advance_state=False
-        )
-    
-    async def _handle_gratitude(
-        self, name: str, lang: str
-    ) -> ConversationalResponse:
+
+        return ConversationalResponse(message=message, should_advance_state=False)
+
+    async def _handle_gratitude(self, name: str, lang: str) -> ConversationalResponse:
         """Manejar agradecimientos del usuario"""
-        
+
         if lang == "es":
             message = (
                 f"¡De nada, {name}! 😊\n\n"
@@ -1137,36 +1079,29 @@ class ConversationalAI:
                 "I'm here to help. "
                 "Is there anything else I can assist you with?"
             )
-        
-        return ConversationalResponse(
-            message=message,
-            should_advance_state=False
-        )
-    
+
+        return ConversationalResponse(message=message, should_advance_state=False)
+
     async def _handle_unknown(
-        self, name: str, text: str, topic: str, context_info: str, lang: str, user: Dict
+        self, name: str, text: str, topic: str, context_info: str, lang: str, user: dict
     ) -> ConversationalResponse:
         """Manejar intención desconocida - usar IA"""
-        
+
         # Intentar usar IA para entender y responder
         try:
             from app.services.ai_chat import chat_with_ai
-            
+
             ai_response = await chat_with_ai(
-                message=text,
-                context={"profile": user.get("profile", {}), "topic": topic}
+                message=text, context={"profile": user.get("profile", {}), "topic": topic}
             )
-            
+
             response_text = ai_response.get("response", "")
-            
+
             if response_text:
-                return ConversationalResponse(
-                    message=response_text,
-                    should_advance_state=False
-                )
+                return ConversationalResponse(message=response_text, should_advance_state=False)
         except Exception as e:
             logger.warning(f"AI chat error: {e}")
-        
+
         # Fallback amigable
         if lang == "es":
             message = (
@@ -1180,15 +1115,13 @@ class ConversationalAI:
                 "Could you tell me a bit more about what you need? "
                 "I'm here to help you with any questions about migration."
             )
-        
-        return ConversationalResponse(
-            message=message,
-            should_advance_state=False
-        )
+
+        return ConversationalResponse(message=message, should_advance_state=False)
 
 
 # Singleton
 _conversational_ai = None
+
 
 def get_conversational_ai() -> ConversationalAI:
     """Obtener instancia de la IA conversacional"""

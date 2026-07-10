@@ -6,14 +6,14 @@ descuentan de la primera reunión con el bufete asociado.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
-from enum import Enum
 from datetime import datetime
-import json
+from enum import Enum
+from typing import Any
 
 
 class LawyerSpecialty(Enum):
     """Especialidades de abogados de inmigración"""
+
     FAMILY_BASED = "family_based"  # Peticiones familiares
     EMPLOYMENT_BASED = "employment_based"  # Visas de trabajo
     INVESTOR = "investor"  # EB-5, E-2
@@ -26,6 +26,7 @@ class LawyerSpecialty(Enum):
 
 class VisaCategory(Enum):
     """Categorías de visa que requieren abogado"""
+
     # Visas que SIEMPRE requieren abogado
     EB1A = "eb1a"  # Habilidad Extraordinaria
     EB1B = "eb1b"  # Investigadores/Profesores
@@ -34,13 +35,13 @@ class VisaCategory(Enum):
     EB5 = "eb5"  # Inversionista
     O1A = "o1a"  # Habilidad Extraordinaria (Ciencias/Negocios)
     O1B = "o1b"  # Habilidad Extraordinaria (Artes)
-    
+
     # Visas que PUEDEN requerir abogado
     H1B = "h1b"  # Trabajador Especializado
     L1A = "l1a"  # Transferencia Ejecutivo
     L1B = "l1b"  # Transferencia Conocimiento Especializado
     E2 = "e2"  # Inversionista Tratado
-    
+
     # Visas familiares (generalmente requieren abogado)
     IR1 = "ir1"  # Cónyuge de ciudadano
     IR2 = "ir2"  # Hijo de ciudadano
@@ -49,7 +50,7 @@ class VisaCategory(Enum):
     F2B = "f2b"  # Hijo adulto soltero de residente
     F3 = "f3"  # Hijo casado de ciudadano
     F4 = "f4"  # Hermano de ciudadano
-    
+
     # Casos especiales
     ASYLUM = "asylum"  # Asilo
     TPS = "tps"  # Estatus de Protección Temporal
@@ -59,29 +60,42 @@ class VisaCategory(Enum):
 
 # Visas que SIEMPRE requieren abogado
 ALWAYS_NEED_LAWYER = [
-    VisaCategory.EB1A, VisaCategory.EB1B, VisaCategory.EB1C,
-    VisaCategory.EB2_NIW, VisaCategory.EB5,
-    VisaCategory.O1A, VisaCategory.O1B,
-    VisaCategory.ASYLUM, VisaCategory.REMOVAL_DEFENSE
+    VisaCategory.EB1A,
+    VisaCategory.EB1B,
+    VisaCategory.EB1C,
+    VisaCategory.EB2_NIW,
+    VisaCategory.EB5,
+    VisaCategory.O1A,
+    VisaCategory.O1B,
+    VisaCategory.ASYLUM,
+    VisaCategory.REMOVAL_DEFENSE,
 ]
 
 # Visas que RECOMENDAMOS abogado
 RECOMMEND_LAWYER = [
-    VisaCategory.H1B, VisaCategory.L1A, VisaCategory.L1B,
-    VisaCategory.E2, VisaCategory.IR1, VisaCategory.F1,
-    VisaCategory.F2A, VisaCategory.F2B, VisaCategory.F3, VisaCategory.F4
+    VisaCategory.H1B,
+    VisaCategory.L1A,
+    VisaCategory.L1B,
+    VisaCategory.E2,
+    VisaCategory.IR1,
+    VisaCategory.F1,
+    VisaCategory.F2A,
+    VisaCategory.F2B,
+    VisaCategory.F3,
+    VisaCategory.F4,
 ]
 
 
 @dataclass
 class LawFirm:
     """Bufete de abogados asociado"""
+
     id: str
     name: str
     description: str
-    specialties: List[LawyerSpecialty]
-    locations: List[str]  # Ciudades donde tienen oficinas
-    languages: List[str]
+    specialties: list[LawyerSpecialty]
+    locations: list[str]  # Ciudades donde tienen oficinas
+    languages: list[str]
     website: str
     phone: str
     email: str
@@ -98,8 +112,8 @@ class LawFirm:
     free_initial_consultation: bool  # Si la primera consulta es gratis con MigPAL
     notes: str = ""
     active: bool = True
-    
-    def to_dict(self) -> Dict:
+
+    def to_dict(self) -> dict:
         return {
             "id": self.id,
             "name": self.name,
@@ -122,12 +136,12 @@ class LawFirm:
             "accepts_payment_plans": self.accepts_payment_plans,
             "free_initial_consultation": self.free_initial_consultation,
             "notes": self.notes,
-            "active": self.active
+            "active": self.active,
         }
 
 
 # Base de datos de bufetes asociados
-PARTNER_LAW_FIRMS: List[LawFirm] = [
+PARTNER_LAW_FIRMS: list[LawFirm] = [
     LawFirm(
         id="martinez_immigration",
         name="Martinez Immigration Law",
@@ -149,7 +163,7 @@ PARTNER_LAW_FIRMS: List[LawFirm] = [
         max_case_fee=15000.0,
         accepts_payment_plans=True,
         free_initial_consultation=True,  # GRATIS con referido MigPAL
-        notes="Excelente para casos de H-1B y peticiones familiares"
+        notes="Excelente para casos de H-1B y peticiones familiares",
     ),
     LawFirm(
         id="global_visa_attorneys",
@@ -172,7 +186,7 @@ PARTNER_LAW_FIRMS: List[LawFirm] = [
         max_case_fee=25000.0,
         accepts_payment_plans=True,
         free_initial_consultation=True,
-        notes="Los mejores para casos O-1 y EB-1A"
+        notes="Los mejores para casos O-1 y EB-1A",
     ),
     LawFirm(
         id="investor_visa_group",
@@ -195,7 +209,7 @@ PARTNER_LAW_FIRMS: List[LawFirm] = [
         max_case_fee=50000.0,
         accepts_payment_plans=True,
         free_initial_consultation=True,
-        notes="Especialistas en estructuración de inversiones para E-2 y EB-5"
+        notes="Especialistas en estructuración de inversiones para E-2 y EB-5",
     ),
     LawFirm(
         id="familia_legal",
@@ -218,7 +232,7 @@ PARTNER_LAW_FIRMS: List[LawFirm] = [
         max_case_fee=8000.0,
         accepts_payment_plans=True,
         free_initial_consultation=True,
-        notes="Excelente para peticiones familiares, muy accesibles"
+        notes="Excelente para peticiones familiares, muy accesibles",
     ),
     LawFirm(
         id="tech_immigration_partners",
@@ -241,7 +255,7 @@ PARTNER_LAW_FIRMS: List[LawFirm] = [
         max_case_fee=18000.0,
         accepts_payment_plans=True,
         free_initial_consultation=True,
-        notes="Ideales para ingenieros, desarrolladores y founders de startups"
+        notes="Ideales para ingenieros, desarrolladores y founders de startups",
     ),
     LawFirm(
         id="asylum_defenders",
@@ -264,7 +278,7 @@ PARTNER_LAW_FIRMS: List[LawFirm] = [
         max_case_fee=5000.0,
         accepts_payment_plans=True,
         free_initial_consultation=True,
-        notes="Ofrecen servicios pro bono para casos calificados"
+        notes="Ofrecen servicios pro bono para casos calificados",
     ),
 ]
 
@@ -272,6 +286,7 @@ PARTNER_LAW_FIRMS: List[LawFirm] = [
 @dataclass
 class LawyerReferral:
     """Referido a un bufete"""
+
     id: str
     user_id: int
     law_firm_id: str
@@ -279,15 +294,15 @@ class LawyerReferral:
     referral_code: str
     status: str  # pending, contacted, scheduled, completed, cancelled
     migpal_fee_paid: float  # $50 USD pagados a MigPAL
-    consultation_scheduled: Optional[datetime] = None
-    consultation_completed: Optional[datetime] = None
+    consultation_scheduled: datetime | None = None
+    consultation_completed: datetime | None = None
     case_accepted: bool = False
-    case_fee_quoted: Optional[float] = None
+    case_fee_quoted: float | None = None
     notes: str = ""
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
-    
-    def to_dict(self) -> Dict:
+
+    def to_dict(self) -> dict:
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -296,47 +311,53 @@ class LawyerReferral:
             "referral_code": self.referral_code,
             "status": self.status,
             "migpal_fee_paid": self.migpal_fee_paid,
-            "consultation_scheduled": self.consultation_scheduled.isoformat() if self.consultation_scheduled else None,
-            "consultation_completed": self.consultation_completed.isoformat() if self.consultation_completed else None,
+            "consultation_scheduled": (
+                self.consultation_scheduled.isoformat() if self.consultation_scheduled else None
+            ),
+            "consultation_completed": (
+                self.consultation_completed.isoformat() if self.consultation_completed else None
+            ),
             "case_accepted": self.case_accepted,
             "case_fee_quoted": self.case_fee_quoted,
             "notes": self.notes,
             "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat()
+            "updated_at": self.updated_at.isoformat(),
         }
 
 
 class LawyerReferralSystem:
     """Sistema de referidos a abogados"""
-    
+
     MIGPAL_REFERRAL_FEE = 50.0  # $50 USD que cobra MigPAL
-    
+
     def __init__(self, case_storage=None):
         self.case_storage = case_storage
-        self.referrals: Dict[str, LawyerReferral] = {}
-    
-    def needs_lawyer(self, visa_category: VisaCategory) -> Dict[str, Any]:
+        self.referrals: dict[str, LawyerReferral] = {}
+
+    def needs_lawyer(self, visa_category: VisaCategory) -> dict[str, Any]:
         """Determinar si un caso necesita abogado"""
         if visa_category in ALWAYS_NEED_LAWYER:
             return {
                 "required": True,
                 "reason": "Esta categoría de visa REQUIERE representación legal profesional.",
-                "recommendation": "strongly_recommended"
+                "recommendation": "strongly_recommended",
             }
         elif visa_category in RECOMMEND_LAWYER:
             return {
                 "required": False,
                 "reason": "Recomendamos fuertemente contar con un abogado para este tipo de visa.",
-                "recommendation": "recommended"
+                "recommendation": "recommended",
             }
         else:
             return {
                 "required": False,
                 "reason": "Este tipo de visa puede procesarse sin abogado, pero siempre es recomendable.",
-                "recommendation": "optional"
+                "recommendation": "optional",
             }
-    
-    def get_recommended_firms(self, visa_category: VisaCategory, location: Optional[str] = None) -> List[LawFirm]:
+
+    def get_recommended_firms(
+        self, visa_category: VisaCategory, location: str | None = None
+    ) -> list[LawFirm]:
         """Obtener bufetes recomendados para un tipo de visa"""
         # Mapear categoría de visa a especialidad
         specialty_map = {
@@ -361,15 +382,15 @@ class LawyerReferralSystem:
             VisaCategory.ASYLUM: LawyerSpecialty.ASYLUM,
             VisaCategory.REMOVAL_DEFENSE: LawyerSpecialty.DEPORTATION_DEFENSE,
         }
-        
+
         target_specialty = specialty_map.get(visa_category, LawyerSpecialty.GENERAL)
-        
+
         # Filtrar bufetes
         recommended = []
         for firm in PARTNER_LAW_FIRMS:
             if not firm.active:
                 continue
-            
+
             # Verificar especialidad
             if target_specialty in firm.specialties or LawyerSpecialty.GENERAL in firm.specialties:
                 # Verificar ubicación si se especificó
@@ -377,27 +398,27 @@ class LawyerReferralSystem:
                     location_match = any(location.lower() in loc.lower() for loc in firm.locations)
                     if not location_match and "Remote" not in firm.locations:
                         continue
-                
+
                 recommended.append(firm)
-        
+
         # Ordenar por rating y tasa de éxito
         recommended.sort(key=lambda x: (x.rating * x.success_rate), reverse=True)
-        
+
         return recommended
-    
+
     def generate_referral_code(self, user_id: int, firm_id: str) -> str:
         """Generar código de referido único"""
         import hashlib
         import time
-        
+
         data = f"{user_id}_{firm_id}_{time.time()}"
         return f"MIGPAL-{hashlib.md5(data.encode()).hexdigest()[:8].upper()}"
-    
+
     def create_referral(self, user_id: int, law_firm_id: str, visa_category: VisaCategory) -> LawyerReferral:
         """Crear un referido"""
         referral_code = self.generate_referral_code(user_id, law_firm_id)
         referral_id = f"{user_id}_{law_firm_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        
+
         referral = LawyerReferral(
             id=referral_id,
             user_id=user_id,
@@ -405,24 +426,24 @@ class LawyerReferralSystem:
             visa_category=visa_category,
             referral_code=referral_code,
             status="pending",
-            migpal_fee_paid=self.MIGPAL_REFERRAL_FEE
+            migpal_fee_paid=self.MIGPAL_REFERRAL_FEE,
         )
-        
+
         self.referrals[referral_id] = referral
-        
+
         return referral
-    
-    def get_firm_by_id(self, firm_id: str) -> Optional[LawFirm]:
+
+    def get_firm_by_id(self, firm_id: str) -> LawFirm | None:
         """Obtener bufete por ID"""
         for firm in PARTNER_LAW_FIRMS:
             if firm.id == firm_id:
                 return firm
         return None
-    
+
     def format_firm_card(self, firm: LawFirm, show_migpal_benefits: bool = True) -> str:
         """Formatear tarjeta de presentación de un bufete"""
         stars = "⭐" * int(firm.rating)
-        
+
         msg = f"""
 🏛️ **{firm.name}**
 {stars} {firm.rating}/5 ({firm.reviews_count} reseñas)
@@ -436,36 +457,36 @@ class LawyerReferralSystem:
 
 💰 **Tarifas:**
 """
-        
+
         if show_migpal_benefits:
             if firm.free_initial_consultation:
-                msg += f"   • Primera consulta: **GRATIS** con MigPAL ✨\n"
+                msg += "   • Primera consulta: **GRATIS** con MigPAL ✨\n"
             else:
                 msg += f"   • Consulta normal: ${firm.consultation_fee:.0f}\n"
                 msg += f"   • Con MigPAL: **${firm.migpal_consultation_fee:.0f}** (ahorras ${firm.migpal_discount:.0f})\n"
-            
+
             msg += f"   • Caso completo: ${firm.min_case_fee:,.0f} - ${firm.max_case_fee:,.0f}\n"
-            
+
             if firm.accepts_payment_plans:
-                msg += f"   • ✅ Acepta planes de pago\n"
-        
+                msg += "   • ✅ Acepta planes de pago\n"
+
         msg += f"""
 🌐 {firm.website}
 📞 {firm.phone}
 📧 {firm.email}
 """
-        
+
         if firm.notes:
             msg += f"\n💡 _{firm.notes}_"
-        
+
         return msg
-    
+
     def format_referral_info(self, referral: LawyerReferral) -> str:
         """Formatear información del referido"""
         firm = self.get_firm_by_id(referral.law_firm_id)
         if not firm:
             return "Error: Bufete no encontrado"
-        
+
         msg = f"""
 📋 **TU REFERIDO A ABOGADO**
 
@@ -489,9 +510,9 @@ class LawyerReferralSystem:
    📧 {firm.email}
    🌐 {firm.website}
 """
-        
+
         return msg
-    
+
     def _get_status_text(self, status: str) -> str:
         """Obtener texto del estado"""
         status_map = {
@@ -499,15 +520,17 @@ class LawyerReferralSystem:
             "contacted": "📞 Contactado",
             "scheduled": "📅 Consulta agendada",
             "completed": "✅ Consulta completada",
-            "cancelled": "❌ Cancelado"
+            "cancelled": "❌ Cancelado",
         }
         return status_map.get(status, status)
-    
-    def generate_lawyer_recommendation_message(self, visa_category: VisaCategory, user_location: Optional[str] = None) -> str:
+
+    def generate_lawyer_recommendation_message(
+        self, visa_category: VisaCategory, user_location: str | None = None
+    ) -> str:
         """Generar mensaje de recomendación de abogados"""
         needs = self.needs_lawyer(visa_category)
         firms = self.get_recommended_firms(visa_category, user_location)
-        
+
         visa_names = {
             VisaCategory.EB1A: "EB-1A (Habilidad Extraordinaria)",
             VisaCategory.EB1B: "EB-1B (Investigador/Profesor)",
@@ -522,16 +545,16 @@ class LawyerReferralSystem:
             VisaCategory.E2: "E-2 (Inversionista Tratado)",
             VisaCategory.ASYLUM: "Asilo",
         }
-        
+
         visa_name = visa_names.get(visa_category, visa_category.value)
-        
+
         msg = f"""
 ⚖️ **RECOMENDACIÓN DE ABOGADO**
 
 📋 **Tu caso:** {visa_name}
 
 """
-        
+
         if needs["required"]:
             msg += f"""
 🔴 **IMPORTANTE:** {needs['reason']}
@@ -557,10 +580,10 @@ Aunque no es obligatorio, un abogado aumenta significativamente tus probabilidad
    • Primera consulta GRATIS
    • Tarifas preferenciales
 """
-        
+
         if firms:
-            msg += f"\n\n🏛️ **BUFETES RECOMENDADOS:**\n"
-            
+            msg += "\n\n🏛️ **BUFETES RECOMENDADOS:**\n"
+
             for i, firm in enumerate(firms[:3], 1):
                 stars = "⭐" * int(firm.rating)
                 msg += f"""
@@ -569,7 +592,7 @@ Aunque no es obligatorio, un abogado aumenta significativamente tus probabilidad
    📍 {', '.join(firm.locations[:2])}
    💰 Caso: ${firm.min_case_fee:,.0f} - ${firm.max_case_fee:,.0f}
 """
-        
+
         msg += """
 
 ━━━━━━━━━━━━━━━━━━━━
@@ -577,7 +600,7 @@ Aunque no es obligatorio, un abogado aumenta significativamente tus probabilidad
 ¿Deseas que te conectemos con un abogado?
 Usa /abogado para ver más detalles y generar tu referido.
 """
-        
+
         return msg
 
 
@@ -616,14 +639,14 @@ def get_visa_category_name(category: VisaCategory) -> str:
 
 
 __all__ = [
-    'LawyerSpecialty',
-    'VisaCategory',
-    'LawFirm',
-    'LawyerReferral',
-    'LawyerReferralSystem',
-    'PARTNER_LAW_FIRMS',
-    'ALWAYS_NEED_LAWYER',
-    'RECOMMEND_LAWYER',
-    'create_lawyer_referral_system',
-    'get_visa_category_name',
+    "LawyerSpecialty",
+    "VisaCategory",
+    "LawFirm",
+    "LawyerReferral",
+    "LawyerReferralSystem",
+    "PARTNER_LAW_FIRMS",
+    "ALWAYS_NEED_LAWYER",
+    "RECOMMEND_LAWYER",
+    "create_lawyer_referral_system",
+    "get_visa_category_name",
 ]

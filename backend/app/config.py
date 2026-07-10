@@ -1,19 +1,32 @@
+import sys
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
+
+# Fase 0 (SECURITY-001): valores que nunca deben tener un default utilizable en
+# producción. Si el entorno no los define, el arranque falla explícitamente en
+# vez de servir con una clave adivinable.
+_INSECURE_DEFAULTS = {"change_me", "your_super_secret_jwt_key_change_in_production", ""}
 
 
 class Settings(BaseSettings):
     service_name: str = "migpal-backend"
     api_prefix: str = "/api/v1"
+    environment: str = "development"
     database_url: str = "sqlite:///./migpal.db"
 
-    AUTH_SECRET_KEY: str = "change_me"
+    AUTH_SECRET_KEY: str
     AUTH_ALGORITHM: str = "HS256"
     AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # AI
     AI_PROVIDER: str = "ollama"
     AI_API_KEY: str = ""
-    AI_MODEL: str = "llama3.1:70b"
+    AI_MODEL: str = "migpal:latest"
+    OLLAMA_URL: str = "http://127.0.0.1:11434"
+
+    # Cache / infra
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     # Email
     SMTP_HOST: str = "smtp.gmail.com"
@@ -32,9 +45,29 @@ class Settings(BaseSettings):
     ENABLE_EXTERNAL_SCRAPERS: bool = False
     GREAT_SCHOOLS_API_KEY: str = ""
 
+    # Logging (backend/app/utils/logging_config.py)
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "console"  # "json" en producción
+    LOG_FILE: str = ""
+
     class Config:
         env_file = ".env"
         extra = "ignore"
 
+    @field_validator("AUTH_SECRET_KEY")
+    @classmethod
+    def _reject_insecure_secret(cls, v: str) -> str:
+        if v in _INSECURE_DEFAULTS or len(v) < 16:
+            raise ValueError(
+                "AUTH_SECRET_KEY debe definirse en el entorno con un valor real "
+                "de al menos 16 caracteres — no se permite un default adivinable "
+                "(ver docs/SECURITY-001.md)."
+            )
+        return v
 
-settings = Settings()
+
+try:
+    settings = Settings()
+except Exception as exc:  # pragma: no cover - falla intencional y explícita
+    sys.stderr.write(f"\n[CONFIG] Variables de entorno inválidas o faltantes: {exc}\n\n")
+    raise

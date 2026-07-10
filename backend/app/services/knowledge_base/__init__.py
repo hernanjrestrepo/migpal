@@ -8,38 +8,36 @@ Módulos:
 - cities_expanded: 1000+ ciudades de USA
 """
 
-from .cities_usa import (
-    REGIONS,
-    CLIMATES,
-    STATES_DATA,
-    get_states_by_region,
-    get_states_by_climate,
-    get_states_without_income_tax,
-    get_states_by_latino_population,
-    get_state_data,
-    search_states,
-)
-
 from .cities_database import (
-    CityData,
     CITIES_DATABASE,
-    get_city,
-    search_cities,
-    get_cities_by_state,
-    get_top_cities_for_latinos,
+    CityData,
     get_affordable_cities,
-    get_safe_cities,
+    get_cities_by_state,
     get_cities_count,
+    get_city,
+    get_safe_cities,
+    get_top_cities_for_latinos,
+    search_cities,
 )
-
 from .cities_expanded import (
     CITIES_EXPANDED,
-    get_city_expanded,
-    search_cities_expanded,
-    get_cities_count_expanded,
-    get_cities_by_state_expanded,
-    get_top_latino_cities,
     generate_city_data,
+    get_cities_by_state_expanded,
+    get_cities_count_expanded,
+    get_city_expanded,
+    get_top_latino_cities,
+    search_cities_expanded,
+)
+from .cities_usa import (
+    CLIMATES,
+    REGIONS,
+    STATES_DATA,
+    get_state_data,
+    get_states_by_climate,
+    get_states_by_latino_population,
+    get_states_by_region,
+    get_states_without_income_tax,
+    search_states,
 )
 
 __all__ = [
@@ -109,7 +107,7 @@ def search_all_cities(
         industries=industries,
         limit=limit,
     )
-    
+
     # Si no hay suficientes, buscar en la expandida
     if len(detailed) < limit:
         expanded = search_cities_expanded(
@@ -124,11 +122,11 @@ def search_all_cities(
             industries=industries,
             limit=limit - len(detailed),
         )
-        
+
         # Combinar evitando duplicados
         detailed_ids = {c["id"] for c in detailed}
         for city in expanded:
             if city["id"] not in detailed_ids:
                 detailed.append(city)
-    
+
     return detailed[:limit]

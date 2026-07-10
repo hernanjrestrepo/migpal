@@ -26,9 +26,11 @@ except ImportError:
 
 # V4.0 - MigPAL USA Standard
 try:
-    from . import migpal_usa_standard  # noqa: F401
-    from . import migpal_usa_integration  # noqa: F401
-    from . import migpal_v4_middleware  # noqa: F401
+    from . import (
+        migpal_usa_integration,  # noqa: F401
+        migpal_usa_standard,  # noqa: F401
+        migpal_v4_middleware,  # noqa: F401
+    )
 except ImportError:
     migpal_usa_standard = None
     migpal_usa_integration = None

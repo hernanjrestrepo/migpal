@@ -12,10 +12,6 @@ Features:
 - Fotos y descripción de ciudades
 """
 
-from typing import Dict, List, Any, Optional, Tuple
-from dataclasses import dataclass, field
-import json
-
 # ============== CONSTANTES ==============
 
 MAX_CITIES_TO_SHOW = 10  # Máximo de ciudades a mostrar en resultados
@@ -45,7 +41,7 @@ PREFERENCE_OPTIONS = {
             ("sur", "🤠 Sur (Texas, Atlanta, Nashville)"),
             ("midwest", "🌾 Midwest (Chicago, Denver, Minneapolis)"),
             ("sin_preferencia", "🔄 Sin preferencia"),
-        ]
+        ],
     },
     "clima": {
         "question": "¿Qué climas te gustan?",
@@ -54,7 +50,7 @@ PREFERENCE_OPTIONS = {
             ("calido", "☀️ Cálido todo el año"),
             ("templado", "🌤️ Templado (4 estaciones suaves)"),
             ("frio", "❄️ Frío (inviernos con nieve)"),
-        ]
+        ],
     },
     "tamano_ciudad": {
         "question": "¿Qué tamaño de ciudad prefieres?",
@@ -63,7 +59,7 @@ PREFERENCE_OPTIONS = {
             ("mediana", "🌆 Ciudad mediana (200K-1M)"),
             ("pequena", "🏘️ Ciudad pequeña (<200K)"),
             ("suburbio", "🏡 Suburbio de ciudad grande"),
-        ]
+        ],
     },
     "prioridad_principal": {
         "question": "¿Cuál es tu PRIORIDAD PRINCIPAL?",
@@ -73,7 +69,7 @@ PREFERENCE_OPTIONS = {
             ("trabajo", "💼 Mejores oportunidades laborales"),
             ("educacion", "🎓 Mejor educación para hijos"),
             ("comunidad", "🤝 Comunidad latina fuerte"),
-        ]
+        ],
     },
     "tipo_vivienda": {
         "question": "¿Qué tipo de vivienda prefieres?",
@@ -82,7 +78,7 @@ PREFERENCE_OPTIONS = {
             ("apartamento", "🏢 Apartamento"),
             ("townhouse", "🏘️ Townhouse"),
             ("flexible", "🔄 Flexible según precio"),
-        ]
+        ],
     },
     "comprar_alquilar": {
         "question": "¿Planeas comprar o alquilar?",
@@ -90,7 +86,7 @@ PREFERENCE_OPTIONS = {
             ("alquilar", "🔑 Alquilar (al inicio)"),
             ("comprar", "🏠 Comprar (si es posible)"),
             ("alquilar_luego_comprar", "📈 Alquilar y luego comprar"),
-        ]
+        ],
     },
     "presupuesto_vivienda": {
         "question": "¿Cuál es tu presupuesto MENSUAL para vivienda?",
@@ -99,7 +95,7 @@ PREFERENCE_OPTIONS = {
             ("medio", "💵💵 $1,500 - $2,500/mes"),
             ("alto", "💵💵💵 $2,500 - $4,000/mes"),
             ("premium", "💎 $4,000+/mes"),
-        ]
+        ],
     },
     "trabajo_negocio": {
         "question": "¿Qué planeas hacer laboralmente?",
@@ -108,7 +104,7 @@ PREFERENCE_OPTIONS = {
             ("empresa", "🚀 Montar mi empresa"),
             ("remoto", "💻 Trabajo remoto (ya tengo)"),
             ("ambos", "🔄 Empleo + proyecto propio"),
-        ]
+        ],
     },
     "industria": {
         "question": "¿En qué industria trabajas/trabajarás?",
@@ -120,7 +116,7 @@ PREFERENCE_OPTIONS = {
             ("construccion", "🏗️ Construcción"),
             ("servicios", "🛎️ Servicios"),
             ("otro", "📋 Otro"),
-        ]
+        ],
     },
     "hijos_escuela": {
         "question": "¿Tienes hijos en edad escolar?",
@@ -130,7 +126,7 @@ PREFERENCE_OPTIONS = {
             ("si_universidad", "🎓 Sí, universidad"),
             ("si_varios", "👨‍👩‍👧‍👦 Sí, varios niveles"),
             ("no", "❌ No tengo hijos / Ya son adultos"),
-        ]
+        ],
     },
     "transporte": {
         "question": "¿Cómo planeas transportarte?",
@@ -138,7 +134,7 @@ PREFERENCE_OPTIONS = {
             ("carro", "🚗 Carro propio (indispensable)"),
             ("publico", "🚇 Transporte público"),
             ("mixto", "🔄 Combinación"),
-        ]
+        ],
     },
     "importancia_comunidad": {
         "question": "¿Qué tan importante es tener comunidad latina cerca?",
@@ -147,7 +143,7 @@ PREFERENCE_OPTIONS = {
             ("importante", "⭐⭐ Importante"),
             ("poco_importante", "⭐ Poco importante"),
             ("no_importa", "🔄 No me importa"),
-        ]
+        ],
     },
 }
 
@@ -155,7 +151,6 @@ PREFERENCE_OPTIONS = {
 
 CITIES_DATABASE = {
     # ==================== CIUDADES GRANDES (+1M) ====================
-    
     "miami": {
         "nombre": "Miami, FL",
         "region": "costa_este",
@@ -193,7 +188,6 @@ CITIES_DATABASE = {
         "pros": ["Clima cálido", "Gran comunidad latina", "Sin impuesto estatal", "Vida nocturna"],
         "contras": ["Alto costo de vida", "Tráfico", "Huracanes", "Calor extremo en verano"],
     },
-    
     "new_york": {
         "nombre": "New York, NY",
         "region": "costa_este",
@@ -231,7 +225,6 @@ CITIES_DATABASE = {
         "pros": ["Máximas oportunidades", "Transporte público", "Diversidad", "Cultura"],
         "contras": ["Muy caro", "Apartamentos pequeños", "Inviernos fríos", "Ritmo acelerado"],
     },
-    
     "los_angeles": {
         "nombre": "Los Angeles, CA",
         "region": "costa_oeste",
@@ -269,7 +262,6 @@ CITIES_DATABASE = {
         "pros": ["Clima perfecto", "Entretenimiento", "Diversidad", "Playas"],
         "contras": ["Muy caro", "Tráfico terrible", "Homeless", "Incendios"],
     },
-    
     "houston": {
         "nombre": "Houston, TX",
         "region": "sur",
@@ -307,7 +299,6 @@ CITIES_DATABASE = {
         "pros": ["Bajo costo", "Sin impuesto estatal", "Oportunidades", "Diversidad"],
         "contras": ["Calor extremo", "Huracanes", "Necesitas carro", "Sprawl"],
     },
-    
     "chicago": {
         "nombre": "Chicago, IL",
         "region": "midwest",
@@ -345,7 +336,6 @@ CITIES_DATABASE = {
         "pros": ["Gran ciudad asequible", "Transporte", "Cultura", "Arquitectura"],
         "contras": ["Inviernos brutales", "Impuestos altos", "Criminalidad en zonas", "Viento"],
     },
-    
     "dallas": {
         "nombre": "Dallas, TX",
         "region": "sur",
@@ -383,7 +373,6 @@ CITIES_DATABASE = {
         "pros": ["Bajo costo", "Sin impuesto estatal", "Crecimiento", "Corporaciones"],
         "contras": ["Calor", "Tornados", "Sprawl", "Necesitas carro"],
     },
-    
     "phoenix": {
         "nombre": "Phoenix, AZ",
         "region": "midwest",
@@ -421,9 +410,7 @@ CITIES_DATABASE = {
         "pros": ["Bajo costo", "Sol todo el año", "Crecimiento", "Sin nieve"],
         "contras": ["Calor extremo (45°C)", "Necesitas carro", "Agua escasa", "Sprawl"],
     },
-    
     # ==================== CIUDADES MEDIANAS (200K - 1M) ====================
-    
     "orlando": {
         "nombre": "Orlando, FL",
         "region": "costa_este",
@@ -461,7 +448,6 @@ CITIES_DATABASE = {
         "pros": ["Costo moderado", "Sin impuesto estatal", "Clima", "Parques temáticos", "Familiar"],
         "contras": ["Necesitas carro", "Turismo masivo", "Huracanes", "Calor"],
     },
-    
     "tampa": {
         "nombre": "Tampa, FL",
         "region": "costa_este",
@@ -499,7 +485,6 @@ CITIES_DATABASE = {
         "pros": ["Playas", "Costo moderado", "Sin impuesto estatal", "Crecimiento"],
         "contras": ["Necesitas carro", "Huracanes", "Calor húmedo", "Tráfico"],
     },
-    
     "austin": {
         "nombre": "Austin, TX",
         "region": "sur",
@@ -537,7 +522,6 @@ CITIES_DATABASE = {
         "pros": ["Tech hub", "Cultura", "Sin impuesto estatal", "Joven", "Música"],
         "contras": ["Creciendo rápido", "Tráfico", "Calor", "Gentrificación"],
     },
-    
     "san_antonio": {
         "nombre": "San Antonio, TX",
         "region": "sur",
@@ -575,7 +559,6 @@ CITIES_DATABASE = {
         "pros": ["Muy bajo costo", "Sin impuesto estatal", "Cultura mexicana", "Familiar"],
         "contras": ["Menos oportunidades tech", "Calor", "Necesitas carro", "Sprawl"],
     },
-    
     "denver": {
         "nombre": "Denver, CO",
         "region": "midwest",
@@ -613,7 +596,6 @@ CITIES_DATABASE = {
         "pros": ["Montañas", "Outdoor lifestyle", "Tech creciente", "Calidad de vida"],
         "contras": ["Altitud", "Nieve", "Creciendo rápido", "Caro para el midwest"],
     },
-    
     "charlotte": {
         "nombre": "Charlotte, NC",
         "region": "sur",
@@ -651,7 +633,6 @@ CITIES_DATABASE = {
         "pros": ["Centro financiero", "Costo moderado", "Clima agradable", "Crecimiento"],
         "contras": ["Menos comunidad latina", "Necesitas carro", "Tráfico creciente"],
     },
-    
     "nashville": {
         "nombre": "Nashville, TN",
         "region": "sur",
@@ -689,7 +670,6 @@ CITIES_DATABASE = {
         "pros": ["Sin impuesto estatal", "Música", "Salud", "Crecimiento", "Amigable"],
         "contras": ["Menos latinos", "Necesitas carro", "Tornados", "Creciendo rápido"],
     },
-    
     "raleigh": {
         "nombre": "Raleigh, NC",
         "region": "sur",
@@ -727,7 +707,6 @@ CITIES_DATABASE = {
         "pros": ["Research Triangle", "Educación top", "Tech", "Costo moderado"],
         "contras": ["Menos latinos", "Necesitas carro", "Humedad en verano"],
     },
-    
     "salt_lake_city": {
         "nombre": "Salt Lake City, UT",
         "region": "midwest",
@@ -765,7 +744,6 @@ CITIES_DATABASE = {
         "pros": ["Montañas", "Ski", "Tech creciente", "Seguro", "Bajo costo"],
         "contras": ["Cultura mormona", "Menos latinos", "Inversión térmica", "Nieve"],
     },
-    
     "jacksonville": {
         "nombre": "Jacksonville, FL",
         "region": "costa_este",
@@ -803,7 +781,6 @@ CITIES_DATABASE = {
         "pros": ["Bajo costo", "Playas", "Sin impuesto estatal", "Espacio"],
         "contras": ["Sprawl enorme", "Necesitas carro", "Menos oportunidades", "Huracanes"],
     },
-    
     "las_vegas": {
         "nombre": "Las Vegas, NV",
         "region": "costa_oeste",
@@ -841,7 +818,6 @@ CITIES_DATABASE = {
         "pros": ["Sin impuesto estatal", "Entretenimiento", "Bajo costo", "Sol"],
         "contras": ["Calor extremo", "Educación débil", "Cultura de casino", "Agua escasa"],
     },
-    
     "portland": {
         "nombre": "Portland, OR",
         "region": "costa_oeste",
@@ -879,7 +855,6 @@ CITIES_DATABASE = {
         "pros": ["Naturaleza", "Sin impuesto de ventas", "Cultura", "Transporte", "Foodie"],
         "contras": ["Lluvia constante", "Homeless", "Menos latinos", "Gris en invierno"],
     },
-    
     "san_diego": {
         "nombre": "San Diego, CA",
         "region": "costa_oeste",
@@ -917,9 +892,7 @@ CITIES_DATABASE = {
         "pros": ["Mejor clima de USA", "Playas", "Cerca de México", "Seguro"],
         "contras": ["Caro", "Necesitas carro", "Menos oportunidades que LA/SF"],
     },
-    
     # ==================== CIUDADES PEQUEÑAS (<200K) ====================
-    
     "boise": {
         "nombre": "Boise, ID",
         "region": "costa_oeste",
@@ -957,7 +930,6 @@ CITIES_DATABASE = {
         "pros": ["Muy seguro", "Outdoor", "Bajo costo", "Calidad de vida"],
         "contras": ["Pocos latinos", "Inviernos fríos", "Menos oportunidades", "Aislado"],
     },
-    
     "albuquerque": {
         "nombre": "Albuquerque, NM",
         "region": "midwest",
@@ -995,7 +967,6 @@ CITIES_DATABASE = {
         "pros": ["Muy bajo costo", "Cultura hispana", "Paisajes", "Sol"],
         "contras": ["Criminalidad", "Menos oportunidades", "Aislado", "Pobreza"],
     },
-    
     "tucson": {
         "nombre": "Tucson, AZ",
         "region": "midwest",
@@ -1037,32 +1008,33 @@ CITIES_DATABASE = {
 
 # ============== FUNCIONES DE FILTRADO Y SCORING ==============
 
-def filter_cities_by_size(cities: Dict, size: str) -> Dict:
+
+def filter_cities_by_size(cities: dict, size: str) -> dict:
     """
     Filtra ciudades por tamaño
-    
+
     Args:
         cities: Diccionario de ciudades
         size: 'grande', 'mediana', 'pequena', 'suburbio'
-    
+
     Returns:
         Diccionario filtrado de ciudades
     """
     if size == "suburbio":
         # Para suburbios, mostrar ciudades grandes (los suburbios están en mejores_barrios)
         return {k: v for k, v in cities.items() if v.get("tamano") == "grande"}
-    
+
     return {k: v for k, v in cities.items() if v.get("tamano") == size}
 
 
-def filter_cities_by_region(cities: Dict, regions: List[str]) -> Dict:
+def filter_cities_by_region(cities: dict, regions: list[str]) -> dict:
     """Filtra ciudades por región(es)"""
     if not regions or "sin_preferencia" in regions:
         return cities
     return {k: v for k, v in cities.items() if v.get("region") in regions}
 
 
-def filter_cities_by_climate(cities: Dict, climates: List[str]) -> Dict:
+def filter_cities_by_climate(cities: dict, climates: list[str]) -> dict:
     """Filtra ciudades por clima(s)"""
     if not climates:
         return cities
@@ -1075,12 +1047,12 @@ def calculate_city_score(city_data: dict, preferences: dict, weights: dict = Non
     """
     if weights is None:
         weights = DEFAULT_WEIGHTS.copy()
-    
+
     total_weight = sum(weights.values())
     score = 0
-    
+
     city_scores = city_data.get("scores", {})
-    
+
     # Costo de vida (invertido - menor costo = mejor score)
     if "presupuesto_vivienda" in preferences:
         budget = preferences["presupuesto_vivienda"]
@@ -1095,10 +1067,10 @@ def calculate_city_score(city_data: dict, preferences: dict, weights: dict = Non
             score += weights["costo_vida"] * (costo_score / 100) * 0.5
     else:
         score += weights["costo_vida"] * (city_scores.get("costo_vida", 50) / 100)
-    
+
     # Seguridad
     score += weights["seguridad"] * (city_scores.get("seguridad", 50) / 100)
-    
+
     # Clima
     if "clima" in preferences:
         pref_clima = preferences["clima"]
@@ -1114,7 +1086,7 @@ def calculate_city_score(city_data: dict, preferences: dict, weights: dict = Non
             score += weights["clima"] * 0.3
     else:
         score += weights["clima"] * 0.5
-    
+
     # Oportunidades laborales
     if "trabajo_negocio" in preferences:
         trabajo = preferences["trabajo_negocio"]
@@ -1125,16 +1097,16 @@ def calculate_city_score(city_data: dict, preferences: dict, weights: dict = Non
             score += weights["oportunidades"] * 0.5
     else:
         score += weights["oportunidades"] * (city_scores.get("oportunidades", 50) / 100)
-    
+
     # Educación
     if "hijos_escuela" in preferences and preferences["hijos_escuela"] != "no":
         score += weights["educacion"] * (city_scores.get("educacion", 50) / 100)
     else:
         score += weights["educacion"] * 0.3
-    
+
     # Salud
     score += weights["salud"] * (city_scores.get("salud", 50) / 100)
-    
+
     # Transporte
     if "transporte" in preferences:
         trans = preferences["transporte"]
@@ -1147,7 +1119,7 @@ def calculate_city_score(city_data: dict, preferences: dict, weights: dict = Non
             score += weights["transporte"] * (trans_score / 100) * 0.7
     else:
         score += weights["transporte"] * (city_scores.get("transporte", 50) / 100)
-    
+
     # Comunidad latina
     if "importancia_comunidad" in preferences:
         imp = preferences["importancia_comunidad"]
@@ -1162,39 +1134,41 @@ def calculate_city_score(city_data: dict, preferences: dict, weights: dict = Non
             score += weights["comunidad_latina"] * 0.3
     else:
         score += weights["comunidad_latina"] * (city_scores.get("comunidad_latina", 50) / 100)
-    
+
     # Migration friendly
     score += weights["migration_friendly"] * (city_scores.get("migration_friendly", 50) / 100)
-    
+
     # Normalizar a 0-100
     normalized_score = min(100, (score / total_weight) * 100)
-    
+
     return round(normalized_score, 1)
 
 
-def get_top_cities(preferences: dict, weights: dict = None, top_n: int = None) -> List[Tuple[str, dict, float]]:
+def get_top_cities(
+    preferences: dict, weights: dict = None, top_n: int = None
+) -> list[tuple[str, dict, float]]:
     """
     Obtiene las mejores ciudades según las preferencias del usuario
-    
+
     IMPORTANTE: Limita a MAX_CITIES_TO_SHOW (10) ciudades máximo
-    
+
     Returns:
         Lista de tuplas (city_id, city_data, score)
     """
     if top_n is None:
         top_n = MAX_CITIES_TO_SHOW
-    
+
     # Limitar a máximo 10
     top_n = min(top_n, MAX_CITIES_TO_SHOW)
-    
+
     # Empezar con todas las ciudades
     filtered_cities = CITIES_DATABASE.copy()
-    
+
     # Filtrar por tamaño de ciudad (CRÍTICO)
     if "tamano_ciudad" in preferences:
         tamano = preferences["tamano_ciudad"]
         filtered_cities = filter_cities_by_size(filtered_cities, tamano)
-    
+
     # Filtrar por región
     if "region" in preferences:
         region = preferences["region"]
@@ -1202,7 +1176,7 @@ def get_top_cities(preferences: dict, weights: dict = None, top_n: int = None) -
             filtered_cities = filter_cities_by_region(filtered_cities, region)
         elif region != "sin_preferencia":
             filtered_cities = filter_cities_by_region(filtered_cities, [region])
-    
+
     # Filtrar por clima
     if "clima" in preferences:
         clima = preferences["clima"]
@@ -1210,28 +1184,28 @@ def get_top_cities(preferences: dict, weights: dict = None, top_n: int = None) -
             filtered_cities = filter_cities_by_climate(filtered_cities, clima)
         else:
             filtered_cities = filter_cities_by_climate(filtered_cities, [clima])
-    
+
     # Calcular scores
     results = []
     for city_id, city_data in filtered_cities.items():
         score = calculate_city_score(city_data, preferences, weights)
         results.append((city_id, city_data, score))
-    
+
     # Ordenar por score descendente
     results.sort(key=lambda x: x[2], reverse=True)
-    
+
     return results[:top_n]
 
 
-def get_city_comparison(city_ids: List[str]) -> str:
+def get_city_comparison(city_ids: list[str]) -> str:
     """Genera una comparación de ciudades"""
     cities = [CITIES_DATABASE.get(cid) for cid in city_ids if cid in CITIES_DATABASE]
-    
+
     if not cities:
         return "No se encontraron ciudades para comparar."
-    
+
     comparison = "📊 *COMPARACIÓN DE CIUDADES*\n\n"
-    
+
     for city in cities:
         comparison += f"🏙️ *{city['nombre']}*\n"
         comparison += f"├ 💰 Costo mensual: ${city['costo_vida_mensual']['total_estimado']:,}\n"
@@ -1239,7 +1213,7 @@ def get_city_comparison(city_ids: List[str]) -> str:
         comparison += f"├ 💼 Oportunidades: {city['scores']['oportunidades']}/100\n"
         comparison += f"├ 🤝 Comunidad latina: {city['scores']['comunidad_latina']}/100\n"
         comparison += f"└ ☀️ Clima: {city['clima'].capitalize()}\n\n"
-    
+
     return comparison
 
 
@@ -1248,7 +1222,7 @@ def get_city_details(city_id: str) -> str:
     city = CITIES_DATABASE.get(city_id)
     if not city:
         return "Ciudad no encontrada."
-    
+
     details = f"""🏙️ *{city['nombre']}*
 
 📝 *Descripción:*
@@ -1297,20 +1271,25 @@ def generate_migration_plan(city_id: str, preferences: dict, user_profile: dict)
     city = CITIES_DATABASE.get(city_id)
     if not city:
         return {"error": "Ciudad no encontrada"}
-    
+
     # Calcular presupuesto según preferencias
     budget_key = preferences.get("presupuesto_vivienda", "medio")
-    budget_map = {"bajo": "alquiler_1br", "medio": "alquiler_2br", "alto": "alquiler_3br", "premium": "alquiler_3br"}
+    budget_map = {
+        "bajo": "alquiler_1br",
+        "medio": "alquiler_2br",
+        "alto": "alquiler_3br",
+        "premium": "alquiler_3br",
+    }
     rent_key = budget_map.get(budget_key, "alquiler_2br")
-    
+
     monthly_rent = city["costo_vida_mensual"].get(rent_key, 2000)
     monthly_total = city["costo_vida_mensual"]["total_estimado"]
-    
+
     # Ajustar por familia
     family_count = user_profile.get("preferences", {}).get("family_count", 1)
     if family_count > 2:
         monthly_total *= 1.3
-    
+
     plan = {
         "ciudad": city["nombre"],
         "estado": city["estado"],
@@ -1325,11 +1304,11 @@ def generate_migration_plan(city_id: str, preferences: dict, user_profile: dict)
             "tipo_recomendado": preferences.get("tipo_vivienda", "apartamento"),
             "alquiler_estimado": monthly_rent,
             "mejores_barrios": city["mejores_barrios"][:5],
-            "consejo": "Alquilar los primeros 6-12 meses para conocer la ciudad antes de comprar."
+            "consejo": "Alquilar los primeros 6-12 meses para conocer la ciudad antes de comprar.",
         },
         "trabajo": {
             "industrias_fuertes": city["industrias_fuertes"],
-            "consejo": "Networking en LinkedIn y eventos locales es clave."
+            "consejo": "Networking en LinkedIn y eventos locales es clave.",
         },
         "educacion": {
             "mejores_escuelas": city["mejores_escuelas"],
@@ -1363,7 +1342,7 @@ def generate_migration_plan(city_id: str, preferences: dict, user_profile: dict)
         "pros": city["pros"],
         "contras": city["contras"],
     }
-    
+
     return plan
 
 
@@ -1385,7 +1364,7 @@ MIGRATION_PLAN_QUESTIONS = [
 ]
 
 
-def get_next_plan_question(current_preferences: dict) -> Optional[str]:
+def get_next_plan_question(current_preferences: dict) -> str | None:
     """Obtiene la siguiente pregunta del plan de migración"""
     for q in MIGRATION_PLAN_QUESTIONS:
         if q not in current_preferences:
@@ -1393,14 +1372,14 @@ def get_next_plan_question(current_preferences: dict) -> Optional[str]:
     return None
 
 
-def get_question_keyboard(question_id: str) -> Tuple[str, list]:
+def get_question_keyboard(question_id: str) -> tuple[str, list]:
     """Obtiene el texto y opciones para una pregunta"""
     q_data = PREFERENCE_OPTIONS.get(question_id, {})
     question_text = q_data.get("question", "")
     options = q_data.get("options", [])
-    
+
     keyboard = []
     for value, label in options:
         keyboard.append([{"text": label, "callback_data": f"plan_{question_id}_{value}"}])
-    
+
     return question_text, keyboard

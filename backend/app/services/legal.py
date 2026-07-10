@@ -6,7 +6,7 @@ from datetime import datetime
 import httpx
 from sqlmodel import Session
 
-from app.models.data_source import DataSource, ScrapeJob, ScrapedDocument
+from app.models.data_source import DataSource, ScrapedDocument, ScrapeJob
 
 
 def _fetch_text(url: str) -> str:
@@ -23,7 +23,9 @@ def sync_uscis(session: Session, source: DataSource, job: ScrapeJob) -> None:
 
 
 def sync_dos_travel(session: Session, source: DataSource, job: ScrapeJob) -> None:
-    html = _fetch_text("https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/visa-bulletin.html")
+    html = _fetch_text(
+        "https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/visa-bulletin.html"
+    )
     _store_doc(session, source, job, html, "Visa bulletin")
 
 
@@ -35,7 +37,7 @@ def _store_doc(session: Session, source: DataSource, job: ScrapeJob, text: str, 
         content=text,
         content_hash=content_hash,
         metadata_blob=None,
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
     )
     session.add(doc)
     session.commit()

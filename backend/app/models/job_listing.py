@@ -1,21 +1,20 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
-from sqlmodel import SQLModel, Field
+from sqlmodel import Field, SQLModel
 
 
 class JobListing(SQLModel, table=True):
     __tablename__ = "job_listings"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     source_id: int = Field(foreign_key="data_sources.id")
     job_id: str = Field(index=True)
     title: str
-    company: Optional[str] = None
-    location: Optional[str] = None
+    company: str | None = None
+    location: str | None = None
     url: str
-    salary: Optional[str] = None
-    metadata_blob: Optional[str] = None
+    salary: str | None = None
+    metadata_blob: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

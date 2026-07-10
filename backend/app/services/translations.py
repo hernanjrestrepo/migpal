@@ -51,7 +51,6 @@ TRANSLATIONS = {
         "help_title": "🆘 *Ayuda de MigPAL*",
         "select_language": "🌐 Selecciona tu idioma:",
         "language_changed": "✅ Idioma cambiado a: Español",
-        
         # Phase headers
         "phase1_profile": "FASE 1: Tu Perfil",
         "phase2_diagnostic": "FASE 2: Diagnóstico",
@@ -59,7 +58,6 @@ TRANSLATIONS = {
         "phase4_plan": "FASE 4: Plan de Migración",
         "phase5_execution": "FASE 5: Ejecución",
         "phase6_closing": "FASE 6: Cierre",
-        
         # Name flow
         "confirm_name": "¿Tu nombre es *{name}*?",
         "yes_correct": "✅ Sí, es correcto",
@@ -69,12 +67,11 @@ TRANSLATIONS = {
         "name_retry": "Escribe tu nombre nuevamente:",
         "hello_name": "¡Hola {name}! 😊",
         "lets_start": "Encantado de conocerte. Ahora voy a guiarte paso a paso en tu proceso de migración.",
-        "philosophy": "💡 *Mi filosofía:* \"La visa es el VEHÍCULO, no el DESTINO\"",
+        "philosophy": '💡 *Mi filosofía:* "La visa es el VEHÍCULO, no el DESTINO"',
         "first_understand": "Primero vamos a entender tu situación y sueños, y luego encontraremos la mejor ruta para ti.",
         "shall_we_start": "¿Empezamos?",
         "yes_lets_start": "✅ Sí, empecemos",
         "tell_me_more": "ℹ️ Cuéntame más sobre el proceso",
-        
         # Form messages
         "ask_birthdate_full": "¿Cuál es tu fecha de nacimiento? (DD/MM/AAAA)",
         "ask_nationality_full": "¿Cuál es tu nacionalidad?",
@@ -86,7 +83,6 @@ TRANSLATIONS = {
         "ask_experience": "¿Cuántos años de experiencia tienes?",
         "profile_complete": "✅ *¡Perfil básico completado!*",
         "now_plan": "Ahora vamos a definir tu plan de migración.",
-        
         # Commands
         "cmd_start": "Iniciar",
         "cmd_new": "Reiniciar",
@@ -104,7 +100,6 @@ TRANSLATIONS = {
         "cmd_report": "Generar reporte",
         "cmd_sos": "Emergencia",
         "cmd_community": "Comunidad",
-        
         # Profile questions
         "ask_name": "¿Cuál es tu nombre completo?",
         "ask_birthdate": "¿Fecha de nacimiento? (DD/MM/AAAA)",
@@ -121,7 +116,6 @@ TRANSLATIONS = {
         "ask_reason": "¿Principal razón para migrar?",
         "ask_timeline": "⏰ ¿En qué plazo?",
         "ask_budget": "💰 ¿Presupuesto disponible?",
-        
         # Options
         "yes": "Sí",
         "no": "No",
@@ -131,41 +125,35 @@ TRANSLATIONS = {
         "save": "Guardar",
         "skip": "Omitir",
         "done": "Listo",
-        
         # Education levels
         "edu_high_school": "Bachillerato",
         "edu_technical": "Técnico/Tecnológico",
         "edu_bachelor": "Universitario",
         "edu_master": "Maestría",
         "edu_phd": "Doctorado",
-        
         # English levels
         "eng_none": "Ninguno",
         "eng_basic": "Básico (A1-A2)",
         "eng_intermediate": "Intermedio (B1-B2)",
         "eng_advanced": "Avanzado (C1-C2)",
         "eng_native": "Nativo",
-        
         # Migration reasons
         "reason_work": "Trabajo",
         "reason_study": "Estudios",
         "reason_family": "Familia",
         "reason_quality": "Calidad de vida",
         "reason_safety": "Seguridad",
-        
         # Timeline
         "timeline_urgent": "< 6 meses",
         "timeline_medium": "6-12 meses",
         "timeline_long": "1-2 años",
         "timeline_flexible": "Flexible",
-        
         # Score
         "score_title": "📊 *TU SCORE DE MIGRACIÓN*",
         "score_excellent": "¡Excelente perfil!",
         "score_good": "Buen perfil, con mejoras posibles",
         "score_moderate": "Perfil moderado, considera mejoras",
         "score_challenging": "Perfil con desafíos, pero hay opciones",
-        
         # Costs
         "costs_title": "💰 *CALCULADORA DE COSTOS*",
         "costs_visa": "Trámites y Visa",
@@ -173,14 +161,12 @@ TRANSLATIONS = {
         "costs_settlement": "Primeros 3 Meses",
         "costs_hidden": "Costos Ocultos",
         "costs_total": "TOTAL ESTIMADO",
-        
         # Emergency
         "sos_title": "🆘 *AYUDA DE EMERGENCIA*",
         "sos_danger": "*Si estás en peligro inmediato, llama a emergencias locales*",
         "sos_hotlines": "📞 *Líneas de Ayuda 24/7:*",
         "sos_scams": "⚠️ *Estafas Comunes:*",
         "sos_rights": "💪 *Recuerda: Tienes derechos sin importar tu estatus migratorio*",
-        
         # Motivational
         "motivation_morning": [
             "🌅 ¡Buenos días! Cada día es una oportunidad para acercarte a tu sueño. ¡Tú puedes!",
@@ -197,7 +183,6 @@ TRANSLATIONS = {
             "🤗 No estás solo/a en esto. Millones de migrantes han pasado por lo mismo.",
             "🌈 Después de la tormenta siempre sale el sol. ¡No te rindas!",
         ],
-        
         # UX Improvements v3.0.3
         "generic_error": "⚠️ Ocurrió un error inesperado. Por favor intenta de nuevo o escribe /start para reiniciar.",
         "stall_reminder": "👋 ¡Hola! Noté que llevas un rato sin avanzar. ¿Necesitas ayuda con algo?",
@@ -212,7 +197,6 @@ TRANSLATIONS = {
         "next_phase": "Siguiente fase: {phase}",
         "error_logged": "El error ha sido registrado. Nuestro equipo lo revisará.",
     },
-    
     # ===== ENGLISH =====
     "en": {
         # Welcome & General
@@ -220,7 +204,6 @@ TRANSLATIONS = {
         "help_title": "🆘 *MigPAL Help*",
         "select_language": "🌐 Select your language:",
         "language_changed": "✅ Language changed to: English",
-        
         # Phase headers
         "phase1_profile": "PHASE 1: Your Profile",
         "phase2_diagnostic": "PHASE 2: Diagnostic",
@@ -228,7 +211,6 @@ TRANSLATIONS = {
         "phase4_plan": "PHASE 4: Migration Plan",
         "phase5_execution": "PHASE 5: Execution",
         "phase6_closing": "PHASE 6: Closing",
-        
         # Name flow
         "confirm_name": "Is your name *{name}*?",
         "yes_correct": "✅ Yes, that's correct",
@@ -238,12 +220,11 @@ TRANSLATIONS = {
         "name_retry": "Please write your name again:",
         "hello_name": "Hello {name}! 😊",
         "lets_start": "Nice to meet you. Now I'll guide you step by step through your migration process.",
-        "philosophy": "💡 *My philosophy:* \"The visa is the VEHICLE, not the DESTINATION\"",
+        "philosophy": '💡 *My philosophy:* "The visa is the VEHICLE, not the DESTINATION"',
         "first_understand": "First, let's understand your situation and dreams, then we'll find the best route for you.",
         "shall_we_start": "Shall we start?",
         "yes_lets_start": "✅ Yes, let's start",
         "tell_me_more": "ℹ️ Tell me more about the process",
-        
         # Form messages
         "ask_birthdate_full": "What is your date of birth? (DD/MM/YYYY)",
         "ask_nationality_full": "What is your nationality?",
@@ -255,7 +236,6 @@ TRANSLATIONS = {
         "ask_experience": "How many years of experience do you have?",
         "profile_complete": "✅ *Basic profile completed!*",
         "now_plan": "Now let's define your migration plan.",
-        
         # Commands
         "cmd_start": "Start",
         "cmd_new": "Restart",
@@ -273,7 +253,6 @@ TRANSLATIONS = {
         "cmd_report": "Generate report",
         "cmd_sos": "Emergency",
         "cmd_community": "Community",
-        
         # Profile questions
         "ask_name": "What is your full name?",
         "ask_birthdate": "Date of birth? (DD/MM/YYYY)",
@@ -290,7 +269,6 @@ TRANSLATIONS = {
         "ask_reason": "Main reason for migrating?",
         "ask_timeline": "⏰ What timeframe?",
         "ask_budget": "💰 Available budget?",
-        
         # Options
         "yes": "Yes",
         "no": "No",
@@ -300,41 +278,35 @@ TRANSLATIONS = {
         "save": "Save",
         "skip": "Skip",
         "done": "Done",
-        
         # Education levels
         "edu_high_school": "High School",
         "edu_technical": "Technical/Vocational",
         "edu_bachelor": "Bachelor's Degree",
         "edu_master": "Master's Degree",
         "edu_phd": "PhD/Doctorate",
-        
         # English levels
         "eng_none": "None",
         "eng_basic": "Basic (A1-A2)",
         "eng_intermediate": "Intermediate (B1-B2)",
         "eng_advanced": "Advanced (C1-C2)",
         "eng_native": "Native",
-        
         # Migration reasons
         "reason_work": "Work",
         "reason_study": "Studies",
         "reason_family": "Family",
         "reason_quality": "Quality of life",
         "reason_safety": "Safety",
-        
         # Timeline
         "timeline_urgent": "< 6 months",
         "timeline_medium": "6-12 months",
         "timeline_long": "1-2 years",
         "timeline_flexible": "Flexible",
-        
         # Score
         "score_title": "📊 *YOUR MIGRATION SCORE*",
         "score_excellent": "Excellent profile!",
         "score_good": "Good profile, with room for improvement",
         "score_moderate": "Moderate profile, consider improvements",
         "score_challenging": "Challenging profile, but there are options",
-        
         # Costs
         "costs_title": "💰 *COST CALCULATOR*",
         "costs_visa": "Visa & Processing",
@@ -342,14 +314,12 @@ TRANSLATIONS = {
         "costs_settlement": "First 3 Months",
         "costs_hidden": "Hidden Costs",
         "costs_total": "ESTIMATED TOTAL",
-        
         # Emergency
         "sos_title": "🆘 *EMERGENCY HELP*",
         "sos_danger": "*If you are in immediate danger, call local emergency services*",
         "sos_hotlines": "📞 *24/7 Helplines:*",
         "sos_scams": "⚠️ *Common Scams:*",
         "sos_rights": "💪 *Remember: You have rights regardless of your immigration status*",
-        
         # Motivational
         "motivation_morning": [
             "🌅 Good morning! Every day is an opportunity to get closer to your dream. You can do it!",
@@ -366,7 +336,6 @@ TRANSLATIONS = {
             "🤗 You're not alone in this. Millions of migrants have been through the same.",
             "🌈 After the storm, the sun always comes out. Don't give up!",
         ],
-        
         # UX Improvements v3.0.3
         "generic_error": "⚠️ An unexpected error occurred. Please try again or type /start to restart.",
         "stall_reminder": "👋 Hi! I noticed you haven't made progress in a while. Do you need help with something?",
@@ -381,7 +350,6 @@ TRANSLATIONS = {
         "next_phase": "Next phase: {phase}",
         "error_logged": "The error has been logged. Our team will review it.",
     },
-    
     # ===== PORTUGUESE =====
     "pt": {
         "welcome": "🌍 *Bem-vindo ao MigPAL!*\n\nSeu assistente de migração global.\nAjudamos migrantes de TODO O MUNDO.",
@@ -396,7 +364,6 @@ TRANSLATIONS = {
         "next": "Próximo",
         "back": "Voltar",
     },
-    
     # ===== FRENCH =====
     "fr": {
         "welcome": "🌍 *Bienvenue sur MigPAL!*\n\nVotre assistant de migration mondial.\nNous aidons les migrants du MONDE ENTIER.",
@@ -411,7 +378,6 @@ TRANSLATIONS = {
         "next": "Suivant",
         "back": "Retour",
     },
-    
     # ===== GERMAN =====
     "de": {
         "welcome": "🌍 *Willkommen bei MigPAL!*\n\nIhr globaler Migrationsassistent.\nWir helfen Migranten aus der GANZEN WELT.",
@@ -426,7 +392,6 @@ TRANSLATIONS = {
         "next": "Weiter",
         "back": "Zurück",
     },
-    
     # ===== CHINESE =====
     "zh": {
         "welcome": "🌍 *欢迎使用MigPAL!*\n\n您的全球移民助手。\n我们帮助来自世界各地的移民。",
@@ -441,7 +406,6 @@ TRANSLATIONS = {
         "next": "下一步",
         "back": "返回",
     },
-    
     # ===== ARABIC =====
     "ar": {
         "welcome": "🌍 *مرحباً بك في MigPAL!*\n\nمساعدك العالمي للهجرة.\nنساعد المهاجرين من جميع أنحاء العالم.",
@@ -456,7 +420,6 @@ TRANSLATIONS = {
         "next": "التالي",
         "back": "رجوع",
     },
-    
     # ===== HINDI =====
     "hi": {
         "welcome": "🌍 *MigPAL में आपका स्वागत है!*\n\nआपका वैश्विक प्रवास सहायक।\nहम दुनिया भर के प्रवासियों की मदद करते हैं।",
@@ -471,7 +434,6 @@ TRANSLATIONS = {
         "next": "अगला",
         "back": "वापस",
     },
-    
     # ===== RUSSIAN =====
     "ru": {
         "welcome": "🌍 *Добро пожаловать в MigPAL!*\n\nВаш глобальный помощник по миграции.\nМы помогаем мигрантам со всего мира.",
@@ -486,7 +448,6 @@ TRANSLATIONS = {
         "next": "Далее",
         "back": "Назад",
     },
-    
     # ===== JAPANESE =====
     "ja": {
         "welcome": "🌍 *MigPALへようこそ!*\n\nあなたのグローバル移住アシスタント。\n世界中の移住者をサポートします。",
@@ -501,7 +462,6 @@ TRANSLATIONS = {
         "next": "次へ",
         "back": "戻る",
     },
-    
     # ===== KOREAN =====
     "ko": {
         "welcome": "🌍 *MigPAL에 오신 것을 환영합니다!*\n\n글로벌 이민 도우미입니다.\n전 세계 이민자를 돕습니다.",
@@ -516,7 +476,6 @@ TRANSLATIONS = {
         "next": "다음",
         "back": "뒤로",
     },
-    
     # ===== TURKISH =====
     "tr": {
         "welcome": "🌍 *MigPAL'e Hoş Geldiniz!*\n\nKüresel göç asistanınız.\nDünyanın her yerinden göçmenlere yardım ediyoruz.",
@@ -531,7 +490,6 @@ TRANSLATIONS = {
         "next": "İleri",
         "back": "Geri",
     },
-    
     # ===== VIETNAMESE =====
     "vi": {
         "welcome": "🌍 *Chào mừng đến với MigPAL!*\n\nTrợ lý di cư toàn cầu của bạn.\nChúng tôi giúp đỡ người di cư từ khắp nơi trên thế giới.",
@@ -546,7 +504,6 @@ TRANSLATIONS = {
         "next": "Tiếp",
         "back": "Quay lại",
     },
-    
     # ===== UKRAINIAN =====
     "uk": {
         "welcome": "🌍 *Ласкаво просимо до MigPAL!*\n\nВаш глобальний помічник з міграції.\nМи допомагаємо мігрантам з усього світу.",
@@ -561,7 +518,6 @@ TRANSLATIONS = {
         "next": "Далі",
         "back": "Назад",
     },
-    
     # ===== POLISH =====
     "pl": {
         "welcome": "🌍 *Witamy w MigPAL!*\n\nTwój globalny asystent migracyjny.\nPomagamy migrantom z całego świata.",
@@ -576,7 +532,6 @@ TRANSLATIONS = {
         "next": "Dalej",
         "back": "Wstecz",
     },
-    
     # ===== INDONESIAN =====
     "id": {
         "welcome": "🌍 *Selamat datang di MigPAL!*\n\nAsisten migrasi global Anda.\nKami membantu migran dari seluruh dunia.",
@@ -591,7 +546,6 @@ TRANSLATIONS = {
         "next": "Lanjut",
         "back": "Kembali",
     },
-    
     # ===== THAI =====
     "th": {
         "welcome": "🌍 *ยินดีต้อนรับสู่ MigPAL!*\n\nผู้ช่วยการย้ายถิ่นฐานระดับโลกของคุณ\nเราช่วยเหลือผู้อพยพจากทั่วโลก",
@@ -606,7 +560,6 @@ TRANSLATIONS = {
         "next": "ถัดไป",
         "back": "กลับ",
     },
-    
     # ===== FILIPINO =====
     "tl": {
         "welcome": "🌍 *Maligayang pagdating sa MigPAL!*\n\nAng iyong pandaigdigang katulong sa migrasyon.\nTumutulong kami sa mga migrante mula sa buong mundo.",
@@ -621,7 +574,6 @@ TRANSLATIONS = {
         "next": "Susunod",
         "back": "Bumalik",
     },
-    
     # ===== PERSIAN =====
     "fa": {
         "welcome": "🌍 *به MigPAL خوش آمدید!*\n\nدستیار مهاجرت جهانی شما.\nما به مهاجران از سراسر جهان کمک می‌کنیم.",
@@ -636,7 +588,6 @@ TRANSLATIONS = {
         "next": "بعدی",
         "back": "برگشت",
     },
-    
     # ===== BENGALI =====
     "bn": {
         "welcome": "🌍 *MigPAL-এ স্বাগতম!*\n\nআপনার বৈশ্বিক অভিবাসন সহায়ক।\nআমরা সারা বিশ্বের অভিবাসীদের সাহায্য করি।",
@@ -655,6 +606,7 @@ TRANSLATIONS = {
 
 # ============== HELPER FUNCTIONS ==============
 
+
 def get_text(key: str, lang: str = "en") -> str:
     """Get translated text for a key"""
     # Fallback chain: requested lang -> English -> key itself
@@ -664,38 +616,69 @@ def get_text(key: str, lang: str = "en") -> str:
         return TRANSLATIONS["en"][key]
     return key
 
+
 def get_all_languages() -> list:
     """Get list of all supported languages for selection"""
-    return [(f"{info['flag']} {info['native']}", code) 
-            for code, info in SUPPORTED_LANGUAGES.items()]
+    return [(f"{info['flag']} {info['native']}", code) for code, info in SUPPORTED_LANGUAGES.items()]
+
 
 def detect_language_from_country(country: str) -> str:
     """Suggest language based on country"""
     country_languages = {
         # Spanish speaking
-        "España": "es", "México": "es", "Colombia": "es", "Argentina": "es",
-        "Perú": "es", "Venezuela": "es", "Chile": "es", "Ecuador": "es",
-        "Guatemala": "es", "Cuba": "es", "Bolivia": "es", "Honduras": "es",
-        "Paraguay": "es", "El Salvador": "es", "Nicaragua": "es", "Costa Rica": "es",
-        "Panamá": "es", "Uruguay": "es", "Puerto Rico": "es",
-        
+        "España": "es",
+        "México": "es",
+        "Colombia": "es",
+        "Argentina": "es",
+        "Perú": "es",
+        "Venezuela": "es",
+        "Chile": "es",
+        "Ecuador": "es",
+        "Guatemala": "es",
+        "Cuba": "es",
+        "Bolivia": "es",
+        "Honduras": "es",
+        "Paraguay": "es",
+        "El Salvador": "es",
+        "Nicaragua": "es",
+        "Costa Rica": "es",
+        "Panamá": "es",
+        "Uruguay": "es",
+        "Puerto Rico": "es",
         # Portuguese speaking
-        "Brasil": "pt", "Portugal": "pt", "Angola": "pt", "Mozambique": "pt",
-        
+        "Brasil": "pt",
+        "Portugal": "pt",
+        "Angola": "pt",
+        "Mozambique": "pt",
         # English speaking
-        "USA": "en", "UK": "en", "Canada": "en", "Australia": "en",
-        "New Zealand": "en", "Ireland": "en", "South Africa": "en",
-        "India": "en", "Philippines": "en", "Nigeria": "en", "Kenya": "en",
-        
+        "USA": "en",
+        "UK": "en",
+        "Canada": "en",
+        "Australia": "en",
+        "New Zealand": "en",
+        "Ireland": "en",
+        "South Africa": "en",
+        "India": "en",
+        "Philippines": "en",
+        "Nigeria": "en",
+        "Kenya": "en",
         # French speaking
-        "France": "fr", "Belgium": "fr", "Switzerland": "fr", "Senegal": "fr",
-        "Côte d'Ivoire": "fr", "Cameroon": "fr", "Morocco": "fr", "Algeria": "fr",
-        
+        "France": "fr",
+        "Belgium": "fr",
+        "Switzerland": "fr",
+        "Senegal": "fr",
+        "Côte d'Ivoire": "fr",
+        "Cameroon": "fr",
+        "Morocco": "fr",
+        "Algeria": "fr",
         # German speaking
-        "Germany": "de", "Austria": "de", "Switzerland": "de",
-        
+        "Germany": "de",
+        "Austria": "de",
+        "Switzerland": "de",
         # Other languages
-        "China": "zh", "Taiwan": "zh", "Hong Kong": "zh",
+        "China": "zh",
+        "Taiwan": "zh",
+        "Hong Kong": "zh",
         "Japan": "ja",
         "South Korea": "ko",
         "Russia": "ru",
@@ -706,7 +689,10 @@ def detect_language_from_country(country: str) -> str:
         "Thailand": "th",
         "Indonesia": "id",
         "Iran": "fa",
-        "Saudi Arabia": "ar", "Egypt": "ar", "UAE": "ar", "Iraq": "ar",
+        "Saudi Arabia": "ar",
+        "Egypt": "ar",
+        "UAE": "ar",
+        "Iraq": "ar",
         "Bangladesh": "bn",
         "Italy": "it",
         "Netherlands": "nl",
@@ -722,58 +708,137 @@ def detect_language_from_country(country: str) -> str:
     }
     return country_languages.get(country, "en")
 
+
 # ============== NATIONALITIES ==============
 
 NATIONALITIES = {
     "es": [
-        ("🇦🇫 Afgano/a", "Afghan"), ("🇦🇱 Albanés/a", "Albanian"), ("🇩🇿 Argelino/a", "Algerian"),
-        ("🇦🇷 Argentino/a", "Argentine"), ("🇦🇺 Australiano/a", "Australian"), ("🇦🇹 Austriaco/a", "Austrian"),
-        ("🇧🇩 Bangladesí", "Bangladeshi"), ("🇧🇪 Belga", "Belgian"), ("🇧🇴 Boliviano/a", "Bolivian"),
-        ("🇧🇷 Brasileño/a", "Brazilian"), ("🇧🇬 Búlgaro/a", "Bulgarian"), ("🇨🇦 Canadiense", "Canadian"),
-        ("🇨🇱 Chileno/a", "Chilean"), ("🇨🇳 Chino/a", "Chinese"), ("🇨🇴 Colombiano/a", "Colombian"),
-        ("🇨🇷 Costarricense", "Costa Rican"), ("🇭🇷 Croata", "Croatian"), ("🇨🇺 Cubano/a", "Cuban"),
-        ("🇨🇿 Checo/a", "Czech"), ("🇩🇰 Danés/a", "Danish"), ("🇩🇴 Dominicano/a", "Dominican"),
-        ("🇪🇨 Ecuatoriano/a", "Ecuadorian"), ("🇪🇬 Egipcio/a", "Egyptian"), ("🇸🇻 Salvadoreño/a", "Salvadoran"),
-        ("🇫🇮 Finlandés/a", "Finnish"), ("🇫🇷 Francés/a", "French"), ("🇩🇪 Alemán/a", "German"),
-        ("🇬🇷 Griego/a", "Greek"), ("🇬🇹 Guatemalteco/a", "Guatemalan"), ("🇭🇹 Haitiano/a", "Haitian"),
-        ("🇭🇳 Hondureño/a", "Honduran"), ("🇭🇺 Húngaro/a", "Hungarian"), ("🇮🇳 Indio/a", "Indian"),
-        ("🇮🇩 Indonesio/a", "Indonesian"), ("🇮🇷 Iraní", "Iranian"), ("🇮🇶 Iraquí", "Iraqi"),
-        ("🇮🇪 Irlandés/a", "Irish"), ("🇮🇱 Israelí", "Israeli"), ("🇮🇹 Italiano/a", "Italian"),
-        ("🇯🇲 Jamaicano/a", "Jamaican"), ("🇯🇵 Japonés/a", "Japanese"), ("🇯🇴 Jordano/a", "Jordanian"),
-        ("🇰🇪 Keniano/a", "Kenyan"), ("🇰🇷 Coreano/a", "Korean"), ("🇱🇧 Libanés/a", "Lebanese"),
-        ("🇲🇾 Malasio/a", "Malaysian"), ("🇲🇽 Mexicano/a", "Mexican"), ("🇲🇦 Marroquí", "Moroccan"),
-        ("🇳🇱 Neerlandés/a", "Dutch"), ("🇳🇿 Neozelandés/a", "New Zealander"), ("🇳🇬 Nigeriano/a", "Nigerian"),
-        ("🇳🇴 Noruego/a", "Norwegian"), ("🇵🇰 Pakistaní", "Pakistani"), ("🇵🇦 Panameño/a", "Panamanian"),
-        ("🇵🇾 Paraguayo/a", "Paraguayan"), ("🇵🇪 Peruano/a", "Peruvian"), ("🇵🇭 Filipino/a", "Filipino"),
-        ("🇵🇱 Polaco/a", "Polish"), ("🇵🇹 Portugués/a", "Portuguese"), ("🇷🇴 Rumano/a", "Romanian"),
-        ("🇷🇺 Ruso/a", "Russian"), ("🇸🇦 Saudí", "Saudi"), ("🇷🇸 Serbio/a", "Serbian"),
-        ("🇸🇬 Singapurense", "Singaporean"), ("🇿🇦 Sudafricano/a", "South African"), ("🇪🇸 Español/a", "Spanish"),
-        ("🇱🇰 Ceilandés/a", "Sri Lankan"), ("🇸🇪 Sueco/a", "Swedish"), ("🇨🇭 Suizo/a", "Swiss"),
-        ("🇸🇾 Sirio/a", "Syrian"), ("🇹🇼 Taiwanés/a", "Taiwanese"), ("🇹🇭 Tailandés/a", "Thai"),
-        ("🇹🇷 Turco/a", "Turkish"), ("🇺🇦 Ucraniano/a", "Ukrainian"), ("🇦🇪 Emiratí", "Emirati"),
-        ("🇬🇧 Británico/a", "British"), ("🇺🇸 Estadounidense", "American"), ("🇺🇾 Uruguayo/a", "Uruguayan"),
-        ("🇻🇪 Venezolano/a", "Venezuelan"), ("🇻🇳 Vietnamita", "Vietnamese"), ("🇾🇪 Yemení", "Yemeni"),
+        ("🇦🇫 Afgano/a", "Afghan"),
+        ("🇦🇱 Albanés/a", "Albanian"),
+        ("🇩🇿 Argelino/a", "Algerian"),
+        ("🇦🇷 Argentino/a", "Argentine"),
+        ("🇦🇺 Australiano/a", "Australian"),
+        ("🇦🇹 Austriaco/a", "Austrian"),
+        ("🇧🇩 Bangladesí", "Bangladeshi"),
+        ("🇧🇪 Belga", "Belgian"),
+        ("🇧🇴 Boliviano/a", "Bolivian"),
+        ("🇧🇷 Brasileño/a", "Brazilian"),
+        ("🇧🇬 Búlgaro/a", "Bulgarian"),
+        ("🇨🇦 Canadiense", "Canadian"),
+        ("🇨🇱 Chileno/a", "Chilean"),
+        ("🇨🇳 Chino/a", "Chinese"),
+        ("🇨🇴 Colombiano/a", "Colombian"),
+        ("🇨🇷 Costarricense", "Costa Rican"),
+        ("🇭🇷 Croata", "Croatian"),
+        ("🇨🇺 Cubano/a", "Cuban"),
+        ("🇨🇿 Checo/a", "Czech"),
+        ("🇩🇰 Danés/a", "Danish"),
+        ("🇩🇴 Dominicano/a", "Dominican"),
+        ("🇪🇨 Ecuatoriano/a", "Ecuadorian"),
+        ("🇪🇬 Egipcio/a", "Egyptian"),
+        ("🇸🇻 Salvadoreño/a", "Salvadoran"),
+        ("🇫🇮 Finlandés/a", "Finnish"),
+        ("🇫🇷 Francés/a", "French"),
+        ("🇩🇪 Alemán/a", "German"),
+        ("🇬🇷 Griego/a", "Greek"),
+        ("🇬🇹 Guatemalteco/a", "Guatemalan"),
+        ("🇭🇹 Haitiano/a", "Haitian"),
+        ("🇭🇳 Hondureño/a", "Honduran"),
+        ("🇭🇺 Húngaro/a", "Hungarian"),
+        ("🇮🇳 Indio/a", "Indian"),
+        ("🇮🇩 Indonesio/a", "Indonesian"),
+        ("🇮🇷 Iraní", "Iranian"),
+        ("🇮🇶 Iraquí", "Iraqi"),
+        ("🇮🇪 Irlandés/a", "Irish"),
+        ("🇮🇱 Israelí", "Israeli"),
+        ("🇮🇹 Italiano/a", "Italian"),
+        ("🇯🇲 Jamaicano/a", "Jamaican"),
+        ("🇯🇵 Japonés/a", "Japanese"),
+        ("🇯🇴 Jordano/a", "Jordanian"),
+        ("🇰🇪 Keniano/a", "Kenyan"),
+        ("🇰🇷 Coreano/a", "Korean"),
+        ("🇱🇧 Libanés/a", "Lebanese"),
+        ("🇲🇾 Malasio/a", "Malaysian"),
+        ("🇲🇽 Mexicano/a", "Mexican"),
+        ("🇲🇦 Marroquí", "Moroccan"),
+        ("🇳🇱 Neerlandés/a", "Dutch"),
+        ("🇳🇿 Neozelandés/a", "New Zealander"),
+        ("🇳🇬 Nigeriano/a", "Nigerian"),
+        ("🇳🇴 Noruego/a", "Norwegian"),
+        ("🇵🇰 Pakistaní", "Pakistani"),
+        ("🇵🇦 Panameño/a", "Panamanian"),
+        ("🇵🇾 Paraguayo/a", "Paraguayan"),
+        ("🇵🇪 Peruano/a", "Peruvian"),
+        ("🇵🇭 Filipino/a", "Filipino"),
+        ("🇵🇱 Polaco/a", "Polish"),
+        ("🇵🇹 Portugués/a", "Portuguese"),
+        ("🇷🇴 Rumano/a", "Romanian"),
+        ("🇷🇺 Ruso/a", "Russian"),
+        ("🇸🇦 Saudí", "Saudi"),
+        ("🇷🇸 Serbio/a", "Serbian"),
+        ("🇸🇬 Singapurense", "Singaporean"),
+        ("🇿🇦 Sudafricano/a", "South African"),
+        ("🇪🇸 Español/a", "Spanish"),
+        ("🇱🇰 Ceilandés/a", "Sri Lankan"),
+        ("🇸🇪 Sueco/a", "Swedish"),
+        ("🇨🇭 Suizo/a", "Swiss"),
+        ("🇸🇾 Sirio/a", "Syrian"),
+        ("🇹🇼 Taiwanés/a", "Taiwanese"),
+        ("🇹🇭 Tailandés/a", "Thai"),
+        ("🇹🇷 Turco/a", "Turkish"),
+        ("🇺🇦 Ucraniano/a", "Ukrainian"),
+        ("🇦🇪 Emiratí", "Emirati"),
+        ("🇬🇧 Británico/a", "British"),
+        ("🇺🇸 Estadounidense", "American"),
+        ("🇺🇾 Uruguayo/a", "Uruguayan"),
+        ("🇻🇪 Venezolano/a", "Venezuelan"),
+        ("🇻🇳 Vietnamita", "Vietnamese"),
+        ("🇾🇪 Yemení", "Yemeni"),
         ("🌍 Otra", "Other"),
     ],
     "en": [
-        ("🇦🇫 Afghan", "Afghan"), ("🇦🇱 Albanian", "Albanian"), ("🇩🇿 Algerian", "Algerian"),
-        ("🇦🇷 Argentine", "Argentine"), ("🇦🇺 Australian", "Australian"), ("🇦🇹 Austrian", "Austrian"),
-        ("🇧🇩 Bangladeshi", "Bangladeshi"), ("🇧🇪 Belgian", "Belgian"), ("🇧🇴 Bolivian", "Bolivian"),
-        ("🇧🇷 Brazilian", "Brazilian"), ("🇧🇬 Bulgarian", "Bulgarian"), ("🇨🇦 Canadian", "Canadian"),
-        ("🇨🇱 Chilean", "Chilean"), ("🇨🇳 Chinese", "Chinese"), ("🇨🇴 Colombian", "Colombian"),
-        ("🇫🇷 French", "French"), ("🇩🇪 German", "German"), ("🇮🇳 Indian", "Indian"),
-        ("🇮🇹 Italian", "Italian"), ("🇯🇵 Japanese", "Japanese"), ("🇰🇷 Korean", "Korean"),
-        ("🇲🇽 Mexican", "Mexican"), ("🇳🇬 Nigerian", "Nigerian"), ("🇵🇰 Pakistani", "Pakistani"),
-        ("🇵🇭 Filipino", "Filipino"), ("🇵🇱 Polish", "Polish"), ("🇷🇺 Russian", "Russian"),
-        ("🇪🇸 Spanish", "Spanish"), ("🇹🇷 Turkish", "Turkish"), ("🇺🇦 Ukrainian", "Ukrainian"),
-        ("🇬🇧 British", "British"), ("🇺🇸 American", "American"), ("🇻🇳 Vietnamese", "Vietnamese"),
+        ("🇦🇫 Afghan", "Afghan"),
+        ("🇦🇱 Albanian", "Albanian"),
+        ("🇩🇿 Algerian", "Algerian"),
+        ("🇦🇷 Argentine", "Argentine"),
+        ("🇦🇺 Australian", "Australian"),
+        ("🇦🇹 Austrian", "Austrian"),
+        ("🇧🇩 Bangladeshi", "Bangladeshi"),
+        ("🇧🇪 Belgian", "Belgian"),
+        ("🇧🇴 Bolivian", "Bolivian"),
+        ("🇧🇷 Brazilian", "Brazilian"),
+        ("🇧🇬 Bulgarian", "Bulgarian"),
+        ("🇨🇦 Canadian", "Canadian"),
+        ("🇨🇱 Chilean", "Chilean"),
+        ("🇨🇳 Chinese", "Chinese"),
+        ("🇨🇴 Colombian", "Colombian"),
+        ("🇫🇷 French", "French"),
+        ("🇩🇪 German", "German"),
+        ("🇮🇳 Indian", "Indian"),
+        ("🇮🇹 Italian", "Italian"),
+        ("🇯🇵 Japanese", "Japanese"),
+        ("🇰🇷 Korean", "Korean"),
+        ("🇲🇽 Mexican", "Mexican"),
+        ("🇳🇬 Nigerian", "Nigerian"),
+        ("🇵🇰 Pakistani", "Pakistani"),
+        ("🇵🇭 Filipino", "Filipino"),
+        ("🇵🇱 Polish", "Polish"),
+        ("🇷🇺 Russian", "Russian"),
+        ("🇪🇸 Spanish", "Spanish"),
+        ("🇹🇷 Turkish", "Turkish"),
+        ("🇺🇦 Ukrainian", "Ukrainian"),
+        ("🇬🇧 British", "British"),
+        ("🇺🇸 American", "American"),
+        ("🇻🇳 Vietnamese", "Vietnamese"),
         ("🌍 Other", "Other"),
     ],
 }
 
+
 def get_nationalities(lang: str = "en") -> list:
     """Get list of nationalities in specified language"""
     return NATIONALITIES.get(lang, NATIONALITIES["en"])
+
 
 # ============== DESTINATION COUNTRIES ==============
 
@@ -781,7 +846,6 @@ DESTINATION_COUNTRIES = [
     # North America
     ("🇺🇸 USA", "USA"),
     ("🇨🇦 Canada", "Canada"),
-    
     # Europe
     ("🇬🇧 United Kingdom", "UK"),
     ("🇩🇪 Germany", "Germany"),
@@ -800,11 +864,9 @@ DESTINATION_COUNTRIES = [
     ("🇵🇹 Portugal", "Portugal"),
     ("🇵🇱 Poland", "Poland"),
     ("🇨🇿 Czech Republic", "Czech Republic"),
-    
     # Oceania
     ("🇦🇺 Australia", "Australia"),
     ("🇳🇿 New Zealand", "New Zealand"),
-    
     # Asia
     ("🇯🇵 Japan", "Japan"),
     ("🇰🇷 South Korea", "South Korea"),
@@ -813,10 +875,10 @@ DESTINATION_COUNTRIES = [
     ("🇦🇪 UAE", "UAE"),
     ("🇸🇦 Saudi Arabia", "Saudi Arabia"),
     ("🇶🇦 Qatar", "Qatar"),
-    
     # Other
     ("🌍 Other", "Other"),
 ]
+
 
 def get_destination_countries() -> list:
     """Get list of destination countries"""

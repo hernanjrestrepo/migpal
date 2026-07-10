@@ -44,7 +44,8 @@ COPY --chown=appuser:appgroup . .
 
 # Create data directory
 RUN mkdir -p /app/data /app/logs && \
-    chown -R appuser:appgroup /app
+    chown -R appuser:appgroup /app && \
+    chmod +x /app/docker-entrypoint.sh
 
 # Switch to non-root user
 USER appuser
@@ -57,7 +58,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Use tini as init system
-ENTRYPOINT ["/usr/bin/tini", "--"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/app/docker-entrypoint.sh"]
 
-# Run database initialization and start server
-CMD ["sh", "-c", "python init_db.py && uvicorn main:app --host 0.0.0.0 --port 8000"]
+# Aplica migraciones (ver docker-entrypoint.sh) y arranca el servidor
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

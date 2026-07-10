@@ -20,31 +20,33 @@ PRINCIPIOS V9 - CONSULTIVO + ESTRICTO:
 - FALLBACKS claros si falla integración
 """
 
-import os
 import logging
+import os
 import re
+from typing import Any
+
 import httpx
-from typing import Dict, Any, Optional
+
+from .coherence_validator import (
+    validate_response,
+)
 
 # Importar detector de off-topic
 from .off_topic_detector import (
-    get_detector, MessageType, 
-    get_off_topic_response, get_redirect_response,
-    validate_single_question, enforce_short_response,
-    is_confirmation, is_rejection, needs_redirect
+    MessageType,
+    get_detector,
+    validate_single_question,
 )
+
+# V3.3.0: Importar test-time reasoning y validación de coherencia
+from .profile_checklist import check_profile_completeness
 
 # V3.2.0: Importar validador de perfil
 from .profile_validator import get_profile_based_intro, is_profile_confirmed
-
-# V3.3.0: Importar test-time reasoning y validación de coherencia
-from .profile_checklist import get_profile_checklist, check_profile_completeness
 from .test_time_reasoning import (
-    get_test_time_reasoner, reason_visa_analysis, reason_migration_plan,
-    check_inconsistencies, ReasoningTask
-)
-from .coherence_validator import (
-    get_coherence_validator, validate_response, is_response_safe, get_safe_response
+    check_inconsistencies,
+    reason_migration_plan,
+    reason_visa_analysis,
 )
 
 logger = logging.getLogger(__name__)
@@ -54,9 +56,9 @@ OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
 AI_MODEL = os.getenv("AI_MODEL", "migpal:latest")
 
 
-def build_complete_user_context(user_data: Dict[str, Any]) -> str:
+def build_complete_user_context(user_data: dict[str, Any]) -> str:
     """Construye contexto COMPLETO y ESTRUCTURADO del usuario"""
-    
+
     profile = user_data.get("profile", {})
     personal = profile.get("personal", {})
     work = profile.get("work", {})
@@ -64,14 +66,14 @@ def build_complete_user_context(user_data: Dict[str, Any]) -> str:
     history = profile.get("history", {})
     financial = profile.get("financial", {})
     languages = profile.get("languages", {})
-    
+
     preferences = user_data.get("preferences", {})
     family_members = user_data.get("family_members", [])
     selected_route = user_data.get("selected_route", {})
     migration_prefs = user_data.get("migration_preferences", {})
-    
+
     sections = []
-    
+
     # === DATOS PERSONALES ===
     personal_info = []
     if personal.get("name"):
@@ -84,7 +86,7 @@ def build_complete_user_context(user_data: Dict[str, Any]) -> str:
         personal_info.append(f"• Ciudad: {personal['current_city']}")
     if personal_info:
         sections.append("👤 DATOS PERSONALES:\n" + "\n".join(personal_info))
-    
+
     # === EDUCACIÓN ===
     edu_info = []
     if education.get("level"):
@@ -95,7 +97,7 @@ def build_complete_user_context(user_data: Dict[str, Any]) -> str:
         edu_info.append(f"• Carrera: {education['career']}")
     if edu_info:
         sections.append("🎓 EDUCACIÓN:\n" + "\n".join(edu_info))
-    
+
     # === EXPERIENCIA LABORAL ===
     work_info = []
     if work.get("status"):
@@ -103,7 +105,7 @@ def build_complete_user_context(user_data: Dict[str, Any]) -> str:
     if work.get("profession"):
         work_info.append(f"• Profesión: {work['profession']}")
     if work.get("experience"):
-        exp = work['experience']
+        exp = work["experience"]
         if ">15" in exp:
             work_info.append("• Experiencia: Más de 15 años (SENIOR)")
         elif ">10" in exp:
@@ -112,11 +114,11 @@ def build_complete_user_context(user_data: Dict[str, Any]) -> str:
             work_info.append(f"• Experiencia: {exp}")
     if work_info:
         sections.append("💼 TRABAJO:\n" + "\n".join(work_info))
-    
+
     # === IDIOMAS ===
     if languages.get("english"):
         sections.append(f"🌐 INGLÉS: {languages['english']}")
-    
+
     # === HISTORIAL MIGRATORIO ===
     history_info = []
     if history.get("has_visas"):
@@ -125,16 +127,16 @@ def build_complete_user_context(user_data: Dict[str, Any]) -> str:
         history_info.append(f"• Rechazos: {history['rejections']}")
     if history_info:
         sections.append("📋 HISTORIAL:\n" + "\n".join(history_info))
-    
+
     # === SITUACIÓN FINANCIERA ===
     if financial.get("savings"):
         sections.append(f"💰 AHORROS: {financial['savings']}")
-    
+
     # === FAMILIA ===
     if family_members:
         fam_info = [f"• {m.get('relation', 'Familiar')}: {m.get('name', 'N/A')}" for m in family_members[:3]]
         sections.append(f"👨‍👩‍👧‍👦 FAMILIA ({len(family_members)} miembros):\n" + "\n".join(fam_info))
-    
+
     # === PREFERENCIAS DE MIGRACIÓN ===
     pref_info = []
     if preferences.get("destination"):
@@ -147,7 +149,7 @@ def build_complete_user_context(user_data: Dict[str, Any]) -> str:
         pref_info.append(f"• Ciudad elegida: {migration_prefs['selected_city_name']}")
     if pref_info:
         sections.append("🎯 PREFERENCIAS:\n" + "\n".join(pref_info))
-    
+
     # === VISA SELECCIONADA ===
     if selected_route.get("visa_type"):
         visa_map = {
@@ -155,58 +157,58 @@ def build_complete_user_context(user_data: Dict[str, Any]) -> str:
             "investor": "E-2 (Inversionista)",
             "work": "H-1B (Trabajo Especializado)",
             "transfer": "L-1 (Transferencia)",
-            "green_card": "EB-2 NIW (Green Card)"
+            "green_card": "EB-2 NIW (Green Card)",
         }
-        visa_name = visa_map.get(selected_route['visa_type'], selected_route['visa_type'])
+        visa_name = visa_map.get(selected_route["visa_type"], selected_route["visa_type"])
         sections.append(f"🎫 VISA SELECCIONADA: {visa_name}")
-    
+
     if not sections:
         return "⚠️ Usuario nuevo - sin perfil completado"
-    
+
     return "\n\n".join(sections)
 
 
-def get_process_stage(user_data: Dict[str, Any]) -> str:
+def get_process_stage(user_data: dict[str, Any]) -> str:
     """Determina en qué etapa del proceso está el cliente"""
-    
+
     profile = user_data.get("profile", {})
     personal = profile.get("personal", {})
     work = profile.get("work", {})
     selected_route = user_data.get("selected_route", {})
-    
+
     # Etapa 1: Sin nombre
     if not personal.get("name"):
         return "INICIO - Necesito conocerte"
-    
+
     # Etapa 2: Sin perfil laboral
     if not work.get("experience"):
         return "PERFILAMIENTO - Completando tu perfil"
-    
+
     # Etapa 3: Sin visa seleccionada
     if not selected_route.get("visa_type"):
         return "ANÁLISIS - Evaluando opciones de visa"
-    
+
     # Etapa 4: Visa seleccionada, preparando documentos
     return "PREPARACIÓN - Documentos y siguiente paso"
 
 
-def get_next_action(user_data: Dict[str, Any]) -> str:
+def get_next_action(user_data: dict[str, Any]) -> str:
     """Determina cuál es el siguiente paso concreto"""
-    
+
     profile = user_data.get("profile", {})
     personal = profile.get("personal", {})
     work = profile.get("work", {})
     selected_route = user_data.get("selected_route", {})
-    
+
     if not personal.get("name"):
         return "Presentarme y conocer al cliente"
-    
+
     if not work.get("experience"):
         return "Completar perfil profesional"
-    
+
     if not selected_route.get("visa_type"):
         return "Recomendar visa basada en perfil"
-    
+
     # Ya tiene visa seleccionada
     visa_type = selected_route.get("visa_type", "")
     if visa_type == "exp_tech" or "O-1" in str(visa_type):
@@ -215,7 +217,7 @@ def get_next_action(user_data: Dict[str, Any]) -> str:
 2. Perfilamiento ($50) - Documentar logros
 3. Revisión Documental ($200) - Preparar evidencia
 4. Presentación ante USCIS"""
-    
+
     return "Explicar proceso de la visa seleccionada"
 
 
@@ -223,15 +225,15 @@ def build_conversation_context(conversation_history: list) -> str:
     """Construye contexto de conversación reciente - SOLO últimos 3 intercambios"""
     if not conversation_history:
         return ""
-    
+
     # Solo últimos 3 para no saturar
     recent = conversation_history[-3:] if len(conversation_history) > 3 else conversation_history
-    
+
     context_parts = []
     for msg in recent:
         content = msg.get("message", msg.get("content", ""))
         response = msg.get("response", "")
-        
+
         if content:
             # Truncar mensajes largos
             content_short = content[:80] + "..." if len(content) > 80 else content
@@ -239,7 +241,7 @@ def build_conversation_context(conversation_history: list) -> str:
         if response:
             response_short = response[:80] + "..." if len(response) > 80 else response
             context_parts.append(f"MigPAL: {response_short}")
-    
+
     return "\n".join(context_parts)
 
 
@@ -300,38 +302,36 @@ TOTAL: $300-$400 USD
 ESTILO: Habla como un amigo experto. Directo, cálido, profesional."""
 
 
-async def process_message(message: str, user_data: Dict[str, Any], conversation_history: list = None) -> str:
+async def process_message(message: str, user_data: dict[str, Any], conversation_history: list = None) -> str:
     """Procesa mensaje con IA - Enfoque CONSULTIVO V8"""
-    
+
     # Construir contextos
     user_context = build_complete_user_context(user_data)
     process_stage = get_process_stage(user_data)
     next_action = get_next_action(user_data)
-    
+
     # Construir el prompt del sistema
     system = SYSTEM_PROMPT.format(
-        user_context=user_context,
-        process_stage=process_stage,
-        next_action=next_action
+        user_context=user_context, process_stage=process_stage, next_action=next_action
     )
-    
+
     # Agregar historial de conversación
     conv_context = ""
     if conversation_history:
         conv_context = build_conversation_context(conversation_history)
         if conv_context:
             conv_context = f"\n📝 Conversación reciente:\n{conv_context}\n"
-    
+
     # Detectar intención del mensaje
     intent = detect_intent(message)
-    
+
     prompt = f"""{conv_context}
 El cliente dice: "{message}"
 
 {intent}
 
 Responde en 4-6 líneas. Sé DIRECTO y GUÍA al cliente al siguiente paso."""
-    
+
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
@@ -346,25 +346,25 @@ Responde en 4-6 líneas. Sé DIRECTO y GUÍA al cliente al siguiente paso."""
                         "num_predict": 250,  # Limitar longitud
                         "top_p": 0.85,
                         "repeat_penalty": 1.2,  # Evitar repeticiones
-                        "top_k": 40
-                    }
-                }
+                        "top_k": 40,
+                    },
+                },
             )
-            
+
             if response.status_code == 200:
                 result = response.json()
                 ai_response = result.get("response", "")
                 ai_response = filter_response(ai_response)
-                
+
                 # Si la respuesta está vacía o es muy corta, usar fallback
                 if not ai_response or len(ai_response) < 20:
                     return fallback_response(message, user_data)
-                
+
                 return ai_response
             else:
                 logger.error(f"Ollama error: {response.status_code}")
                 return fallback_response(message, user_data)
-                
+
     except Exception as e:
         logger.error(f"AI error: {e}")
         return fallback_response(message, user_data)
@@ -373,55 +373,57 @@ Responde en 4-6 líneas. Sé DIRECTO y GUÍA al cliente al siguiente paso."""
 def detect_intent(message: str) -> str:
     """Detecta la intención del mensaje para guiar la respuesta - V9 con OFF-TOPIC"""
     msg_lower = message.lower().strip()
-    
+
     # Usar el detector de off-topic
     detector = get_detector()
     msg_type, confidence = detector.detect(message)
-    
+
     # OFF-TOPIC detectado
     if msg_type == MessageType.OFF_TOPIC and confidence >= 0.7:
         return "🚫 INTENCIÓN: OFF-TOPIC. El mensaje NO está relacionado con migración. Reconoce brevemente (1 línea) y VUELVE al tema actual. Haz la pregunta pendiente."
-    
+
     # Confirmaciones simples
     if msg_type == MessageType.CONFIRMATION:
         return "⚡ INTENCIÓN: Confirmación. El cliente quiere CONTINUAR. Dile el siguiente paso concreto."
-    
+
     # Rechazos
     if msg_type == MessageType.REJECTION:
         return "❌ INTENCIÓN: Rechazo. El cliente no quiere continuar ahora. Pregunta si prefiere otro momento o tiene dudas."
-    
+
     # Frustración
     if msg_type == MessageType.FRUSTRATION:
         return "⚠️ INTENCIÓN: Frustración. El cliente está molesto. Sé DIRECTO, no repitas, da el siguiente paso inmediatamente."
-    
+
     # Ayuda
     if msg_type == MessageType.HELP:
-        return "❓ INTENCIÓN: Necesita ayuda. Explica brevemente en qué fase está y cuál es el siguiente paso."
-    
+        return (
+            "❓ INTENCIÓN: Necesita ayuda. Explica brevemente en qué fase está y cuál es el siguiente paso."
+        )
+
     # Pagos
     if msg_type == MessageType.PAYMENT:
         return "💳 INTENCIÓN: Pregunta de pagos. Da las opciones de pago disponibles."
-    
+
     # Saludos
     if msg_type == MessageType.GREETING:
         return "👋 INTENCIÓN: Saludo. Responde brevemente y continúa con el proceso."
-    
+
     # Preguntas de probabilidad
     if any(w in msg_lower for w in ["probabilidad", "chance", "posibilidad", "éxito"]):
         return "📊 INTENCIÓN: Quiere saber probabilidad. Da un número concreto basado en su perfil."
-    
+
     # Preguntas de costo
     if any(w in msg_lower for w in ["costo", "precio", "cuanto", "cuánto", "pagar"]):
         return "💰 INTENCIÓN: Pregunta de costos. Da los precios de MigPAL claramente."
-    
+
     # Preguntas de proceso
     if any(w in msg_lower for w in ["paso", "proceso", "siguiente", "continua", "sigue"]):
         return "🎯 INTENCIÓN: Quiere saber el siguiente paso. Sé específico y concreto."
-    
+
     # Preguntas de visa
     if any(w in msg_lower for w in ["visa", "recomienda", "cual", "cuál", "mejor"]):
         return "🎫 INTENCIÓN: Pregunta sobre visas. Recomienda basado en su perfil."
-    
+
     return "💬 INTENCIÓN: Conversación general. Guía hacia el siguiente paso del proceso."
 
 
@@ -429,33 +431,49 @@ def filter_response(text: str) -> str:
     """Filtra y limpia la respuesta - V9 MEJORADO con validación de UNA PREGUNTA"""
     if not text:
         return ""
-    
+
     result = text.strip()
-    
+
     # VALIDAR UNA SOLA PREGUNTA
     is_valid, result = validate_single_question(result)
-    
+
     # Eliminar CUALQUIER texto que no sea español (detectar caracteres chinos, etc.)
     # Mantener solo caracteres latinos, números, emojis comunes y puntuación
-    result = re.sub(r'[\u4e00-\u9fff\u3400-\u4dbf\u20000-\u2a6df\u2a700-\u2b73f\u2b740-\u2b81f\u2b820-\u2ceaf\uf900-\ufaff\u2f800-\u2fa1f]+', '', result)
-    
+    result = re.sub(
+        r"[\u4e00-\u9fff\u3400-\u4dbf\u20000-\u2a6df\u2a700-\u2b73f\u2b740-\u2b81f\u2b820-\u2ceaf\uf900-\ufaff\u2f800-\u2fa1f]+",
+        "",
+        result,
+    )
+
     # Eliminar frases prohibidas (más exhaustivo)
     forbidden_phrases = [
-        "¿Te quedó claro?", "¿Te queda claro?", "¿Quedó claro?",
-        "¿Tienes alguna duda?", "¿Tienes dudas?", "¿Alguna duda?",
-        "¿Me explico?", "¿Se entiende?", "¿Entendiste?",
-        "¿Te quedó claro esto?", "¿Quedó claro esto?",
-        "¿Tienes alguna pregunta?", "¿Alguna pregunta?",
-        "¿Necesitas más información?", "¿Quieres más detalles?",
-        "Si tienes dudas", "Si tienes preguntas",
-        "No dudes en preguntar", "No dudes en consultarme",
-        "Estoy aquí para ayudarte", "Estoy para ayudarte",
+        "¿Te quedó claro?",
+        "¿Te queda claro?",
+        "¿Quedó claro?",
+        "¿Tienes alguna duda?",
+        "¿Tienes dudas?",
+        "¿Alguna duda?",
+        "¿Me explico?",
+        "¿Se entiende?",
+        "¿Entendiste?",
+        "¿Te quedó claro esto?",
+        "¿Quedó claro esto?",
+        "¿Tienes alguna pregunta?",
+        "¿Alguna pregunta?",
+        "¿Necesitas más información?",
+        "¿Quieres más detalles?",
+        "Si tienes dudas",
+        "Si tienes preguntas",
+        "No dudes en preguntar",
+        "No dudes en consultarme",
+        "Estoy aquí para ayudarte",
+        "Estoy para ayudarte",
     ]
-    
+
     for phrase in forbidden_phrases:
         result = result.replace(phrase, "")
         result = result.replace(phrase.lower(), "")
-    
+
     # Reemplazar menciones de "abogado" - MÁS EXHAUSTIVO
     lawyer_replacements = [
         ("contratar a un abogado", "continuar con MigPAL"),
@@ -479,21 +497,21 @@ def filter_response(text: str) -> str:
         ("attorney", "MigPAL"),
         ("Attorney", "MigPAL"),
     ]
-    
+
     for old, new in lawyer_replacements:
         result = result.replace(old, new)
-    
+
     # Limitar a máximo 8 líneas
-    lines = [l.strip() for l in result.split('\n') if l.strip()]
+    lines = [l.strip() for l in result.split("\n") if l.strip()]
     if len(lines) > 8:
-        result = '\n'.join(lines[:8])
+        result = "\n".join(lines[:8])
     else:
-        result = '\n'.join(lines)
-    
+        result = "\n".join(lines)
+
     # Limpiar espacios múltiples
-    result = re.sub(r'\n{3,}', '\n\n', result)
-    result = re.sub(r' {2,}', ' ', result)
-    
+    result = re.sub(r"\n{3,}", "\n\n", result)
+    result = re.sub(r" {2,}", " ", result)
+
     return result.strip()
 
 
@@ -534,25 +552,38 @@ def get_fallback_message(error_type: str = "generic") -> str:
     return fallbacks.get(error_type, FALLBACK_GENERIC)
 
 
-def fallback_response(message: str, user_data: Dict[str, Any]) -> str:
+def fallback_response(message: str, user_data: dict[str, Any]) -> str:
     """Respuestas de fallback - CONSULTIVAS y basadas en el perfil - V9"""
-    
+
     profile = user_data.get("profile", {})
     personal = profile.get("personal", {})
     work = profile.get("work", {})
     selected_route = user_data.get("selected_route", {})
-    preferences = user_data.get("preferences", {})
-    
+    user_data.get("preferences", {})
+
     name = personal.get("name", "").split()[0] if personal.get("name") else ""
     experience = work.get("experience", "")
     visa_type = selected_route.get("visa_type", "")
-    
+
     msg_lower = message.lower().strip()
-    
+
     # === CONFIRMACIONES - El cliente quiere continuar ===
-    if msg_lower in ["si", "sí", "ok", "dale", "listo", "bueno", "vale", "claro", "perfecto", "continua", "sigue", "siguiente"]:
+    if msg_lower in [
+        "si",
+        "sí",
+        "ok",
+        "dale",
+        "listo",
+        "bueno",
+        "vale",
+        "claro",
+        "perfecto",
+        "continua",
+        "sigue",
+        "siguiente",
+    ]:
         if visa_type:
-            return f"""✅ Perfecto{', ' + name if name else ''}. 
+            return f"""✅ Perfecto{', ' + name if name else ''}.
 
 El siguiente paso es el **Diagnóstico MigPAL** ($50 USD).
 
@@ -581,7 +612,7 @@ Tu probabilidad estimada: **70-75%** 🎯
 Para darte una recomendación personalizada, necesito conocerte mejor.
 
 ¿Me cuentas un poco sobre tu profesión y experiencia?"""
-    
+
     # === SALUDOS ===
     if any(w in msg_lower for w in ["hola", "hi", "hello", "buenos", "buenas"]):
         if name and visa_type:
@@ -604,7 +635,7 @@ Ya tengo tu perfil guardado. Vamos a definir tu mejor opción de visa.
 Mi trabajo es guiarte paso a paso hacia tu nueva vida en USA.
 
 Para empezar, ¿cómo te llamas?"""
-    
+
     # === PREGUNTAS DE PROBABILIDAD ===
     if any(w in msg_lower for w in ["probabilidad", "chance", "posibilidad", "éxito", "porcentaje"]):
         if ">15" in experience or ">10" in experience:
@@ -617,29 +648,31 @@ Tienes a favor:
 
 El siguiente paso es documentar tus logros. ¿Procedemos?"""
         else:
-            return f"""📊 Tu probabilidad depende de cómo documentemos tu perfil.
+            return """📊 Tu probabilidad depende de cómo documentemos tu perfil.
 
 Rango estimado: **50-70%** para visa O-1.
 
 Con el Diagnóstico ($50) te doy un número exacto basado en tu evidencia.
 
 ¿Te interesa?"""
-    
+
     # === PREGUNTAS DE COSTO ===
     if any(w in msg_lower for w in ["costo", "precio", "cuanto", "cuánto", "pagar", "vale"]):
-        return f"""💰 El proceso MigPAL tiene 4 fases:
+        return """💰 El proceso MigPAL tiene 4 fases:
 
 1. **Diagnóstico**: $50 USD
-2. **Perfilamiento**: $50 USD  
+2. **Perfilamiento**: $50 USD
 3. **Revisión Documental**: $200 USD
 4. **Plan de Migración**: $100 USD (opcional)
 
 **Total: $300-$400 USD**
 
 ¿Empezamos con el Diagnóstico?"""
-    
+
     # === PREGUNTAS DE PROCESO/PASOS ===
-    if any(w in msg_lower for w in ["paso", "proceso", "siguiente", "como", "cómo", "que sigue", "qué sigue"]):
+    if any(
+        w in msg_lower for w in ["paso", "proceso", "siguiente", "como", "cómo", "que sigue", "qué sigue"]
+    ):
         if visa_type:
             return f"""🎯 {name}, estos son tus próximos pasos:
 
@@ -650,7 +683,7 @@ Con el Diagnóstico ($50) te doy un número exacto basado en tu evidencia.
 
 ¿Comenzamos con el Diagnóstico?"""
         else:
-            return f"""🎯 El proceso es simple:
+            return """🎯 El proceso es simple:
 
 1. Definimos tu mejor visa (ya casi)
 2. Diagnóstico de viabilidad ($50)
@@ -658,7 +691,7 @@ Con el Diagnóstico ($50) te doy un número exacto basado en tu evidencia.
 4. Presentación ante USCIS
 
 ¿Continuamos?"""
-    
+
     # === PREGUNTAS DE VISA ===
     if any(w in msg_lower for w in ["visa", "recomienda", "cual", "cuál", "mejor", "opcion", "opción"]):
         if ">15" in experience or ">10" in experience:
@@ -671,14 +704,14 @@ Con el Diagnóstico ($50) te doy un número exacto basado en tu evidencia.
 
 ¿Quieres que analicemos si cumples los requisitos?"""
         else:
-            return f"""🎫 Las mejores opciones para ti:
+            return """🎫 Las mejores opciones para ti:
 
 🥇 **O-1**: Habilidades extraordinarias (70-75%)
 🥈 **E-2**: Inversionista con $100K+ (80-90%)
 🥉 **H-1B**: Trabajo especializado (50-65%)
 
 ¿Cuál te interesa explorar?"""
-    
+
     # === RESPUESTA GENÉRICA - SIEMPRE GUIAR ===
     if name:
         if visa_type:
@@ -712,48 +745,45 @@ Mi trabajo es guiarte paso a paso hacia USA.
 Para empezar, ¿cómo te llamas?"""
 
 
-def extract_data_from_message(message: str, user_data: Dict[str, Any]) -> Dict[str, Any]:
+def extract_data_from_message(message: str, user_data: dict[str, Any]) -> dict[str, Any]:
     """Extrae datos del mensaje"""
     return {}
 
 
-def get_next_question(user_data: Dict[str, Any]) -> Optional[str]:
+def get_next_question(user_data: dict[str, Any]) -> str | None:
     """Obtiene siguiente pregunta del flujo"""
     return None
 
 
-async def process_with_ai(message: str, user_data: Dict[str, Any], conversation_history: list = None) -> Dict[str, Any]:
+async def process_with_ai(
+    message: str, user_data: dict[str, Any], conversation_history: list = None
+) -> dict[str, Any]:
     """Procesa mensaje y retorna respuesta estructurada"""
     response = await process_message(message, user_data, conversation_history)
-    
-    return {
-        "success": True,
-        "response": response,
-        "extracted_data": {},
-        "next_question": None
-    }
+
+    return {"success": True, "response": response, "extracted_data": {}, "next_question": None}
 
 
-def build_process_state(user_data: Dict[str, Any]) -> str:
+def build_process_state(user_data: dict[str, Any]) -> str:
     """Construye estado del proceso para contexto"""
     return build_complete_user_context(user_data)
 
 
 # ============== V3.3.0: TEST-TIME REASONING ==============
 
+
 async def analyze_visa_with_reasoning(
-    user_data: Dict[str, Any],
-    context: Dict[str, Any] = None
-) -> Dict[str, Any]:
+    user_data: dict[str, Any], context: dict[str, Any] = None
+) -> dict[str, Any]:
     """
     Análisis de visa con test-time reasoning.
-    
+
     PROCESO:
     1. Verificar checklist completo
     2. Generar 2-4 borradores con diferentes enfoques
     3. Validar coherencia de cada borrador
     4. Seleccionar y retornar el mejor
-    
+
     REGLAS DURAS:
     - No recomendar sin checklist mínimo
     - No inventar datos
@@ -761,10 +791,10 @@ async def analyze_visa_with_reasoning(
     """
     user_id = user_data.get("user_id", 0)
     lang = user_data.get("language", "es")
-    
+
     # 1. Verificar checklist
     checklist = check_profile_completeness(user_id, user_data)
-    
+
     if not checklist["can_recommend_visa"]:
         # No se puede recomendar - pedir datos faltantes
         next_q = checklist.get("next_question")
@@ -776,23 +806,23 @@ async def analyze_visa_with_reasoning(
                 "reason": "incomplete_checklist",
                 "missing_fields": checklist["missing"],
                 "next_question": question,
-                "summary": checklist["summary"]
+                "summary": checklist["summary"],
             }
         else:
             return {
                 "success": False,
                 "blocked": True,
                 "reason": "incomplete_checklist",
-                "summary": checklist["summary"]
+                "summary": checklist["summary"],
             }
-    
+
     # 2. Ejecutar test-time reasoning
     try:
         result = await reason_visa_analysis(user_data, context or {})
-        
+
         # 3. Validar coherencia de la respuesta seleccionada
         validation = validate_response(result.selected_draft.content, user_data, lang)
-        
+
         if validation.blocked:
             # Respuesta bloqueada por coherencia
             logger.warning(f"⚠️ VISA ANALYSIS | blocked | reason={validation.block_reason}")
@@ -801,9 +831,9 @@ async def analyze_visa_with_reasoning(
                 "blocked": True,
                 "reason": "coherence_failed",
                 "block_reason": validation.block_reason,
-                "suggestions": validation.suggestions
+                "suggestions": validation.suggestions,
             }
-        
+
         # 4. Retornar respuesta validada
         return {
             "success": True,
@@ -812,32 +842,28 @@ async def analyze_visa_with_reasoning(
             "confidence": result.confidence,
             "warnings": result.warnings,
             "validation_score": validation.score,
-            "processing_time_ms": result.processing_time_ms
+            "processing_time_ms": result.processing_time_ms,
         }
-        
+
     except Exception as e:
         logger.error(f"❌ VISA ANALYSIS | error={e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        return {"success": False, "error": str(e)}
 
 
 async def generate_migration_plan_with_reasoning(
-    user_data: Dict[str, Any],
-    context: Dict[str, Any] = None
-) -> Dict[str, Any]:
+    user_data: dict[str, Any], context: dict[str, Any] = None
+) -> dict[str, Any]:
     """
     Genera plan de migración con test-time reasoning.
-    
+
     REGLA DURA: Requiere checklist COMPLETO.
     """
     user_id = user_data.get("user_id", 0)
     lang = user_data.get("language", "es")
-    
+
     # 1. Verificar checklist completo
     checklist = check_profile_completeness(user_id, user_data)
-    
+
     if not checklist["can_generate_plan"]:
         return {
             "success": False,
@@ -845,46 +871,41 @@ async def generate_migration_plan_with_reasoning(
             "reason": "incomplete_checklist",
             "percentage": checklist["percentage"],
             "missing_fields": checklist["missing"],
-            "summary": checklist["summary"]
+            "summary": checklist["summary"],
         }
-    
+
     # 2. Ejecutar test-time reasoning
     try:
         result = await reason_migration_plan(user_data, context or {})
-        
+
         # 3. Validar coherencia
         validation = validate_response(result.selected_draft.content, user_data, lang)
-        
+
         if validation.blocked:
             return {
                 "success": False,
                 "blocked": True,
                 "reason": "coherence_failed",
-                "block_reason": validation.block_reason
+                "block_reason": validation.block_reason,
             }
-        
+
         return {
             "success": True,
             "response": result.selected_draft.content,
             "approach": result.selected_draft.approach.value,
             "confidence": result.confidence,
-            "warnings": result.warnings
+            "warnings": result.warnings,
         }
-        
+
     except Exception as e:
         logger.error(f"❌ MIGRATION PLAN | error={e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        return {"success": False, "error": str(e)}
 
 
-async def detect_profile_inconsistencies(
-    user_data: Dict[str, Any]
-) -> Dict[str, Any]:
+async def detect_profile_inconsistencies(user_data: dict[str, Any]) -> dict[str, Any]:
     """
     Detecta inconsistencias en el perfil del usuario.
-    
+
     Verifica:
     - Edad vs educación
     - Experiencia vs edad
@@ -892,35 +913,32 @@ async def detect_profile_inconsistencies(
     """
     try:
         result = await check_inconsistencies(user_data)
-        
+
         return {
             "success": True,
             "has_inconsistencies": len(result.warnings) > 0,
             "analysis": result.selected_draft.content,
             "warnings": result.warnings,
-            "confidence": result.confidence
+            "confidence": result.confidence,
         }
-        
+
     except Exception as e:
         logger.error(f"❌ INCONSISTENCY CHECK | error={e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        return {"success": False, "error": str(e)}
 
 
 __all__ = [
-    'process_with_ai',
-    'process_message', 
-    'extract_data_from_message',
-    'get_next_question',
-    'build_complete_user_context',
-    'build_process_state',
-    'get_fallback_message',
-    'fallback_response',
-    'detect_intent',
+    "process_with_ai",
+    "process_message",
+    "extract_data_from_message",
+    "get_next_question",
+    "build_complete_user_context",
+    "build_process_state",
+    "get_fallback_message",
+    "fallback_response",
+    "detect_intent",
     # V3.3.0: Test-time reasoning
-    'analyze_visa_with_reasoning',
-    'generate_migration_plan_with_reasoning',
-    'detect_profile_inconsistencies',
+    "analyze_visa_with_reasoning",
+    "generate_migration_plan_with_reasoning",
+    "detect_profile_inconsistencies",
 ]

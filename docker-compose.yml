@@ -1,29 +1,131 @@
-version: '3.8'
+# Sprint 0 (Foundation) — A-ADR-005: "todo entorno debe poder levantarse con
+# un solo comando". `docker compose up` debe dejar Postgres, Redis, backend
+# y frontend funcionando sin configuración manual, conectados a Ollama.
+#
+# Puertos de host remapeados (5442, 8010) porque esta máquina de desarrollo
+# ya tiene otros proyectos ocupando 5432/8000/8001-8005/8011 -- el mismo
+# problema que en su momento motivó el docker-compose.corrected.yml
+# descartado en Recovery. La comunicación ENTRE servicios de este stack usa
+# la red interna de Docker (puertos de contenedor, sin remapear) — el
+# remapeo es solo para acceso desde el host.
+#
+# Ollama corre NATIVO en el host por defecto (más rápido, sin re-descargar
+# modelos, sin passthrough de GPU en Docker Desktop) — el backend se conecta
+# vía host.docker.internal. El servicio `ollama` containerizado queda
+# disponible detrás del profile "ollama-container" para máquinas sin
+# instalación nativa: docker compose --profile ollama-container up
+#
+# El servicio telegram-bot queda detrás del profile "bot": requiere un
+# TELEGRAM_BOT_TOKEN real (el anterior está comprometido, ver
+# docs/SECURITY-001.md) y por eso no forma parte del arranque por defecto.
+# Levantarlo explícitamente con: docker compose --profile bot up
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: migpal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-migpal_dev_password}
+      POSTGRES_DB: migpal
+    ports:
+      - "5442:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U migpal -d migpal"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama-container"]
+    ports:
+      - "11444:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8010:8000"
     environment:
-      - DATABASE_URL=sqlite:///./migpal.db
-      - AUTH_SECRET_KEY=${AUTH_SECRET_KEY}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - environment=docker-compose
+      - DATABASE_URL=postgresql://migpal:${POSTGRES_PASSWORD:-migpal_dev_password}@postgres:5432/migpal
+      - REDIS_URL=redis://redis:6379/0
+      - AI_PROVIDER=ollama
+      - AI_MODEL=${AI_MODEL:-migpal:latest}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - AUTH_SECRET_KEY=${AUTH_SECRET_KEY:?AUTH_SECRET_KEY es obligatorio — ver .env.example}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
-      - ./backend:/app
       - backend-data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
+      interval: 15s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 20s
+
+  telegram-bot:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    profiles: ["bot"]
+    command: ["python", "run_telegram_bot.py"]
+    environment:
+      - environment=docker-compose
+      # Sin ":?" -- un valor requerido con ":?" se valida al parsear TODO
+      # el archivo, incluso para servicios detrás de un profile no invocado.
+      # Rompería `docker compose up` del stack núcleo sin token de Telegram.
+      # La validación real ocurre en app/config.py al arrancar ESTE servicio.
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - AI_PROVIDER=ollama
+      - AI_MODEL=${AI_MODEL:-migpal:latest}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - AUTH_SECRET_KEY=${AUTH_SECRET_KEY:?AUTH_SECRET_KEY es obligatorio}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - bot-data:/app/data
+    restart: unless-stopped
 
   frontend:
     build:
@@ -32,8 +134,12 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
+  postgres-data:
+  ollama-data:
   backend-data:
+  bot-data:

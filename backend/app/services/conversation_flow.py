@@ -20,104 +20,104 @@ PRINCIPIOS:
 - NUNCA mencionar abogados
 """
 
-from enum import Enum, auto
-from typing import Dict, Any, Optional, List, Tuple
-from dataclasses import dataclass, field
-import json
 import logging
+from dataclasses import dataclass, field
+from enum import Enum, auto
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class ConversationState(Enum):
     """Estados del flujo conversacional"""
-    
+
     # FASE 0: BIENVENIDA
     WELCOME = auto()
-    
+
     # FASE 1: DESCUBRIMIENTO
-    DISCOVERY_WHY = auto()              # ¿Por qué quieres migrar?
-    DISCOVERY_DREAM = auto()            # ¿Qué sueño tienes en USA?
-    DISCOVERY_FAMILY = auto()           # ¿Tienes familia? ¿Migran contigo?
+    DISCOVERY_WHY = auto()  # ¿Por qué quieres migrar?
+    DISCOVERY_DREAM = auto()  # ¿Qué sueño tienes en USA?
+    DISCOVERY_FAMILY = auto()  # ¿Tienes familia? ¿Migran contigo?
     DISCOVERY_USA_CONNECTIONS = auto()  # ¿Tienes familia/amigos en USA?
-    DISCOVERY_NEAR_FAMILY = auto()      # ¿Quieres vivir cerca de ellos?
-    
+    DISCOVERY_NEAR_FAMILY = auto()  # ¿Quieres vivir cerca de ellos?
+
     # FASE 2: PLAN DE VIDA (TRABAJO/NEGOCIO PRIMERO)
-    LIFE_WORK_OR_BUSINESS = auto()      # ¿Trabajo o negocio?
-    LIFE_INDUSTRY = auto()              # ¿En qué industria?
-    LIFE_BUSINESS_TYPE = auto()         # Si negocio: ¿Qué tipo?
-    LIFE_BUSINESS_BUDGET = auto()       # Si negocio: ¿Presupuesto de inversión?
-    LIFE_SALARY_EXPECTATION = auto()    # Si trabajo: ¿Expectativa salarial?
-    LIFE_REMOTE_POSSIBLE = auto()       # ¿Trabajo remoto es opción?
-    
+    LIFE_WORK_OR_BUSINESS = auto()  # ¿Trabajo o negocio?
+    LIFE_INDUSTRY = auto()  # ¿En qué industria?
+    LIFE_BUSINESS_TYPE = auto()  # Si negocio: ¿Qué tipo?
+    LIFE_BUSINESS_BUDGET = auto()  # Si negocio: ¿Presupuesto de inversión?
+    LIFE_SALARY_EXPECTATION = auto()  # Si trabajo: ¿Expectativa salarial?
+    LIFE_REMOTE_POSSIBLE = auto()  # ¿Trabajo remoto es opción?
+
     # FASE 3: PREFERENCIAS DE UBICACIÓN
-    LOCATION_REGION = auto()            # ¿Qué región de USA?
-    LOCATION_CLIMATE = auto()           # ¿Qué clima prefieres?
-    LOCATION_CITY_SIZE = auto()         # ¿Ciudad grande, mediana, pequeña?
-    LOCATION_PRIORITIES = auto()        # ¿Qué es más importante? (costo, seguridad, etc.)
+    LOCATION_REGION = auto()  # ¿Qué región de USA?
+    LOCATION_CLIMATE = auto()  # ¿Qué clima prefieres?
+    LOCATION_CITY_SIZE = auto()  # ¿Ciudad grande, mediana, pequeña?
+    LOCATION_PRIORITIES = auto()  # ¿Qué es más importante? (costo, seguridad, etc.)
     LOCATION_LATINO_COMMUNITY = auto()  # ¿Importa comunidad latina?
-    
+
     # FASE 4: DEFINIR PESOS PARA SCORING
-    SCORING_SETUP = auto()              # Explicar sistema de scoring
-    SCORING_WEIGHTS = auto()            # Definir pesos de parámetros
-    
+    SCORING_SETUP = auto()  # Explicar sistema de scoring
+    SCORING_WEIGHTS = auto()  # Definir pesos de parámetros
+
     # FASE 5: RECOMENDACIÓN DE ESTADOS
-    STATE_RECOMMENDATION = auto()       # Mostrar estados recomendados
-    STATE_SELECTION = auto()            # Elegir estado
-    
+    STATE_RECOMMENDATION = auto()  # Mostrar estados recomendados
+    STATE_SELECTION = auto()  # Elegir estado
+
     # FASE 6: RECOMENDACIÓN DE CIUDADES
-    CITY_RECOMMENDATION = auto()        # Mostrar ciudades del estado
-    CITY_EXPLORATION = auto()           # Explorar ciudad (una por una)
-    CITY_SELECTION = auto()             # Elegir ciudad
-    
+    CITY_RECOMMENDATION = auto()  # Mostrar ciudades del estado
+    CITY_EXPLORATION = auto()  # Explorar ciudad (una por una)
+    CITY_SELECTION = auto()  # Elegir ciudad
+
     # FASE 7: RECOMENDACIÓN DE BARRIOS
     NEIGHBORHOOD_RECOMMENDATION = auto()  # Mostrar barrios de la ciudad
-    NEIGHBORHOOD_EXPLORATION = auto()     # Explorar barrio (uno por uno)
-    NEIGHBORHOOD_SELECTION = auto()       # Elegir barrio
-    
+    NEIGHBORHOOD_EXPLORATION = auto()  # Explorar barrio (uno por uno)
+    NEIGHBORHOOD_SELECTION = auto()  # Elegir barrio
+
     # FASE 8: VIVIENDA
-    HOUSING_PREFERENCES = auto()        # Preferencias de vivienda
-    HOUSING_BUDGET = auto()             # Presupuesto
-    HOUSING_SCORING_WEIGHTS = auto()    # Pesos para scoring de viviendas
-    HOUSING_SEARCH = auto()             # Buscar viviendas
-    HOUSING_EXPLORATION = auto()        # Ver viviendas una por una
-    HOUSING_SELECTION = auto()          # Elegir vivienda favorita
-    
+    HOUSING_PREFERENCES = auto()  # Preferencias de vivienda
+    HOUSING_BUDGET = auto()  # Presupuesto
+    HOUSING_SCORING_WEIGHTS = auto()  # Pesos para scoring de viviendas
+    HOUSING_SEARCH = auto()  # Buscar viviendas
+    HOUSING_EXPLORATION = auto()  # Ver viviendas una por una
+    HOUSING_SELECTION = auto()  # Elegir vivienda favorita
+
     # FASE 9: TRABAJO/NEGOCIO ESPECÍFICO
-    JOB_PREFERENCES = auto()            # Preferencias de trabajo
-    JOB_SCORING_WEIGHTS = auto()        # Pesos para scoring de trabajos
-    JOB_SEARCH = auto()                 # Buscar trabajos
-    JOB_EXPLORATION = auto()            # Ver trabajos uno por uno
-    JOB_SELECTION = auto()              # Elegir trabajos favoritos
-    
+    JOB_PREFERENCES = auto()  # Preferencias de trabajo
+    JOB_SCORING_WEIGHTS = auto()  # Pesos para scoring de trabajos
+    JOB_SEARCH = auto()  # Buscar trabajos
+    JOB_EXPLORATION = auto()  # Ver trabajos uno por uno
+    JOB_SELECTION = auto()  # Elegir trabajos favoritos
+
     # FASE 10: EDUCACIÓN (si tiene hijos)
-    SCHOOL_PREFERENCES = auto()         # Preferencias de escuelas
-    SCHOOL_SCORING_WEIGHTS = auto()     # Pesos para scoring de escuelas
-    SCHOOL_SEARCH = auto()              # Buscar escuelas
-    SCHOOL_EXPLORATION = auto()         # Ver escuelas una por una
-    SCHOOL_SELECTION = auto()           # Elegir escuelas favoritas
-    
+    SCHOOL_PREFERENCES = auto()  # Preferencias de escuelas
+    SCHOOL_SCORING_WEIGHTS = auto()  # Pesos para scoring de escuelas
+    SCHOOL_SEARCH = auto()  # Buscar escuelas
+    SCHOOL_EXPLORATION = auto()  # Ver escuelas una por una
+    SCHOOL_SELECTION = auto()  # Elegir escuelas favoritas
+
     # FASE 11: VISA
-    VISA_ANALYSIS = auto()              # Analizar perfil para visa
-    VISA_RECOMMENDATION = auto()        # Recomendar visa basada en plan
-    VISA_EXPLANATION = auto()           # Explicar requisitos
-    VISA_PROBABILITY = auto()           # Dar probabilidad
-    
+    VISA_ANALYSIS = auto()  # Analizar perfil para visa
+    VISA_RECOMMENDATION = auto()  # Recomendar visa basada en plan
+    VISA_EXPLANATION = auto()  # Explicar requisitos
+    VISA_PROBABILITY = auto()  # Dar probabilidad
+
     # FASE 12: RESUMEN Y DIAGNÓSTICO
-    PLAN_SUMMARY = auto()               # Resumen del plan completo
-    DIAGNOSIS_OFFER = auto()            # Ofrecer diagnóstico ($50)
-    DIAGNOSIS_ACCEPTED = auto()         # Diagnóstico aceptado
-    
+    PLAN_SUMMARY = auto()  # Resumen del plan completo
+    DIAGNOSIS_OFFER = auto()  # Ofrecer diagnóstico ($50)
+    DIAGNOSIS_ACCEPTED = auto()  # Diagnóstico aceptado
+
     # FASE 13: EJECUCIÓN
-    PROFILING = auto()                  # Perfilamiento ($50)
-    DOCUMENT_REVIEW = auto()            # Revisión documental ($200)
-    MIGRATION_PLAN = auto()             # Plan de migración ($100)
-    EXECUTION = auto()                  # Ejecución final
+    PROFILING = auto()  # Perfilamiento ($50)
+    DOCUMENT_REVIEW = auto()  # Revisión documental ($200)
+    MIGRATION_PLAN = auto()  # Plan de migración ($100)
+    EXECUTION = auto()  # Ejecución final
 
 
 @dataclass
 class ScoringWeights:
     """Pesos personalizados para scoring"""
+
     # Pesos para ciudades/estados
     costo_vida: int = 15
     seguridad: int = 15
@@ -128,7 +128,7 @@ class ScoringWeights:
     comunidad_latina: int = 10
     clima: int = 10
     calidad_vida: int = 5
-    
+
     # Pesos para viviendas
     precio: int = 25
     ubicacion: int = 20
@@ -137,7 +137,7 @@ class ScoringWeights:
     seguridad_barrio: int = 15
     cercania_trabajo: int = 10
     cercania_escuelas: int = 5
-    
+
     # Pesos para trabajos
     salario: int = 25
     beneficios: int = 15
@@ -146,7 +146,7 @@ class ScoringWeights:
     ubicacion_trabajo: int = 10
     flexibilidad: int = 10
     visa_sponsorship: int = 15
-    
+
     # Pesos para escuelas
     rating_academico: int = 25
     programas_especiales: int = 15
@@ -160,20 +160,21 @@ class ScoringWeights:
 @dataclass
 class ConversationContext:
     """Contexto completo de la conversación"""
+
     user_id: int
     current_state: ConversationState = ConversationState.WELCOME
-    
+
     # Descubrimiento
     why_migrate: str = ""
     dream_in_usa: str = ""
     has_family: bool = False
     family_migrating: bool = False
     family_count: int = 0
-    children_ages: List[int] = field(default_factory=list)
+    children_ages: list[int] = field(default_factory=list)
     has_usa_connections: bool = False
     usa_connections_location: str = ""
     wants_near_connections: bool = False
-    
+
     # Plan de vida
     work_or_business: str = ""  # "trabajo", "negocio", "ambos", "remoto"
     industry: str = ""
@@ -181,37 +182,37 @@ class ConversationContext:
     business_budget: int = 0
     salary_expectation: int = 0
     remote_possible: bool = False
-    
+
     # Preferencias de ubicación
-    preferred_regions: List[str] = field(default_factory=list)
-    preferred_climates: List[str] = field(default_factory=list)
+    preferred_regions: list[str] = field(default_factory=list)
+    preferred_climates: list[str] = field(default_factory=list)
     city_size: str = ""
-    priorities: List[str] = field(default_factory=list)
+    priorities: list[str] = field(default_factory=list)
     latino_community_importance: str = ""
-    
+
     # Scoring weights personalizados
     scoring_weights: ScoringWeights = field(default_factory=ScoringWeights)
-    
+
     # Selecciones
     selected_state: str = ""
     selected_city: str = ""
     selected_neighborhood: str = ""
-    selected_housing: Dict = field(default_factory=dict)
-    selected_jobs: List[Dict] = field(default_factory=list)
-    selected_schools: List[Dict] = field(default_factory=list)
-    
+    selected_housing: dict = field(default_factory=dict)
+    selected_jobs: list[dict] = field(default_factory=list)
+    selected_schools: list[dict] = field(default_factory=list)
+
     # Visa
     recommended_visa: str = ""
     visa_probability: int = 0
-    
+
     # Exploración actual (para mostrar uno por uno)
     current_exploration_index: int = 0
-    exploration_items: List[Dict] = field(default_factory=list)
-    
+    exploration_items: list[dict] = field(default_factory=list)
+
     # Historial de estados visitados
-    state_history: List[str] = field(default_factory=list)
-    
-    def to_dict(self) -> Dict:
+    state_history: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
         """Convierte a diccionario para persistencia"""
         return {
             "user_id": self.user_id,
@@ -247,9 +248,9 @@ class ConversationContext:
             "current_exploration_index": self.current_exploration_index,
             "state_history": self.state_history,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict) -> "ConversationContext":
+    def from_dict(cls, data: dict) -> "ConversationContext":
         """Crea desde diccionario"""
         ctx = cls(user_id=data.get("user_id", 0))
         ctx.current_state = ConversationState[data.get("current_state", "WELCOME")]
@@ -294,9 +295,8 @@ STATE_QUESTIONS = {
         "options": [
             ("si", "✅ ¡Sí, empecemos!"),
             ("info", "ℹ️ Primero cuéntame más sobre MigPAL"),
-        ]
+        ],
     },
-    
     ConversationState.DISCOVERY_WHY: {
         "message": "Perfecto, {name}. Antes de hablar de visas o ciudades, quiero entenderte.\n\n¿Qué te motiva a migrar a USA? 🤔",
         "options": [
@@ -310,7 +310,6 @@ STATE_QUESTIONS = {
         ],
         "allow_text": True,
     },
-    
     ConversationState.DISCOVERY_DREAM: {
         "message": "Entiendo, {why_migrate_text}.\n\n¿Cómo te imaginas tu vida en USA en 5 años? ¿Cuál es tu sueño? 💭",
         "allow_text": True,
@@ -318,9 +317,8 @@ STATE_QUESTIONS = {
             "Tener mi casa propia y un negocio estable",
             "Trabajar en una empresa tech y darle buena educación a mis hijos",
             "Vivir tranquilo cerca de la playa con mi familia",
-        ]
+        ],
     },
-    
     ConversationState.DISCOVERY_FAMILY: {
         "message": "Me encanta ese sueño, {name}. 🌟\n\n¿Tienes familia que migraría contigo?",
         "options": [
@@ -328,9 +326,8 @@ STATE_QUESTIONS = {
             ("pareja", "👫 Con mi pareja"),
             ("familia_hijos", "👨‍👩‍👧‍👦 Con pareja e hijos"),
             ("hijos_solo", "👨‍👧‍👦 Solo con mis hijos"),
-        ]
+        ],
     },
-    
     ConversationState.DISCOVERY_USA_CONNECTIONS: {
         "message": "Perfecto. ¿Tienes familia o amigos cercanos viviendo en USA?",
         "options": [
@@ -338,9 +335,8 @@ STATE_QUESTIONS = {
             ("si_amigos", "🤝 Sí, amigos cercanos"),
             ("si_ambos", "👥 Familia y amigos"),
             ("no", "❌ No tengo a nadie allá"),
-        ]
+        ],
     },
-    
     ConversationState.DISCOVERY_NEAR_FAMILY: {
         "message": "¿En qué ciudad/estado viven? ¿Te gustaría vivir cerca de ellos?",
         "allow_text": True,
@@ -348,9 +344,8 @@ STATE_QUESTIONS = {
             ("si_cerca", "✅ Sí, quiero vivir cerca"),
             ("no_importa", "🔄 No necesariamente"),
             ("lejos", "📍 Prefiero otra zona"),
-        ]
+        ],
     },
-    
     # PLAN DE VIDA - TRABAJO/NEGOCIO
     ConversationState.LIFE_WORK_OR_BUSINESS: {
         "message": "Ahora hablemos de lo más importante: tu sustento económico. 💰\n\nEsto determinará mucho sobre dónde vivir y qué visa necesitas.\n\n¿Qué planeas hacer en USA?",
@@ -359,9 +354,8 @@ STATE_QUESTIONS = {
             ("negocio", "🚀 Montar mi propio negocio"),
             ("remoto", "💻 Ya tengo trabajo remoto"),
             ("ambos", "🔄 Empleo + proyecto propio"),
-        ]
+        ],
     },
-    
     ConversationState.LIFE_INDUSTRY: {
         "message": "¿En qué industria o sector te desempeñas?",
         "options": [
@@ -379,7 +373,6 @@ STATE_QUESTIONS = {
         ],
         "allow_text": True,
     },
-    
     ConversationState.LIFE_BUSINESS_TYPE: {
         "message": "¡Excelente! Emprender en USA es una gran decisión. 🚀\n\n¿Qué tipo de negocio te interesa?",
         "options": [
@@ -394,7 +387,6 @@ STATE_QUESTIONS = {
         ],
         "allow_text": True,
     },
-    
     ConversationState.LIFE_BUSINESS_BUDGET: {
         "message": "¿Cuánto capital tienes disponible para invertir en tu negocio?",
         "options": [
@@ -403,9 +395,8 @@ STATE_QUESTIONS = {
             ("250k", "💵💵💵 $250,000 - $500,000"),
             ("500k", "💎 $500,000+"),
             ("no_seguro", "🤔 No estoy seguro aún"),
-        ]
+        ],
     },
-    
     ConversationState.LIFE_SALARY_EXPECTATION: {
         "message": "¿Cuál es tu expectativa salarial anual en USA?",
         "options": [
@@ -414,9 +405,8 @@ STATE_QUESTIONS = {
             ("100k", "💵💵💵 $100,000 - $150,000"),
             ("150k", "💎 $150,000+"),
             ("no_seguro", "🤔 No estoy seguro"),
-        ]
+        ],
     },
-    
     # PREFERENCIAS DE UBICACIÓN
     ConversationState.LOCATION_REGION: {
         "message": "Ahora definamos dónde te gustaría vivir. 🗺️\n\n¿Qué regiones de USA te interesan?",
@@ -427,9 +417,8 @@ STATE_QUESTIONS = {
             ("sur", "🤠 Sur (Texas, Georgia, Carolina)"),
             ("midwest", "🌾 Midwest (Chicago, Denver)"),
             ("sin_preferencia", "🔄 Sin preferencia"),
-        ]
+        ],
     },
-    
     ConversationState.LOCATION_CLIMATE: {
         "message": "¿Qué clima prefieres?",
         "multi_select": True,
@@ -438,9 +427,8 @@ STATE_QUESTIONS = {
             ("templado", "🌤️ Templado (4 estaciones suaves)"),
             ("frio", "❄️ Frío (con nieve)"),
             ("sin_preferencia", "🔄 Me adapto a cualquiera"),
-        ]
+        ],
     },
-    
     ConversationState.LOCATION_CITY_SIZE: {
         "message": "¿Qué tamaño de ciudad prefieres?",
         "options": [
@@ -448,9 +436,8 @@ STATE_QUESTIONS = {
             ("mediana", "🌆 Ciudad mediana (100K - 1M)"),
             ("pequena", "🏘️ Ciudad pequeña (<100K)"),
             ("suburbio", "🏡 Suburbio de ciudad grande"),
-        ]
+        ],
     },
-    
     ConversationState.LOCATION_PRIORITIES: {
         "message": "¿Qué es MÁS IMPORTANTE para ti? (Elige hasta 3)",
         "multi_select": True,
@@ -464,9 +451,8 @@ STATE_QUESTIONS = {
             ("transporte", "🚇 Transporte público"),
             ("comunidad", "🤝 Comunidad latina"),
             ("clima", "☀️ Buen clima"),
-        ]
+        ],
     },
-    
     ConversationState.LOCATION_LATINO_COMMUNITY: {
         "message": "¿Qué tan importante es tener comunidad latina cerca?",
         "options": [
@@ -474,65 +460,65 @@ STATE_QUESTIONS = {
             ("importante", "⭐⭐ Importante"),
             ("poco_importante", "⭐ Poco importante"),
             ("no_importa", "🔄 No me importa"),
-        ]
+        ],
     },
-    
     # SCORING
     ConversationState.SCORING_SETUP: {
         "message": "Ahora vamos a personalizar tu búsqueda. 🎯\n\nTe mostraré opciones de estados, ciudades, barrios y viviendas.\n\nCada opción tendrá un SCORE calculado según TUS prioridades.\n\n¿Quieres ajustar los pesos de cada factor o usar los valores por defecto?",
         "options": [
             ("personalizar", "⚙️ Quiero personalizar los pesos"),
             ("default", "✅ Usar valores por defecto"),
-        ]
+        ],
     },
 }
 
 
 # ============== MOTOR DE FLUJO ==============
 
+
 class ConversationFlowEngine:
     """Motor principal del flujo conversacional"""
-    
+
     def __init__(self):
-        self.contexts: Dict[int, ConversationContext] = {}
-    
+        self.contexts: dict[int, ConversationContext] = {}
+
     def get_context(self, user_id: int) -> ConversationContext:
         """Obtiene o crea el contexto de un usuario"""
         if user_id not in self.contexts:
             self.contexts[user_id] = ConversationContext(user_id=user_id)
         return self.contexts[user_id]
-    
+
     def set_context(self, user_id: int, context: ConversationContext):
         """Establece el contexto de un usuario"""
         self.contexts[user_id] = context
-    
-    def get_current_question(self, user_id: int, user_name: str = "") -> Dict[str, Any]:
+
+    def get_current_question(self, user_id: int, user_name: str = "") -> dict[str, Any]:
         """Obtiene la pregunta actual para el usuario"""
         ctx = self.get_context(user_id)
         state = ctx.current_state
-        
+
         if state not in STATE_QUESTIONS:
             return {
                 "message": "Continuemos con tu plan de migración. ¿En qué puedo ayudarte?",
                 "options": [],
                 "allow_text": True,
             }
-        
+
         question = STATE_QUESTIONS[state].copy()
-        
+
         # Reemplazar variables en el mensaje
         message = question["message"]
         message = message.replace("{name}", user_name or "amigo")
-        
+
         if "{why_migrate_text}" in message:
             why_text = self._get_why_migrate_text(ctx.why_migrate)
             message = message.replace("{why_migrate_text}", why_text)
-        
+
         question["message"] = message
         question["state"] = state.name
-        
+
         return question
-    
+
     def _get_why_migrate_text(self, why: str) -> str:
         """Convierte el código de motivación a texto legible"""
         texts = {
@@ -544,61 +530,57 @@ class ConversationFlowEngine:
             "seguridad": "buscas más seguridad",
         }
         return texts.get(why, why)
-    
+
     def process_response(
-        self, 
-        user_id: int, 
-        response: str,
-        selected_options: List[str] = None
-    ) -> Tuple[ConversationState, str]:
+        self, user_id: int, response: str, selected_options: list[str] = None
+    ) -> tuple[ConversationState, str]:
         """
         Procesa la respuesta del usuario y avanza el estado
-        
+
         Returns:
             Tuple[nuevo_estado, mensaje_de_transición]
         """
         ctx = self.get_context(user_id)
         current_state = ctx.current_state
-        
+
         # Guardar en historial
         ctx.state_history.append(current_state.name)
-        
+
         # Procesar según el estado actual
         next_state, transition_msg = self._process_state_response(
             ctx, current_state, response, selected_options
         )
-        
+
         ctx.current_state = next_state
         self.set_context(user_id, ctx)
-        
+
         return next_state, transition_msg
-    
+
     def _process_state_response(
-        self,
-        ctx: ConversationContext,
-        state: ConversationState,
-        response: str,
-        options: List[str] = None
-    ) -> Tuple[ConversationState, str]:
+        self, ctx: ConversationContext, state: ConversationState, response: str, options: list[str] = None
+    ) -> tuple[ConversationState, str]:
         """Procesa la respuesta según el estado actual"""
-        
+
         # WELCOME
         if state == ConversationState.WELCOME:
             if response == "si" or "si" in (options or []):
                 return ConversationState.DISCOVERY_WHY, ""
             else:
-                return ConversationState.WELCOME, "MigPAL es tu consultor de migración. Te ayudo a planificar tu nueva vida en USA paso a paso. ¿Empezamos?"
-        
+                return (
+                    ConversationState.WELCOME,
+                    "MigPAL es tu consultor de migración. Te ayudo a planificar tu nueva vida en USA paso a paso. ¿Empezamos?",
+                )
+
         # DISCOVERY_WHY
         elif state == ConversationState.DISCOVERY_WHY:
             ctx.why_migrate = response if response else (options[0] if options else "")
             return ConversationState.DISCOVERY_DREAM, ""
-        
+
         # DISCOVERY_DREAM
         elif state == ConversationState.DISCOVERY_DREAM:
             ctx.dream_in_usa = response
             return ConversationState.DISCOVERY_FAMILY, ""
-        
+
         # DISCOVERY_FAMILY
         elif state == ConversationState.DISCOVERY_FAMILY:
             if response == "solo":
@@ -612,7 +594,7 @@ class ConversationFlowEngine:
                 elif response in ["familia_hijos", "hijos_solo"]:
                     ctx.family_count = 3  # Se ajustará después
             return ConversationState.DISCOVERY_USA_CONNECTIONS, ""
-        
+
         # DISCOVERY_USA_CONNECTIONS
         elif state == ConversationState.DISCOVERY_USA_CONNECTIONS:
             if response == "no":
@@ -621,7 +603,7 @@ class ConversationFlowEngine:
             else:
                 ctx.has_usa_connections = True
                 return ConversationState.DISCOVERY_NEAR_FAMILY, ""
-        
+
         # DISCOVERY_NEAR_FAMILY
         elif state == ConversationState.DISCOVERY_NEAR_FAMILY:
             if options:
@@ -629,7 +611,7 @@ class ConversationFlowEngine:
             if response and not response.startswith(("si", "no")):
                 ctx.usa_connections_location = response
             return ConversationState.LIFE_WORK_OR_BUSINESS, ""
-        
+
         # LIFE_WORK_OR_BUSINESS
         elif state == ConversationState.LIFE_WORK_OR_BUSINESS:
             ctx.work_or_business = response
@@ -637,7 +619,7 @@ class ConversationFlowEngine:
                 return ConversationState.LIFE_BUSINESS_TYPE, ""
             else:
                 return ConversationState.LIFE_INDUSTRY, ""
-        
+
         # LIFE_INDUSTRY
         elif state == ConversationState.LIFE_INDUSTRY:
             ctx.industry = response
@@ -645,12 +627,12 @@ class ConversationFlowEngine:
                 return ConversationState.LIFE_SALARY_EXPECTATION, ""
             else:
                 return ConversationState.LOCATION_REGION, ""
-        
+
         # LIFE_BUSINESS_TYPE
         elif state == ConversationState.LIFE_BUSINESS_TYPE:
             ctx.business_type = response
             return ConversationState.LIFE_BUSINESS_BUDGET, ""
-        
+
         # LIFE_BUSINESS_BUDGET
         elif state == ConversationState.LIFE_BUSINESS_BUDGET:
             budget_map = {
@@ -661,7 +643,7 @@ class ConversationFlowEngine:
             }
             ctx.business_budget = budget_map.get(response, 0)
             return ConversationState.LIFE_INDUSTRY, ""
-        
+
         # LIFE_SALARY_EXPECTATION
         elif state == ConversationState.LIFE_SALARY_EXPECTATION:
             salary_map = {
@@ -672,46 +654,46 @@ class ConversationFlowEngine:
             }
             ctx.salary_expectation = salary_map.get(response, 0)
             return ConversationState.LOCATION_REGION, ""
-        
+
         # LOCATION_REGION
         elif state == ConversationState.LOCATION_REGION:
             ctx.preferred_regions = options if options else [response]
             return ConversationState.LOCATION_CLIMATE, ""
-        
+
         # LOCATION_CLIMATE
         elif state == ConversationState.LOCATION_CLIMATE:
             ctx.preferred_climates = options if options else [response]
             return ConversationState.LOCATION_CITY_SIZE, ""
-        
+
         # LOCATION_CITY_SIZE
         elif state == ConversationState.LOCATION_CITY_SIZE:
             ctx.city_size = response
             return ConversationState.LOCATION_PRIORITIES, ""
-        
+
         # LOCATION_PRIORITIES
         elif state == ConversationState.LOCATION_PRIORITIES:
             ctx.priorities = options if options else [response]
             return ConversationState.LOCATION_LATINO_COMMUNITY, ""
-        
+
         # LOCATION_LATINO_COMMUNITY
         elif state == ConversationState.LOCATION_LATINO_COMMUNITY:
             ctx.latino_community_importance = response
             return ConversationState.SCORING_SETUP, ""
-        
+
         # SCORING_SETUP
         elif state == ConversationState.SCORING_SETUP:
             if response == "personalizar":
                 return ConversationState.SCORING_WEIGHTS, ""
             else:
                 return ConversationState.STATE_RECOMMENDATION, ""
-        
+
         # Default: mantener estado actual
         return state, "No entendí tu respuesta. ¿Puedes intentar de nuevo?"
-    
+
     def can_skip_to_state(self, user_id: int, target_state: ConversationState) -> bool:
         """Verifica si se puede saltar a un estado específico"""
         ctx = self.get_context(user_id)
-        
+
         # Definir dependencias de estados
         dependencies = {
             ConversationState.STATE_RECOMMENDATION: [
@@ -725,28 +707,28 @@ class ConversationFlowEngine:
                 ConversationState.LIFE_WORK_OR_BUSINESS,
             ],
         }
-        
+
         required = dependencies.get(target_state, [])
         for req in required:
             if req.name not in ctx.state_history:
                 return False
-        
+
         return True
-    
+
     def get_progress_percentage(self, user_id: int) -> int:
         """Calcula el porcentaje de progreso en el flujo"""
         ctx = self.get_context(user_id)
-        
+
         # Estados totales aproximados hasta diagnóstico
         total_states = 20
         current_index = list(ConversationState).index(ctx.current_state)
-        
+
         return min(100, int((current_index / total_states) * 100))
-    
-    def get_summary(self, user_id: int) -> Dict[str, Any]:
+
+    def get_summary(self, user_id: int) -> dict[str, Any]:
         """Obtiene un resumen del contexto actual"""
         ctx = self.get_context(user_id)
-        
+
         return {
             "estado_actual": ctx.current_state.name,
             "progreso": f"{self.get_progress_percentage(user_id)}%",

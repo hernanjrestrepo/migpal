@@ -4,16 +4,16 @@ MigPAL Interview Simulator - Simulador de Entrevista Consular
 Práctica de entrevista consular con preguntas frecuentes y feedback AI.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Tuple
-from enum import Enum
-from datetime import datetime
 import random
-import json
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
 
 class InterviewType(Enum):
     """Tipos de entrevista"""
+
     B1B2 = "b1b2"  # Turista/Negocios
     F1 = "f1"  # Estudiante
     H1B = "h1b"  # Trabajo
@@ -27,6 +27,7 @@ class InterviewType(Enum):
 
 class QuestionCategory(Enum):
     """Categorías de preguntas"""
+
     PERSONAL = "personal"
     PURPOSE = "purpose"
     TIES = "ties"  # Lazos con país de origen
@@ -41,6 +42,7 @@ class QuestionCategory(Enum):
 
 class Difficulty(Enum):
     """Dificultad de la pregunta"""
+
     EASY = "easy"
     MEDIUM = "medium"
     HARD = "hard"
@@ -50,21 +52,22 @@ class Difficulty(Enum):
 @dataclass
 class InterviewQuestion:
     """Pregunta de entrevista"""
+
     id: str
     question_es: str  # Pregunta en español
     question_en: str  # Pregunta en inglés
     category: QuestionCategory
     difficulty: Difficulty
-    visa_types: List[str]
-    good_answer_tips: List[str]
-    bad_answer_examples: List[str]
-    follow_up_questions: List[str]
-    red_flags: List[str]  # Respuestas que levantan sospechas
+    visa_types: list[str]
+    good_answer_tips: list[str]
+    bad_answer_examples: list[str]
+    follow_up_questions: list[str]
+    red_flags: list[str]  # Respuestas que levantan sospechas
     importance: int  # 1-10
 
 
 # Base de datos de preguntas
-INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
+INTERVIEW_QUESTIONS: list[InterviewQuestion] = [
     # ============================================================================
     # PREGUNTAS PERSONALES (Todas las visas)
     # ============================================================================
@@ -78,17 +81,13 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
         good_answer_tips=[
             "Responde exactamente como aparece en tu pasaporte",
             "Habla claro y con confianza",
-            "No dudes ni tartamudees"
+            "No dudes ni tartamudees",
         ],
-        bad_answer_examples=[
-            "Dar un nombre diferente al del pasaporte",
-            "Dudar sobre tu propio nombre"
-        ],
+        bad_answer_examples=["Dar un nombre diferente al del pasaporte", "Dudar sobre tu propio nombre"],
         follow_up_questions=["¿Tiene algún otro nombre o alias?"],
         red_flags=["Inconsistencia con documentos"],
-        importance=8
+        importance=8,
     ),
-    
     InterviewQuestion(
         id="personal_2",
         question_es="¿Cuál es su fecha de nacimiento?",
@@ -98,17 +97,13 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
         visa_types=["ALL"],
         good_answer_tips=[
             "Responde en formato mes/día/año (formato USA)",
-            "Sé consistente con tus documentos"
+            "Sé consistente con tus documentos",
         ],
-        bad_answer_examples=[
-            "Confundir la fecha",
-            "Dar formato incorrecto"
-        ],
+        bad_answer_examples=["Confundir la fecha", "Dar formato incorrecto"],
         follow_up_questions=[],
         red_flags=["Fecha diferente a documentos"],
-        importance=7
+        importance=7,
     ),
-    
     InterviewQuestion(
         id="personal_3",
         question_es="¿Dónde vive actualmente?",
@@ -119,17 +114,13 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
         good_answer_tips=[
             "Da tu dirección completa",
             "Menciona cuánto tiempo llevas viviendo ahí",
-            "Muestra estabilidad"
+            "Muestra estabilidad",
         ],
-        bad_answer_examples=[
-            "Respuestas vagas como 'en la ciudad'",
-            "No saber tu propia dirección"
-        ],
+        bad_answer_examples=["Respuestas vagas como 'en la ciudad'", "No saber tu propia dirección"],
         follow_up_questions=["¿Cuánto tiempo ha vivido ahí?", "¿Es casa propia o alquilada?"],
         red_flags=["Dirección inconsistente con formularios"],
-        importance=6
+        importance=6,
     ),
-    
     # ============================================================================
     # PROPÓSITO DEL VIAJE
     # ============================================================================
@@ -144,26 +135,25 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
             "Sé específico y conciso",
             "Menciona fechas y lugares si aplica",
             "Muestra que tienes un plan claro",
-            "Para turismo: menciona lugares específicos que visitarás"
+            "Para turismo: menciona lugares específicos que visitarás",
         ],
         bad_answer_examples=[
             "'Solo quiero conocer' (muy vago)",
             "'Para buscar trabajo' (ilegal con visa de turista)",
-            "Respuestas demasiado largas o confusas"
+            "Respuestas demasiado largas o confusas",
         ],
         follow_up_questions=[
             "¿Por qué eligió esos lugares?",
             "¿Cuánto tiempo planea quedarse?",
-            "¿Dónde se hospedará?"
+            "¿Dónde se hospedará?",
         ],
         red_flags=[
             "Propósito vago o cambiante",
             "Mencionar búsqueda de trabajo con visa de turista",
-            "Planes indefinidos"
+            "Planes indefinidos",
         ],
-        importance=10
+        importance=10,
     ),
-    
     InterviewQuestion(
         id="purpose_2",
         question_es="¿Por qué quiere estudiar en Estados Unidos?",
@@ -175,25 +165,21 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
             "Menciona la calidad del programa específico",
             "Explica cómo beneficiará tu carrera",
             "Muestra que investigaste la universidad",
-            "Conecta con tus planes de regreso"
+            "Conecta con tus planes de regreso",
         ],
         bad_answer_examples=[
             "'Porque USA es mejor' (muy genérico)",
             "'Para quedarme después' (intención de inmigrante)",
-            "No saber nada sobre el programa"
+            "No saber nada sobre el programa",
         ],
         follow_up_questions=[
             "¿Por qué esta universidad específicamente?",
             "¿Qué hará después de graduarse?",
-            "¿Por qué no estudiar en su país?"
+            "¿Por qué no estudiar en su país?",
         ],
-        red_flags=[
-            "No conocer detalles del programa",
-            "Mencionar quedarse permanentemente"
-        ],
-        importance=10
+        red_flags=["No conocer detalles del programa", "Mencionar quedarse permanentemente"],
+        importance=10,
     ),
-    
     # ============================================================================
     # LAZOS CON PAÍS DE ORIGEN
     # ============================================================================
@@ -208,25 +194,17 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
             "Menciona familia (especialmente hijos, padres mayores)",
             "Habla de tu trabajo o negocio",
             "Menciona propiedades o inversiones",
-            "Muestra compromiso con tu comunidad"
+            "Muestra compromiso con tu comunidad",
         ],
         bad_answer_examples=[
             "'No tengo nada que me ate' (red flag mayor)",
             "'Mi familia puede venir después'",
-            "No poder mencionar lazos concretos"
+            "No poder mencionar lazos concretos",
         ],
-        follow_up_questions=[
-            "¿Tiene familia en Estados Unidos?",
-            "¿Ha pensado en quedarse permanentemente?"
-        ],
-        red_flags=[
-            "Sin lazos familiares fuertes",
-            "Sin empleo estable",
-            "Sin propiedades"
-        ],
-        importance=10
+        follow_up_questions=["¿Tiene familia en Estados Unidos?", "¿Ha pensado en quedarse permanentemente?"],
+        red_flags=["Sin lazos familiares fuertes", "Sin empleo estable", "Sin propiedades"],
+        importance=10,
     ),
-    
     InterviewQuestion(
         id="ties_2",
         question_es="¿Tiene familia en Estados Unidos?",
@@ -237,24 +215,20 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
         good_answer_tips=[
             "Sé honesto - mentir es peor",
             "Si tienes familia, explica que tu vida está en tu país",
-            "Enfatiza tus lazos más fuertes en tu país"
+            "Enfatiza tus lazos más fuertes en tu país",
         ],
         bad_answer_examples=[
             "Mentir sobre familia en USA",
-            "Decir que planeas quedarte con ellos indefinidamente"
+            "Decir que planeas quedarte con ellos indefinidamente",
         ],
         follow_up_questions=[
             "¿Qué estatus migratorio tienen?",
             "¿Con qué frecuencia los visita?",
-            "¿Planea quedarse con ellos?"
+            "¿Planea quedarse con ellos?",
         ],
-        red_flags=[
-            "Mentir (verificable en sistema)",
-            "Familia que ha solicitado petición"
-        ],
-        importance=9
+        red_flags=["Mentir (verificable en sistema)", "Familia que ha solicitado petición"],
+        importance=9,
     ),
-    
     # ============================================================================
     # FINANCIERAS
     # ============================================================================
@@ -268,25 +242,21 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
         good_answer_tips=[
             "Muestra que tienes fondos propios",
             "Si alguien te patrocina, explica la relación",
-            "Ten documentos de respaldo listos"
+            "Ten documentos de respaldo listos",
         ],
-        bad_answer_examples=[
-            "'No sé, alguien me ayudará'",
-            "No poder explicar origen de fondos"
-        ],
+        bad_answer_examples=["'No sé, alguien me ayudará'", "No poder explicar origen de fondos"],
         follow_up_questions=[
             "¿Cuánto dinero tiene ahorrado?",
             "¿Puede mostrar sus estados de cuenta?",
-            "¿Cuál es su salario mensual?"
+            "¿Cuál es su salario mensual?",
         ],
         red_flags=[
             "Fondos insuficientes",
             "Depósitos recientes grandes sin explicación",
-            "Patrocinador sin relación clara"
+            "Patrocinador sin relación clara",
         ],
-        importance=9
+        importance=9,
     ),
-    
     InterviewQuestion(
         id="financial_2",
         question_es="¿Cuál es su salario actual?",
@@ -297,20 +267,13 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
         good_answer_tips=[
             "Da cifras exactas",
             "Menciona beneficios adicionales si los hay",
-            "Sé consistente con documentos"
+            "Sé consistente con documentos",
         ],
-        bad_answer_examples=[
-            "No saber tu propio salario",
-            "Cifras inconsistentes con documentos"
-        ],
-        follow_up_questions=[
-            "¿Tiene otras fuentes de ingreso?",
-            "¿Cuánto tiempo lleva ganando eso?"
-        ],
+        bad_answer_examples=["No saber tu propio salario", "Cifras inconsistentes con documentos"],
+        follow_up_questions=["¿Tiene otras fuentes de ingreso?", "¿Cuánto tiempo lleva ganando eso?"],
         red_flags=["Salario muy bajo para el viaje planeado"],
-        importance=8
+        importance=8,
     ),
-    
     # ============================================================================
     # EMPLEO
     # ============================================================================
@@ -324,24 +287,17 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
         good_answer_tips=[
             "Describe tu trabajo claramente",
             "Menciona cuánto tiempo llevas",
-            "Muestra estabilidad laboral"
+            "Muestra estabilidad laboral",
         ],
-        bad_answer_examples=[
-            "'Trabajo en varias cosas' (inestable)",
-            "No poder describir tu trabajo"
-        ],
+        bad_answer_examples=["'Trabajo en varias cosas' (inestable)", "No poder describir tu trabajo"],
         follow_up_questions=[
             "¿Cuánto tiempo lleva en ese trabajo?",
             "¿Le dieron permiso para viajar?",
-            "¿Qué pasará con su trabajo mientras viaja?"
+            "¿Qué pasará con su trabajo mientras viaja?",
         ],
-        red_flags=[
-            "Desempleado sin explicación",
-            "Trabajo informal o inestable"
-        ],
-        importance=9
+        red_flags=["Desempleado sin explicación", "Trabajo informal o inestable"],
+        importance=9,
     ),
-    
     InterviewQuestion(
         id="employment_2",
         question_es="¿Qué hará con su trabajo mientras está en Estados Unidos?",
@@ -352,20 +308,13 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
         good_answer_tips=[
             "Muestra que tienes permiso de tu empleador",
             "Explica que tu puesto te espera",
-            "Menciona si son vacaciones pagadas"
+            "Menciona si son vacaciones pagadas",
         ],
-        bad_answer_examples=[
-            "'Voy a renunciar'",
-            "'No sé si tendré trabajo cuando regrese'"
-        ],
-        follow_up_questions=[
-            "¿Tiene carta de su empleador?",
-            "¿Cuántos días de vacaciones tiene?"
-        ],
+        bad_answer_examples=["'Voy a renunciar'", "'No sé si tendré trabajo cuando regrese'"],
+        follow_up_questions=["¿Tiene carta de su empleador?", "¿Cuántos días de vacaciones tiene?"],
         red_flags=["Renunciar para viajar", "Sin garantía de empleo al regresar"],
-        importance=8
+        importance=8,
     ),
-    
     # ============================================================================
     # PREGUNTAS PARA H-1B
     # ============================================================================
@@ -379,21 +328,17 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
         good_answer_tips=[
             "Conoce bien a tu empleador",
             "Describe el negocio claramente",
-            "Menciona tamaño y ubicación"
+            "Menciona tamaño y ubicación",
         ],
-        bad_answer_examples=[
-            "No saber qué hace la empresa",
-            "Información incorrecta sobre el empleador"
-        ],
+        bad_answer_examples=["No saber qué hace la empresa", "Información incorrecta sobre el empleador"],
         follow_up_questions=[
             "¿Cuántos empleados tiene?",
             "¿Dónde está ubicada la oficina?",
-            "¿Cuánto tiempo lleva la empresa operando?"
+            "¿Cuánto tiempo lleva la empresa operando?",
         ],
         red_flags=["No conocer al empleador", "Empresa muy pequeña o nueva"],
-        importance=9
+        importance=9,
     ),
-    
     InterviewQuestion(
         id="h1b_2",
         question_es="¿Cuáles serán sus responsabilidades en el trabajo?",
@@ -404,20 +349,13 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
         good_answer_tips=[
             "Describe responsabilidades específicas",
             "Conecta con tu educación y experiencia",
-            "Muestra que el puesto requiere tu especialización"
+            "Muestra que el puesto requiere tu especialización",
         ],
-        bad_answer_examples=[
-            "Descripción vaga del trabajo",
-            "Responsabilidades que no requieren título"
-        ],
-        follow_up_questions=[
-            "¿Por qué lo eligieron a usted?",
-            "¿Qué lo hace calificado para este puesto?"
-        ],
+        bad_answer_examples=["Descripción vaga del trabajo", "Responsabilidades que no requieren título"],
+        follow_up_questions=["¿Por qué lo eligieron a usted?", "¿Qué lo hace calificado para este puesto?"],
         red_flags=["Trabajo que no requiere especialización"],
-        importance=9
+        importance=9,
     ),
-    
     # ============================================================================
     # PREGUNTAS PARA O-1
     # ============================================================================
@@ -432,21 +370,20 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
             "Menciona premios y reconocimientos específicos",
             "Habla de publicaciones y citas",
             "Describe contribuciones únicas",
-            "Sé específico pero no arrogante"
+            "Sé específico pero no arrogante",
         ],
         bad_answer_examples=[
             "'Soy muy bueno en lo que hago' (muy vago)",
-            "No poder mencionar logros específicos"
+            "No poder mencionar logros específicos",
         ],
         follow_up_questions=[
             "¿Qué premios ha ganado?",
             "¿Cuántas publicaciones tiene?",
-            "¿Quién más reconoce su trabajo?"
+            "¿Quién más reconoce su trabajo?",
         ],
         red_flags=["No poder demostrar habilidad extraordinaria"],
-        importance=10
+        importance=10,
     ),
-    
     # ============================================================================
     # PREGUNTAS PARA VISA DE PROMETIDO/CÓNYUGE
     # ============================================================================
@@ -460,25 +397,21 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
         good_answer_tips=[
             "Cuenta la historia con detalles",
             "Sé consistente con lo que dijo tu pareja",
-            "Muestra emoción genuina"
+            "Muestra emoción genuina",
         ],
-        bad_answer_examples=[
-            "Historia vaga o inconsistente",
-            "No recordar detalles importantes"
-        ],
+        bad_answer_examples=["Historia vaga o inconsistente", "No recordar detalles importantes"],
         follow_up_questions=[
             "¿Cuándo fue la primera vez que se vieron en persona?",
             "¿Cuántas veces se han visto?",
-            "¿Cómo se comunican?"
+            "¿Cómo se comunican?",
         ],
         red_flags=[
             "Historias inconsistentes entre pareja",
             "Nunca se han visto en persona",
-            "Comunicación mínima"
+            "Comunicación mínima",
         ],
-        importance=10
+        importance=10,
     ),
-    
     InterviewQuestion(
         id="relationship_2",
         question_es="¿Cuándo y dónde se comprometieron?",
@@ -489,21 +422,17 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
         good_answer_tips=[
             "Recuerda la fecha exacta",
             "Describe el momento con detalles",
-            "Ten fotos del compromiso"
+            "Ten fotos del compromiso",
         ],
-        bad_answer_examples=[
-            "No recordar cuándo fue",
-            "Detalles vagos"
-        ],
+        bad_answer_examples=["No recordar cuándo fue", "Detalles vagos"],
         follow_up_questions=[
             "¿Puede mostrar fotos?",
             "¿Quién más estaba presente?",
-            "¿Cómo fue la propuesta?"
+            "¿Cómo fue la propuesta?",
         ],
         red_flags=["No recordar detalles del compromiso"],
-        importance=9
+        importance=9,
     ),
-    
     # ============================================================================
     # PREGUNTAS TRAMPA
     # ============================================================================
@@ -517,20 +446,16 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
         good_answer_tips=[
             "Responde honestamente pero enfatiza tu intención de regresar",
             "Menciona tus lazos fuertes con tu país",
-            "No digas 'nunca' - suena falso"
+            "No digas 'nunca' - suena falso",
         ],
-        bad_answer_examples=[
-            "'Sí, me encantaría quedarme'",
-            "'Nunca, odio Estados Unidos' (extremo)"
-        ],
+        bad_answer_examples=["'Sí, me encantaría quedarme'", "'Nunca, odio Estados Unidos' (extremo)"],
         follow_up_questions=[
             "¿Qué haría si le ofrecen trabajo allá?",
-            "¿Tiene planes de inmigrar en el futuro?"
+            "¿Tiene planes de inmigrar en el futuro?",
         ],
         red_flags=["Admitir intención de quedarse con visa de no inmigrante"],
-        importance=10
+        importance=10,
     ),
-    
     InterviewQuestion(
         id="tricky_2",
         question_es="¿Por qué debería creerle que va a regresar?",
@@ -542,16 +467,16 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
             "Menciona lazos concretos y verificables",
             "Habla de tu carrera y planes futuros en tu país",
             "Muestra documentos de respaldo",
-            "Mantén la calma - es una pregunta estándar"
+            "Mantén la calma - es una pregunta estándar",
         ],
         bad_answer_examples=[
             "Ponerse nervioso o a la defensiva",
             "'Porque se lo estoy diciendo'",
-            "No poder dar razones concretas"
+            "No poder dar razones concretas",
         ],
         follow_up_questions=[],
         red_flags=["No poder dar razones convincentes"],
-        importance=10
+        importance=10,
     ),
 ]
 
@@ -559,18 +484,19 @@ INTERVIEW_QUESTIONS: List[InterviewQuestion] = [
 @dataclass
 class SimulationSession:
     """Sesión de simulación de entrevista"""
+
     id: str
     user_id: int
     interview_type: InterviewType
-    questions_asked: List[str] = field(default_factory=list)
-    answers: Dict[str, str] = field(default_factory=dict)
-    scores: Dict[str, int] = field(default_factory=dict)  # question_id -> score (1-10)
-    feedback: Dict[str, str] = field(default_factory=dict)
+    questions_asked: list[str] = field(default_factory=list)
+    answers: dict[str, str] = field(default_factory=dict)
+    scores: dict[str, int] = field(default_factory=dict)  # question_id -> score (1-10)
+    feedback: dict[str, str] = field(default_factory=dict)
     started_at: datetime = field(default_factory=datetime.now)
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     overall_score: float = 0.0
-    
-    def to_dict(self) -> Dict:
+
+    def to_dict(self) -> dict:
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -581,99 +507,99 @@ class SimulationSession:
             "feedback": self.feedback,
             "started_at": self.started_at.isoformat(),
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
-            "overall_score": self.overall_score
+            "overall_score": self.overall_score,
         }
 
 
 class InterviewSimulator:
     """Simulador de entrevista consular"""
-    
-    def __init__(self, user_id: int, interview_type: InterviewType, profile_data: Dict = None):
+
+    def __init__(self, user_id: int, interview_type: InterviewType, profile_data: dict = None):
         self.user_id = user_id
         self.interview_type = interview_type
         self.profile_data = profile_data or {}
-        self.session: Optional[SimulationSession] = None
+        self.session: SimulationSession | None = None
         self.current_question_index = 0
-        self.questions_pool: List[InterviewQuestion] = []
+        self.questions_pool: list[InterviewQuestion] = []
         self._prepare_questions()
-    
+
     def _prepare_questions(self):
         """Preparar pool de preguntas para el tipo de entrevista"""
         self.questions_pool = []
-        
+
         for q in INTERVIEW_QUESTIONS:
-            if "ALL" in q.visa_types or self.interview_type.value.upper() in [v.upper() for v in q.visa_types]:
+            if "ALL" in q.visa_types or self.interview_type.value.upper() in [
+                v.upper() for v in q.visa_types
+            ]:
                 self.questions_pool.append(q)
-        
+
         # Ordenar por importancia y mezclar un poco
         self.questions_pool.sort(key=lambda x: (-x.importance, random.random()))
-    
+
     def start_session(self) -> SimulationSession:
         """Iniciar nueva sesión de simulación"""
         session_id = f"{self.user_id}_{self.interview_type.value}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        
+
         self.session = SimulationSession(
-            id=session_id,
-            user_id=self.user_id,
-            interview_type=self.interview_type
+            id=session_id, user_id=self.user_id, interview_type=self.interview_type
         )
-        
+
         self.current_question_index = 0
-        
+
         return self.session
-    
-    def get_next_question(self) -> Optional[InterviewQuestion]:
+
+    def get_next_question(self) -> InterviewQuestion | None:
         """Obtener siguiente pregunta"""
         if self.current_question_index >= len(self.questions_pool):
             return None
-        
+
         question = self.questions_pool[self.current_question_index]
-        
+
         if self.session:
             self.session.questions_asked.append(question.id)
-        
+
         return question
-    
-    def submit_answer(self, question_id: str, answer: str) -> Dict[str, Any]:
+
+    def submit_answer(self, question_id: str, answer: str) -> dict[str, Any]:
         """Enviar respuesta y obtener feedback"""
         question = None
         for q in self.questions_pool:
             if q.id == question_id:
                 question = q
                 break
-        
+
         if not question:
             return {"error": "Pregunta no encontrada"}
-        
+
         # Guardar respuesta
         if self.session:
             self.session.answers[question_id] = answer
-        
+
         # Evaluar respuesta (simplificado - en producción usar AI)
         score, feedback = self._evaluate_answer(question, answer)
-        
+
         if self.session:
             self.session.scores[question_id] = score
             self.session.feedback[question_id] = feedback
-        
+
         self.current_question_index += 1
-        
+
         return {
             "score": score,
             "feedback": feedback,
             "tips": question.good_answer_tips,
             "red_flags_to_avoid": question.red_flags,
-            "follow_up_possible": question.follow_up_questions
+            "follow_up_possible": question.follow_up_questions,
         }
-    
-    def _evaluate_answer(self, question: InterviewQuestion, answer: str) -> Tuple[int, str]:
+
+    def _evaluate_answer(self, question: InterviewQuestion, answer: str) -> tuple[int, str]:
         """Evaluar una respuesta (simplificado)"""
         score = 5  # Base score
         feedback_parts = []
-        
+
         answer_lower = answer.lower()
         answer_length = len(answer)
-        
+
         # Evaluar longitud
         if answer_length < 20:
             score -= 2
@@ -684,19 +610,19 @@ class InterviewSimulator:
         else:
             score += 1
             feedback_parts.append("Buena longitud de respuesta.")
-        
+
         # Verificar red flags
         for red_flag in question.red_flags:
             if any(word in answer_lower for word in red_flag.lower().split()):
                 score -= 2
                 feedback_parts.append(f"⚠️ Cuidado: '{red_flag}' puede levantar sospechas.")
-        
+
         # Verificar palabras positivas
         positive_words = ["trabajo", "familia", "regreso", "plan", "empresa", "estudio"]
         for word in positive_words:
             if word in answer_lower:
                 score += 0.5
-        
+
         # Verificar confianza
         uncertain_words = ["no sé", "tal vez", "quizás", "creo que", "supongo"]
         for word in uncertain_words:
@@ -704,10 +630,10 @@ class InterviewSimulator:
                 score -= 1
                 feedback_parts.append("Evita mostrar incertidumbre. Sé más seguro en tus respuestas.")
                 break
-        
+
         # Ajustar score
         score = max(1, min(10, int(score)))
-        
+
         # Generar feedback final
         if score >= 8:
             feedback_parts.insert(0, "✅ Excelente respuesta!")
@@ -717,40 +643,37 @@ class InterviewSimulator:
             feedback_parts.insert(0, "⚠️ Respuesta aceptable, necesita trabajo.")
         else:
             feedback_parts.insert(0, "❌ Esta respuesta podría causar problemas. Practica más.")
-        
+
         return score, " ".join(feedback_parts)
-    
-    def end_session(self) -> Dict[str, Any]:
+
+    def end_session(self) -> dict[str, Any]:
         """Finalizar sesión y obtener resumen"""
         if not self.session:
             return {"error": "No hay sesión activa"}
-        
+
         self.session.completed_at = datetime.now()
-        
+
         # Calcular score general
         if self.session.scores:
             self.session.overall_score = sum(self.session.scores.values()) / len(self.session.scores)
-        
+
         # Generar resumen
         summary = self._generate_summary()
-        
-        return {
-            "session": self.session.to_dict(),
-            "summary": summary
-        }
-    
+
+        return {"session": self.session.to_dict(), "summary": summary}
+
     def _generate_summary(self) -> str:
         """Generar resumen de la sesión"""
         if not self.session:
             return "No hay sesión"
-        
+
         total_questions = len(self.session.questions_asked)
         avg_score = self.session.overall_score
-        
+
         # Identificar áreas de mejora
         weak_areas = []
         strong_areas = []
-        
+
         for q_id, score in self.session.scores.items():
             question = next((q for q in INTERVIEW_QUESTIONS if q.id == q_id), None)
             if question:
@@ -758,12 +681,12 @@ class InterviewSimulator:
                     weak_areas.append(question.category.value)
                 elif score >= 8:
                     strong_areas.append(question.category.value)
-        
+
         # Barra de progreso
         bar_width = 10
         filled = int(bar_width * avg_score / 10)
         bar = "▓" * filled + "░" * (bar_width - filled)
-        
+
         msg = f"""
 📊 **RESUMEN DE TU PRÁCTICA DE ENTREVISTA**
 
@@ -771,7 +694,7 @@ class InterviewSimulator:
 📝 **Preguntas respondidas:** {total_questions}
 
 """
-        
+
         if avg_score >= 8:
             msg += "🌟 **¡Excelente!** Estás muy bien preparado para tu entrevista.\n\n"
         elif avg_score >= 6:
@@ -780,19 +703,19 @@ class InterviewSimulator:
             msg += "⚠️ **Necesitas más práctica.** Revisa las áreas débiles.\n\n"
         else:
             msg += "❌ **Requiere trabajo significativo.** Practica más antes de tu entrevista.\n\n"
-        
+
         if strong_areas:
             msg += "💪 **Áreas fuertes:**\n"
             for area in set(strong_areas):
                 msg += f"   • {area.title()}\n"
             msg += "\n"
-        
+
         if weak_areas:
             msg += "📚 **Áreas a mejorar:**\n"
             for area in set(weak_areas):
                 msg += f"   • {area.title()}\n"
             msg += "\n"
-        
+
         msg += """
 💡 **Consejos generales:**
 • Practica frente a un espejo
@@ -802,45 +725,47 @@ class InterviewSimulator:
 • Lleva documentos organizados
 • Llega temprano a tu cita
 """
-        
+
         return msg
-    
-    def get_question_by_category(self, category: QuestionCategory) -> Optional[InterviewQuestion]:
+
+    def get_question_by_category(self, category: QuestionCategory) -> InterviewQuestion | None:
         """Obtener pregunta de una categoría específica"""
         category_questions = [q for q in self.questions_pool if q.category == category]
         if category_questions:
             return random.choice(category_questions)
         return None
-    
+
     def format_question_for_telegram(self, question: InterviewQuestion, show_english: bool = True) -> str:
         """Formatear pregunta para Telegram"""
         difficulty_emoji = {
             Difficulty.EASY: "🟢",
             Difficulty.MEDIUM: "🟡",
             Difficulty.HARD: "🔴",
-            Difficulty.TRICKY: "⚠️"
+            Difficulty.TRICKY: "⚠️",
         }
-        
+
         msg = f"""
 {difficulty_emoji.get(question.difficulty, "🔵")} **Pregunta de Entrevista**
 
 🇪🇸 _{question.question_es}_
 """
-        
+
         if show_english:
             msg += f"\n🇺🇸 _{question.question_en}_\n"
-        
+
         msg += f"""
 📁 Categoría: {question.category.value.title()}
 ⭐ Importancia: {"⭐" * min(question.importance // 2, 5)}
 
 Escribe tu respuesta como si estuvieras en la entrevista real.
 """
-        
+
         return msg
 
 
-def create_interview_simulator(user_id: int, interview_type: InterviewType, profile_data: Dict = None) -> InterviewSimulator:
+def create_interview_simulator(
+    user_id: int, interview_type: InterviewType, profile_data: dict = None
+) -> InterviewSimulator:
     """Factory function"""
     return InterviewSimulator(user_id, interview_type, profile_data)
 
@@ -917,24 +842,24 @@ def get_interview_tips(interview_type: InterviewType) -> str:
 • Evaluación de credenciales
 """,
     }
-    
+
     return tips.get(interview_type, "Tips no disponibles para este tipo de entrevista.")
 
 
-def get_all_interview_types() -> List[InterviewType]:
+def get_all_interview_types() -> list[InterviewType]:
     """Obtener todos los tipos de entrevista disponibles"""
     return list(InterviewType)
 
 
 __all__ = [
-    'InterviewType',
-    'QuestionCategory',
-    'Difficulty',
-    'InterviewQuestion',
-    'SimulationSession',
-    'InterviewSimulator',
-    'INTERVIEW_QUESTIONS',
-    'create_interview_simulator',
-    'get_interview_tips',
-    'get_all_interview_types',
+    "InterviewType",
+    "QuestionCategory",
+    "Difficulty",
+    "InterviewQuestion",
+    "SimulationSession",
+    "InterviewSimulator",
+    "INTERVIEW_QUESTIONS",
+    "create_interview_simulator",
+    "get_interview_tips",
+    "get_all_interview_types",
 ]

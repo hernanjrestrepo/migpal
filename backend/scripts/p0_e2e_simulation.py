@@ -17,76 +17,61 @@ Métricas registradas:
 import asyncio
 import json
 import logging
-import os
+import random
 import sys
 import time
-import random
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple
-from dataclasses import dataclass, field, asdict
 
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.services.telegram_bot import (
-    MigPALBot, get_user_data, set_state, get_state,
-    STATE_NAME, STATE_START, STATE_BIRTH_DATE, STATE_NATIONALITY,
-    STATE_CURRENT_COUNTRY, STATE_CURRENT_CITY, STATE_EMAIL, STATE_PHONE,
-    STATE_EDUCATION_LEVEL, STATE_EDUCATION_STATUS, STATE_EDUCATION_FIELD,
-    STATE_EDUCATION_CAREER, STATE_WORK_STATUS, STATE_PROFESSION,
-    STATE_WORK_EXPERIENCE, STATE_ENGLISH_LEVEL, STATE_LINKEDIN,
-    STATE_VISA_HISTORY, STATE_SAVINGS, STATE_FAMILY_STATUS,
-    STATE_MIGRATION_REASON, STATE_TIMELINE, STATE_DESTINATION_PREFERENCE,
-    STATE_SELECT_COUNTRY, STATE_SELECT_VISA, STATE_SELECT_STATE,
-    STATE_SELECT_CITY, STATE_CONSULTING
-)
 from app.services.case_storage import delete_user_data, save_user_data
-from app.services.translations import get_text
 from app.services.security import encrypt_user_data
+from app.services.telegram_bot import STATE_NAME, STATE_START, get_user_data, set_state
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class SimulationMetrics:
     """Métricas de una simulación individual"""
+
     user_id: int
     profile_name: str
     language: str
     start_time: float = 0
     end_time: float = 0
     total_duration_sec: float = 0
-    states_visited: List[str] = field(default_factory=list)
+    states_visited: list[str] = field(default_factory=list)
     state_transitions: int = 0
-    blocked_states: List[str] = field(default_factory=list)
-    repeated_states: Dict[str, int] = field(default_factory=dict)
+    blocked_states: list[str] = field(default_factory=list)
+    repeated_states: dict[str, int] = field(default_factory=dict)
     off_topic_count: int = 0
-    errors: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
     completed: bool = False
     reached_plan: bool = False
-    friction_points: List[str] = field(default_factory=list)
+    friction_points: list[str] = field(default_factory=list)
     abandonment_risk: float = 0.0
 
 
 @dataclass
 class SimulationReport:
     """Reporte consolidado de todas las simulaciones"""
+
     total_simulations: int = 0
     successful: int = 0
     failed: int = 0
     avg_duration_sec: float = 0
     avg_states_visited: float = 0
-    common_friction_points: Dict[str, int] = field(default_factory=dict)
-    common_errors: Dict[str, int] = field(default_factory=dict)
-    blocked_states_summary: Dict[str, int] = field(default_factory=dict)
+    common_friction_points: dict[str, int] = field(default_factory=dict)
+    common_errors: dict[str, int] = field(default_factory=dict)
+    blocked_states_summary: dict[str, int] = field(default_factory=dict)
     completion_rate: float = 0
     plan_generation_rate: float = 0
-    simulations: List[SimulationMetrics] = field(default_factory=list)
+    simulations: list[SimulationMetrics] = field(default_factory=list)
 
 
 # Perfiles de usuario para simulación
@@ -116,7 +101,7 @@ USER_PROFILES = [
         "migration_reason": "Mejores oportunidades laborales",
         "timeline": "6-12 meses",
         "destination": "USA",
-        "behavior": "motivated"
+        "behavior": "motivated",
     },
     {
         "id": 1000002,
@@ -143,7 +128,7 @@ USER_PROFILES = [
         "migration_reason": "Emprender un negocio",
         "timeline": "1-2 años",
         "destination": "USA",
-        "behavior": "skeptical"
+        "behavior": "skeptical",
     },
     {
         "id": 1000003,
@@ -170,7 +155,7 @@ USER_PROFILES = [
         "migration_reason": "Mejor calidad de vida",
         "timeline": "Lo antes posible",
         "destination": "USA",
-        "behavior": "impatient"
+        "behavior": "impatient",
     },
     {
         "id": 1000004,
@@ -197,7 +182,7 @@ USER_PROFILES = [
         "migration_reason": "Reunirme con familia",
         "timeline": "6-12 meses",
         "destination": "USA",
-        "behavior": "analytical"
+        "behavior": "analytical",
     },
     {
         "id": 1000005,
@@ -224,70 +209,73 @@ USER_PROFILES = [
         "migration_reason": "Estudios/Educación",
         "timeline": "1-2 años",
         "destination": "USA",
-        "behavior": "emotional"
+        "behavior": "emotional",
     },
 ]
 
 
 class E2ESimulator:
     """Simulador E2E de conversaciones MigPAL"""
-    
+
     def __init__(self):
         self.report = SimulationReport()
-        self.current_metrics: Optional[SimulationMetrics] = None
-        
+        self.current_metrics: SimulationMetrics | None = None
+
     def _create_mock_update(self, user_id: int, text: str = None, callback_data: str = None):
         """Crea un mock de Update de Telegram"""
+
         class MockUser:
             def __init__(self, uid):
                 self.id = uid
                 self.first_name = "Test"
-        
+
         class MockMessage:
             def __init__(self, uid, txt):
                 self.from_user = MockUser(uid)
                 self.text = txt
-                self.chat = type('obj', (object,), {'id': uid})()
-                
+                self.chat = type("obj", (object,), {"id": uid})()
+
             async def reply_text(self, text, **kwargs):
                 logger.debug(f"BOT REPLY: {text[:100]}...")
                 return True
-        
+
         class MockCallbackQuery:
             def __init__(self, uid, data):
                 self.from_user = MockUser(uid)
                 self.data = data
                 self.message = MockMessage(uid, "")
-                
+
             async def answer(self):
                 pass
-                
+
             async def edit_message_text(self, text, **kwargs):
                 logger.debug(f"BOT EDIT: {text[:100]}...")
                 return True
-        
+
         class MockUpdate:
             def __init__(self, uid, txt, cb_data):
                 self.effective_user = MockUser(uid)
                 self.message = MockMessage(uid, txt) if txt else None
                 self.callback_query = MockCallbackQuery(uid, cb_data) if cb_data else None
                 self.effective_message = self.message
-        
+
         return MockUpdate(user_id, text, callback_data)
-    
-    async def _simulate_state_transition(self, user_id: int, profile: dict, current_state: str) -> Tuple[str, bool]:
+
+    async def _simulate_state_transition(
+        self, user_id: int, profile: dict, current_state: str
+    ) -> tuple[str, bool]:
         """
         Simula una transición de estado basada en el perfil del usuario.
         Retorna (nuevo_estado, éxito)
         """
         user = get_user_data(user_id)
         lang = profile.get("language", "es")
-        
+
         # Registrar estado visitado
         if self.current_metrics:
             self.current_metrics.states_visited.append(current_state)
             self.current_metrics.state_transitions += 1
-            
+
             # Detectar repeticiones
             if current_state in self.current_metrics.repeated_states:
                 self.current_metrics.repeated_states[current_state] += 1
@@ -295,7 +283,7 @@ class E2ESimulator:
                     self.current_metrics.friction_points.append(f"Estado repetido: {current_state}")
             else:
                 self.current_metrics.repeated_states[current_state] = 1
-        
+
         try:
             # Simular respuesta según el estado actual
             if current_state == STATE_START:
@@ -305,7 +293,7 @@ class E2ESimulator:
                 save_user_data(user_id, encrypted)
                 set_state(user_id, STATE_NAME)
                 return STATE_NAME, True
-                
+
             elif current_state == STATE_NAME:
                 # Ingresar nombre
                 name = profile.get("name", "Usuario Test")
@@ -314,7 +302,7 @@ class E2ESimulator:
                 save_user_data(user_id, encrypted)
                 set_state(user_id, "confirm_name")
                 return "confirm_name", True
-                
+
             elif current_state == "confirm_name":
                 # Confirmar nombre
                 pending_name = user.get("_pending_name", "")
@@ -326,7 +314,7 @@ class E2ESimulator:
                     save_user_data(user_id, encrypted)
                 set_state(user_id, STATE_START)  # Vuelve a start para flow_start_discovery
                 return "flow_discovery", True
-                
+
             elif current_state == "flow_discovery":
                 # Iniciar flujo de descubrimiento - simular selección de razón
                 reason = profile.get("migration_reason", "Mejores oportunidades laborales")
@@ -334,14 +322,14 @@ class E2ESimulator:
                 encrypted = encrypt_user_data(user)
                 save_user_data(user_id, encrypted)
                 return "flow_life_plan", True
-                
+
             elif current_state == "flow_life_plan":
                 # Plan de vida
                 user["preferences"]["life_plan"] = "Establecerme permanentemente"
                 encrypted = encrypt_user_data(user)
                 save_user_data(user_id, encrypted)
                 return "flow_profile", True
-                
+
             elif current_state == "flow_profile":
                 # Completar perfil básico
                 user["profile"]["personal"]["birth_date"] = profile.get("birth_date", "01/01/1990")
@@ -353,7 +341,7 @@ class E2ESimulator:
                 encrypted = encrypt_user_data(user)
                 save_user_data(user_id, encrypted)
                 return "flow_education", True
-                
+
             elif current_state == "flow_education":
                 # Educación
                 user["profile"]["education"]["level"] = profile.get("education_level", "Universitario")
@@ -363,7 +351,7 @@ class E2ESimulator:
                 encrypted = encrypt_user_data(user)
                 save_user_data(user_id, encrypted)
                 return "flow_work", True
-                
+
             elif current_state == "flow_work":
                 # Trabajo
                 user["profile"]["work"]["status"] = profile.get("work_status", "Empleado")
@@ -372,7 +360,7 @@ class E2ESimulator:
                 encrypted = encrypt_user_data(user)
                 save_user_data(user_id, encrypted)
                 return "flow_languages", True
-                
+
             elif current_state == "flow_languages":
                 # Idiomas
                 user["profile"]["languages"]["english"] = profile.get("english_level", "Intermedio")
@@ -380,7 +368,7 @@ class E2ESimulator:
                 encrypted = encrypt_user_data(user)
                 save_user_data(user_id, encrypted)
                 return "flow_history", True
-                
+
             elif current_state == "flow_history":
                 # Historial
                 user["profile"]["history"]["has_visas"] = profile.get("visa_history", "No")
@@ -388,14 +376,14 @@ class E2ESimulator:
                 encrypted = encrypt_user_data(user)
                 save_user_data(user_id, encrypted)
                 return "flow_family", True
-                
+
             elif current_state == "flow_family":
                 # Familia
                 user["preferences"]["family_status"] = profile.get("family_status", "Solo")
                 encrypted = encrypt_user_data(user)
                 save_user_data(user_id, encrypted)
                 return "flow_preferences", True
-                
+
             elif current_state == "flow_preferences":
                 # Preferencias
                 user["preferences"]["timeline"] = profile.get("timeline", "6-12 meses")
@@ -403,7 +391,7 @@ class E2ESimulator:
                 encrypted = encrypt_user_data(user)
                 save_user_data(user_id, encrypted)
                 return "flow_analysis", True
-                
+
             elif current_state == "flow_analysis":
                 # Análisis y generación de plan
                 user["selected_route"]["country"] = "USA"
@@ -413,76 +401,85 @@ class E2ESimulator:
                 encrypted = encrypt_user_data(user)
                 save_user_data(user_id, encrypted)
                 return "plan_generated", True
-                
+
             elif current_state == "plan_generated":
                 # Plan generado - FIN EXITOSO
                 if self.current_metrics:
                     self.current_metrics.reached_plan = True
                     self.current_metrics.completed = True
                 return "COMPLETED", True
-                
+
             else:
                 # Estado desconocido
                 if self.current_metrics:
                     self.current_metrics.friction_points.append(f"Estado desconocido: {current_state}")
                 return current_state, False
-                
+
         except Exception as e:
             if self.current_metrics:
                 self.current_metrics.errors.append(f"Error en {current_state}: {str(e)}")
                 self.current_metrics.blocked_states.append(current_state)
             logger.error(f"Error en transición {current_state}: {e}")
             return current_state, False
-    
+
     async def run_simulation(self, profile: dict) -> SimulationMetrics:
         """Ejecuta una simulación completa para un perfil"""
         user_id = profile["id"]
-        
+
         # Inicializar métricas
         metrics = SimulationMetrics(
             user_id=user_id,
             profile_name=profile.get("name", "Unknown"),
             language=profile.get("language", "es"),
-            start_time=time.time()
+            start_time=time.time(),
         )
         self.current_metrics = metrics
-        
+
         logger.info(f"🚀 Iniciando simulación para: {profile['name']} (ID: {user_id})")
-        
+
         # Limpiar datos previos del usuario
         try:
             delete_user_data(user_id)
         except:
             pass
-        
+
         # Inicializar usuario
         user = get_user_data(user_id)
         user["language"] = profile.get("language", "es")
         set_state(user_id, STATE_START)
-        
+
         # Estados del flujo
         flow_states = [
-            STATE_START, STATE_NAME, "confirm_name",
-            "flow_discovery", "flow_life_plan", "flow_profile",
-            "flow_education", "flow_work", "flow_languages",
-            "flow_history", "flow_family", "flow_preferences",
-            "flow_analysis", "plan_generated"
+            STATE_START,
+            STATE_NAME,
+            "confirm_name",
+            "flow_discovery",
+            "flow_life_plan",
+            "flow_profile",
+            "flow_education",
+            "flow_work",
+            "flow_languages",
+            "flow_history",
+            "flow_family",
+            "flow_preferences",
+            "flow_analysis",
+            "plan_generated",
         ]
-        
+
         current_state = STATE_START
         max_iterations = 50  # Prevenir loops infinitos
         iteration = 0
-        
+
         while iteration < max_iterations:
             iteration += 1
-            
+
             # Simular transición
             new_state, success = await self._simulate_state_transition(user_id, profile, current_state)
-            
+
             if new_state == "COMPLETED":
                 logger.info(f"✅ Simulación completada para {profile['name']}")
                 break
-                
+
             if not success:
                 logger.warning(f"⚠️ Transición fallida en {current_state}")
                 metrics.blocked_states.append(current_state)
@@ -495,9 +492,9 @@ class E2ESimulator:
                         break
                 else:
                     break
-            
+
             current_state = new_state
-            
+
             # Simular comportamiento según perfil
             behavior = profile.get("behavior", "motivated")
             if behavior == "impatient" and random.random() < 0.1:
@@ -506,35 +503,35 @@ class E2ESimulator:
             elif behavior == "skeptical" and random.random() < 0.05:
                 metrics.off_topic_count += 1
                 metrics.friction_points.append("Usuario escéptico - pregunta off-topic")
-            
+
             # Pequeña pausa para simular tiempo real
             await asyncio.sleep(0.01)
-        
+
         # Finalizar métricas
         metrics.end_time = time.time()
         metrics.total_duration_sec = metrics.end_time - metrics.start_time
-        
+
         if not metrics.completed:
             metrics.errors.append(f"Simulación no completada - último estado: {current_state}")
-        
+
         # Limpiar datos del usuario de prueba
         try:
             delete_user_data(user_id)
         except:
             pass
-        
+
         return metrics
-    
+
     async def run_all_simulations(self, num_simulations: int = 20) -> SimulationReport:
         """Ejecuta múltiples simulaciones y genera reporte"""
         logger.info(f"🎯 Iniciando {num_simulations} simulaciones E2E...")
-        
+
         self.report = SimulationReport()
-        
+
         # Crear variaciones de perfiles para llegar a 20+
         all_profiles = []
         base_profiles = USER_PROFILES.copy()
-        
+
         while len(all_profiles) < num_simulations:
             for profile in base_profiles:
                 if len(all_profiles) >= num_simulations:
@@ -544,52 +541,58 @@ class E2ESimulator:
                 variation["id"] = 1000000 + len(all_profiles) + 1
                 variation["name"] = f"{profile['name']} #{len(all_profiles) + 1}"
                 all_profiles.append(variation)
-        
+
         # Ejecutar simulaciones
         for i, profile in enumerate(all_profiles):
             logger.info(f"\n{'='*50}")
             logger.info(f"Simulación {i+1}/{num_simulations}")
-            
+
             try:
                 metrics = await self.run_simulation(profile)
                 self.report.simulations.append(metrics)
-                
+
                 if metrics.completed:
                     self.report.successful += 1
                 else:
                     self.report.failed += 1
-                    
+
             except Exception as e:
                 logger.error(f"Error en simulación {i+1}: {e}")
                 self.report.failed += 1
-        
+
         # Calcular estadísticas
         self.report.total_simulations = len(self.report.simulations)
-        
+
         if self.report.simulations:
             durations = [m.total_duration_sec for m in self.report.simulations]
             states_counts = [len(m.states_visited) for m in self.report.simulations]
-            
+
             self.report.avg_duration_sec = sum(durations) / len(durations)
             self.report.avg_states_visited = sum(states_counts) / len(states_counts)
             self.report.completion_rate = self.report.successful / self.report.total_simulations
-            self.report.plan_generation_rate = sum(1 for m in self.report.simulations if m.reached_plan) / self.report.total_simulations
-            
+            self.report.plan_generation_rate = (
+                sum(1 for m in self.report.simulations if m.reached_plan) / self.report.total_simulations
+            )
+
             # Agregar fricciones comunes
             for m in self.report.simulations:
                 for friction in m.friction_points:
-                    self.report.common_friction_points[friction] = self.report.common_friction_points.get(friction, 0) + 1
+                    self.report.common_friction_points[friction] = (
+                        self.report.common_friction_points.get(friction, 0) + 1
+                    )
                 for error in m.errors:
                     self.report.common_errors[error] = self.report.common_errors.get(error, 0) + 1
                 for blocked in m.blocked_states:
-                    self.report.blocked_states_summary[blocked] = self.report.blocked_states_summary.get(blocked, 0) + 1
-        
+                    self.report.blocked_states_summary[blocked] = (
+                        self.report.blocked_states_summary.get(blocked, 0) + 1
+                    )
+
         return self.report
-    
+
     def generate_report_markdown(self) -> str:
         """Genera reporte en formato Markdown"""
         r = self.report
-        
+
         md = f"""# 📊 REPORTE P0 E2E SIMULATION - MigPAL
 **Fecha:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
@@ -650,7 +653,7 @@ FORM_STATES = [
                 md += f"- `{state}`: {count} ocurrencias\n"
         else:
             md += "_Ningún estado bloqueado detectado_ ✅\n"
-        
+
         md += """
 ## ⚠️ Fricciones Identificadas
 
@@ -660,7 +663,7 @@ FORM_STATES = [
                 md += f"- {friction}: {count} ocurrencias\n"
         else:
             md += "_Ninguna fricción significativa detectada_ ✅\n"
-        
+
         md += """
 ## ❌ Errores Comunes
 
@@ -670,7 +673,7 @@ FORM_STATES = [
                 md += f"- {error}: {count} ocurrencias\n"
         else:
             md += "_Ningún error detectado_ ✅\n"
-        
+
         md += """
 ## 💡 Propuestas de Mejora UX/Flujo
 
@@ -703,7 +706,7 @@ FORM_STATES = [
             plan = "✅" if m.reached_plan else "❌"
             errors = len(m.errors)
             md += f"| {i} | {m.profile_name[:20]} | {m.language} | {completed} | {plan} | {m.total_duration_sec:.2f}s | {len(m.states_visited)} | {errors} |\n"
-        
+
         md += f"""
 ## 🎯 Criterios de Validación
 
@@ -729,24 +732,24 @@ async def main():
     print("=" * 60)
     print("🚀 V3.0.3 E2E SIMULATION - MigPAL Bot")
     print("=" * 60)
-    
+
     simulator = E2ESimulator()
-    
+
     # Ejecutar 50 simulaciones (v3.0.4 requirement)
     report = await simulator.run_all_simulations(num_simulations=50)
-    
+
     # Generar reporte
     markdown_report = simulator.generate_report_markdown()
-    
+
     # Guardar reporte
     report_path = Path(__file__).parent.parent / "docs" / "P0_E2E_REPORT.md"
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(markdown_report)
-    
+
     # También guardar JSON para análisis
     json_path = Path(__file__).parent.parent / "data" / "p0_simulation_results.json"
     json_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Convertir a dict serializable
     report_dict = {
         "total_simulations": report.total_simulations,
@@ -759,10 +762,10 @@ async def main():
         "common_friction_points": report.common_friction_points,
         "common_errors": report.common_errors,
         "blocked_states_summary": report.blocked_states_summary,
-        "simulations": [asdict(m) for m in report.simulations]
+        "simulations": [asdict(m) for m in report.simulations],
     }
     json_path.write_text(json.dumps(report_dict, indent=2, default=str))
-    
+
     print("\n" + "=" * 60)
     print("📊 RESUMEN DE RESULTADOS")
     print("=" * 60)
@@ -773,7 +776,7 @@ async def main():
     print(f"Tasa de generación de plan: {report.plan_generation_rate*100:.1f}%")
     print(f"\n📄 Reporte guardado en: {report_path}")
     print(f"📊 JSON guardado en: {json_path}")
-    
+
     return report
 
 

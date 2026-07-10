@@ -17,22 +17,22 @@ Prohibido mostrar "FASE 1" hasta consentimiento explícito.
 
 import logging
 import random
-from typing import Dict, List, Any, Optional, Tuple
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 
 
 class OnboardingState(Enum):
     """Estados del onboarding conversacional"""
-    WELCOME = "onboarding_welcome"           # Presentación empática
-    OPEN_QUESTION = "onboarding_question"    # Pregunta abierta
-    LISTENING = "onboarding_listening"       # Escuchando respuesta libre
-    PROCESS_EXPLAIN = "onboarding_explain"   # Explicación del proceso
-    CONSENT = "onboarding_consent"           # Pedir consentimiento
-    NAME_REQUEST = "onboarding_name"         # Ahora sí pedir nombre
-    COMPLETED = "onboarding_completed"       # Onboarding terminado
+
+    WELCOME = "onboarding_welcome"  # Presentación empática
+    OPEN_QUESTION = "onboarding_question"  # Pregunta abierta
+    LISTENING = "onboarding_listening"  # Escuchando respuesta libre
+    PROCESS_EXPLAIN = "onboarding_explain"  # Explicación del proceso
+    CONSENT = "onboarding_consent"  # Pedir consentimiento
+    NAME_REQUEST = "onboarding_name"  # Ahora sí pedir nombre
+    COMPLETED = "onboarding_completed"  # Onboarding terminado
 
 
 # Estados que son parte del onboarding (NO son formularios)
@@ -49,7 +49,7 @@ ONBOARDING_STATES = [
 @dataclass
 class OnboardingMessages:
     """Mensajes del onboarding por idioma"""
-    
+
     # === PASO 1: PRESENTACIÓN EMPÁTICA ===
     WELCOME = {
         "es": (
@@ -73,9 +73,9 @@ class OnboardingMessages:
             "That's why I'm here. To listen to you, to answer your questions, "
             "and to help you see the path more clearly. 🌟\n\n"
             "No pressure, no rush. At your own pace."
-        )
+        ),
     }
-    
+
     # === PASO 2: PREGUNTA ABIERTA DE VÍNCULO ===
     OPEN_QUESTIONS = {
         "es": [
@@ -87,9 +87,9 @@ class OnboardingMessages:
             "Tell me... what brought you here today? 💭",
             "I'd love to know... how do you feel about your idea of migrating? 💭",
             "What excites or worries you most about this process? 💭",
-        ]
+        ],
     }
-    
+
     # === PASO 3: RESPUESTAS EMPÁTICAS (según lo que digan) ===
     EMPATHIC_RESPONSES = {
         "es": {
@@ -135,7 +135,7 @@ class OnboardingMessages:
                 "Es normal sentir miedo. Dar un paso tan grande siempre da un poco de "
                 "vértigo. Pero ¿sabes qué? El miedo y la emoción a veces se sienten igual. "
                 "Estás siendo muy valiente. 💪"
-            )
+            ),
         },
         "en": {
             "work": (
@@ -180,10 +180,10 @@ class OnboardingMessages:
                 "It's normal to feel scared. Taking such a big step always gives you "
                 "some vertigo. But you know what? Fear and excitement sometimes feel the same. "
                 "You're being very brave. 💪"
-            )
-        }
+            ),
+        },
     }
-    
+
     # === PASO 4: EXPLICACIÓN DEL PROCESO ===
     PROCESS_EXPLANATION = {
         "es": (
@@ -194,7 +194,7 @@ class OnboardingMessages:
             "te haré algunas preguntas específicas para armar tu perfil.\n\n"
             "🗺️ *Creamos tu plan* - Con toda esa información, diseñamos juntos "
             "un plan de migración personalizado.\n\n"
-            "💡 *Mi filosofía:* \"La visa es el VEHÍCULO, no el DESTINO\". "
+            '💡 *Mi filosofía:* "La visa es el VEHÍCULO, no el DESTINO". '
             "Primero definimos qué vida quieres vivir, luego encontramos cómo llegar.\n\n"
             "¿Suena bien?"
         ),
@@ -206,18 +206,15 @@ class OnboardingMessages:
             "I'll ask you some specific questions to build your profile.\n\n"
             "🗺️ *We create your plan* - With all that information, we design together "
             "a personalized migration plan.\n\n"
-            "💡 *My philosophy:* \"The visa is the VEHICLE, not the DESTINATION\". "
+            '💡 *My philosophy:* "The visa is the VEHICLE, not the DESTINATION". '
             "First we define what life you want to live, then we find how to get there.\n\n"
             "Sound good?"
-        )
+        ),
     }
-    
+
     # === PASO 5: PEDIR CONSENTIMIENTO ===
-    CONSENT_REQUEST = {
-        "es": "¿Te parece si empezamos? 🚀",
-        "en": "Shall we get started? 🚀"
-    }
-    
+    CONSENT_REQUEST = {"es": "¿Te parece si empezamos? 🚀", "en": "Shall we get started? 🚀"}
+
     CONSENT_BUTTONS = {
         "es": [
             ("✅ ¡Sí, empecemos!", "onboarding_yes"),
@@ -228,9 +225,9 @@ class OnboardingMessages:
             ("✅ Yes, let's start!", "onboarding_yes"),
             ("🤔 I have more questions", "onboarding_questions"),
             ("⏰ Maybe later", "onboarding_later"),
-        ]
+        ],
     }
-    
+
     # === PASO 6: PEDIR NOMBRE (después del consentimiento) ===
     NAME_REQUEST = {
         "es": (
@@ -238,13 +235,9 @@ class OnboardingMessages:
             "Antes de continuar, me encantaría saber cómo te llamas.\n\n"
             "¿Cuál es tu nombre?"
         ),
-        "en": (
-            "Perfect! 🎉\n\n"
-            "Before we continue, I'd love to know your name.\n\n"
-            "What's your name?"
-        )
+        "en": ("Perfect! 🎉\n\n" "Before we continue, I'd love to know your name.\n\n" "What's your name?"),
     }
-    
+
     # === RESPUESTAS A "TENGO MÁS PREGUNTAS" ===
     MORE_QUESTIONS_RESPONSE = {
         "es": (
@@ -266,9 +259,9 @@ class OnboardingMessages:
             "• Process timelines\n"
             "• Any questions you have\n\n"
             "Write your question and I'll answer."
-        )
+        ),
     }
-    
+
     # === RESPUESTA A "MEJOR DESPUÉS" ===
     LATER_RESPONSE = {
         "es": (
@@ -282,77 +275,130 @@ class OnboardingMessages:
             "I'll be here when you're ready. Just write /start "
             "when you want to continue the conversation.\n\n"
             "Best of luck with everything!"
-        )
+        ),
     }
 
 
 class OnboardingEngine:
     """Motor del onboarding conversacional"""
-    
+
     def __init__(self):
         self.messages = OnboardingMessages()
-    
+
     def get_welcome_message(self, lang: str = "es") -> str:
         """Obtener mensaje de bienvenida (Paso 1)"""
         return self.messages.WELCOME.get(lang, self.messages.WELCOME["es"])
-    
+
     def get_open_question(self, lang: str = "es") -> str:
         """Obtener pregunta abierta (Paso 2)"""
         questions = self.messages.OPEN_QUESTIONS.get(lang, self.messages.OPEN_QUESTIONS["es"])
         return random.choice(questions)
-    
+
     def get_empathic_response(self, user_text: str, lang: str = "es") -> str:
         """Obtener respuesta empática basada en lo que dijo el usuario (Paso 3)"""
         responses = self.messages.EMPATHIC_RESPONSES.get(lang, self.messages.EMPATHIC_RESPONSES["es"])
-        
+
         # Detectar tema principal
         text_lower = user_text.lower()
-        
+
         # Palabras clave por tema
         keywords = {
-            "work": ["trabajo", "empleo", "profesional", "carrera", "salario", "job", "work", "career", "salary", "professional"],
-            "family": ["familia", "hijos", "esposo", "esposa", "padres", "reunir", "family", "children", "husband", "wife", "parents", "reunite"],
-            "quality": ["calidad", "vida", "mejor", "oportunidad", "futuro", "quality", "life", "better", "opportunity", "future"],
-            "education": ["estudiar", "universidad", "educación", "carrera", "study", "university", "education", "degree"],
+            "work": [
+                "trabajo",
+                "empleo",
+                "profesional",
+                "carrera",
+                "salario",
+                "job",
+                "work",
+                "career",
+                "salary",
+                "professional",
+            ],
+            "family": [
+                "familia",
+                "hijos",
+                "esposo",
+                "esposa",
+                "padres",
+                "reunir",
+                "family",
+                "children",
+                "husband",
+                "wife",
+                "parents",
+                "reunite",
+            ],
+            "quality": [
+                "calidad",
+                "vida",
+                "mejor",
+                "oportunidad",
+                "futuro",
+                "quality",
+                "life",
+                "better",
+                "opportunity",
+                "future",
+            ],
+            "education": [
+                "estudiar",
+                "universidad",
+                "educación",
+                "carrera",
+                "study",
+                "university",
+                "education",
+                "degree",
+            ],
             "safety": ["seguridad", "violencia", "miedo", "peligro", "safety", "violence", "fear", "danger"],
-            "uncertain": ["no sé", "duda", "confundido", "no estoy seguro", "don't know", "doubt", "confused", "not sure"],
+            "uncertain": [
+                "no sé",
+                "duda",
+                "confundido",
+                "no estoy seguro",
+                "don't know",
+                "doubt",
+                "confused",
+                "not sure",
+            ],
             "excited": ["emocionado", "feliz", "ilusionado", "excited", "happy", "thrilled"],
             "scared": ["miedo", "nervioso", "asustado", "scared", "nervous", "afraid"],
         }
-        
+
         # Buscar coincidencias
         for theme, words in keywords.items():
             if any(word in text_lower for word in words):
                 return responses.get(theme, responses["default"])
-        
+
         return responses["default"]
-    
+
     def get_process_explanation(self, lang: str = "es") -> str:
         """Obtener explicación del proceso (Paso 4)"""
         return self.messages.PROCESS_EXPLANATION.get(lang, self.messages.PROCESS_EXPLANATION["es"])
-    
-    def get_consent_request(self, lang: str = "es") -> Tuple[str, List[Tuple[str, str]]]:
+
+    def get_consent_request(self, lang: str = "es") -> tuple[str, list[tuple[str, str]]]:
         """Obtener solicitud de consentimiento (Paso 5)"""
         text = self.messages.CONSENT_REQUEST.get(lang, self.messages.CONSENT_REQUEST["es"])
         buttons = self.messages.CONSENT_BUTTONS.get(lang, self.messages.CONSENT_BUTTONS["es"])
         return text, buttons
-    
+
     def get_name_request(self, lang: str = "es") -> str:
         """Obtener solicitud de nombre (Paso 6 - después del consentimiento)"""
         return self.messages.NAME_REQUEST.get(lang, self.messages.NAME_REQUEST["es"])
-    
+
     def get_more_questions_response(self, lang: str = "es") -> str:
         """Respuesta cuando el usuario tiene más preguntas"""
         return self.messages.MORE_QUESTIONS_RESPONSE.get(lang, self.messages.MORE_QUESTIONS_RESPONSE["es"])
-    
+
     def get_later_response(self, lang: str = "es") -> str:
         """Respuesta cuando el usuario quiere continuar después"""
         return self.messages.LATER_RESPONSE.get(lang, self.messages.LATER_RESPONSE["es"])
-    
+
     def is_onboarding_state(self, state: str) -> bool:
         """Verificar si el estado es parte del onboarding"""
         return state in ONBOARDING_STATES
-    
+
     def get_next_state(self, current_state: str) -> str:
         """Obtener el siguiente estado del onboarding"""
         state_flow = {
@@ -369,6 +415,7 @@ class OnboardingEngine:
 # Singleton
 _onboarding_engine = None
 
+
 def get_onboarding_engine() -> OnboardingEngine:
     """Obtener instancia del motor de onboarding"""
     global _onboarding_engine
@@ -384,42 +431,62 @@ def is_form_state(state: str) -> bool:
     """
     # Estados que son formularios (piden datos específicos)
     FORM_STATES = [
-        "name", "birth_date", "nationality", "current_country", "current_city",
-        "email", "phone", "education_level", "education_status", "education_field",
-        "education_career", "work_status", "profession", "work_experience",
-        "english_level", "budget", "timeline", "savings",
+        "name",
+        "birth_date",
+        "nationality",
+        "current_country",
+        "current_city",
+        "email",
+        "phone",
+        "education_level",
+        "education_status",
+        "education_field",
+        "education_career",
+        "work_status",
+        "profession",
+        "work_experience",
+        "english_level",
+        "budget",
+        "timeline",
+        "savings",
     ]
-    
+
     # Los estados de onboarding NO son formularios
     if state in ONBOARDING_STATES:
         return False
-    
+
     return state in FORM_STATES
 
 
-def validate_onboarding_flow(first_message: str, first_state: str) -> Tuple[bool, str]:
+def validate_onboarding_flow(first_message: str, first_state: str) -> tuple[bool, str]:
     """
     Validar que el onboarding no empiece con un formulario.
-    
+
     Returns:
         Tuple[is_valid, error_message]
     """
     # El primer estado debe ser de onboarding
     if first_state not in ONBOARDING_STATES:
         return False, f"El primer estado '{first_state}' no es de onboarding"
-    
+
     # El primer mensaje no debe pedir datos de formulario
     form_keywords = [
-        "nombre completo", "full name",
-        "fecha de nacimiento", "birth date",
-        "correo electrónico", "email",
-        "teléfono", "phone",
-        "FASE 1", "PHASE 1",
-        "nivel educativo", "education level",
+        "nombre completo",
+        "full name",
+        "fecha de nacimiento",
+        "birth date",
+        "correo electrónico",
+        "email",
+        "teléfono",
+        "phone",
+        "FASE 1",
+        "PHASE 1",
+        "nivel educativo",
+        "education level",
     ]
-    
+
     for keyword in form_keywords:
         if keyword.lower() in first_message.lower():
             return False, f"El primer mensaje contiene '{keyword}' que es de formulario"
-    
+
     return True, ""

@@ -16,19 +16,20 @@ CATEGORÍAS DE SCORING:
 5. Negocios - Para elegir oportunidad de negocio
 """
 
-from typing import Dict, List, Any, Optional, Tuple
-from dataclasses import dataclass, field
-import json
 import logging
+from dataclasses import dataclass, field
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ============== PARÁMETROS DE SCORING ==============
 
+
 @dataclass
 class ScoringParameter:
     """Parámetro individual de scoring"""
+
     id: str
     name: str
     description: str
@@ -41,22 +42,39 @@ class ScoringParameter:
 LOCATION_PARAMETERS = [
     ScoringParameter("costo_vida", "Costo de Vida", "Qué tan económico es vivir ahí", "💰", 15, "location"),
     ScoringParameter("seguridad", "Seguridad", "Índice de criminalidad y seguridad", "🛡️", 15, "location"),
-    ScoringParameter("oportunidades", "Oportunidades Laborales", "Disponibilidad de empleos en tu industria", "💼", 20, "location"),
-    ScoringParameter("educacion", "Calidad Educativa", "Calidad de escuelas y universidades", "🎓", 10, "location"),
+    ScoringParameter(
+        "oportunidades",
+        "Oportunidades Laborales",
+        "Disponibilidad de empleos en tu industria",
+        "💼",
+        20,
+        "location",
+    ),
+    ScoringParameter(
+        "educacion", "Calidad Educativa", "Calidad de escuelas y universidades", "🎓", 10, "location"
+    ),
     ScoringParameter("salud", "Acceso a Salud", "Hospitales, clínicas, seguros", "🏥", 10, "location"),
     ScoringParameter("transporte", "Transporte", "Transporte público y movilidad", "🚇", 5, "location"),
-    ScoringParameter("comunidad_latina", "Comunidad Latina", "Presencia de comunidad hispana", "🤝", 10, "location"),
+    ScoringParameter(
+        "comunidad_latina", "Comunidad Latina", "Presencia de comunidad hispana", "🤝", 10, "location"
+    ),
     ScoringParameter("clima", "Clima", "Condiciones climáticas", "☀️", 10, "location"),
-    ScoringParameter("calidad_vida", "Calidad de Vida General", "Índice general de bienestar", "🌟", 5, "location"),
+    ScoringParameter(
+        "calidad_vida", "Calidad de Vida General", "Índice general de bienestar", "🌟", 5, "location"
+    ),
 ]
 
 # Parámetros para VIVIENDA
 HOUSING_PARAMETERS = [
     ScoringParameter("precio", "Precio", "Costo mensual o de compra", "💰", 25, "housing"),
-    ScoringParameter("ubicacion", "Ubicación", "Cercanía a trabajo, escuelas, servicios", "📍", 20, "housing"),
+    ScoringParameter(
+        "ubicacion", "Ubicación", "Cercanía a trabajo, escuelas, servicios", "📍", 20, "housing"
+    ),
     ScoringParameter("tamano", "Tamaño", "Metros cuadrados, habitaciones, baños", "📐", 15, "housing"),
     ScoringParameter("amenidades", "Amenidades", "Piscina, gym, parqueadero, etc.", "🏊", 10, "housing"),
-    ScoringParameter("seguridad_barrio", "Seguridad del Barrio", "Índice de criminalidad del área", "🛡️", 15, "housing"),
+    ScoringParameter(
+        "seguridad_barrio", "Seguridad del Barrio", "Índice de criminalidad del área", "🛡️", 15, "housing"
+    ),
     ScoringParameter("cercania_trabajo", "Cercanía al Trabajo", "Tiempo de commute", "🚗", 10, "housing"),
     ScoringParameter("cercania_escuelas", "Cercanía a Escuelas", "Distancia a colegios", "🏫", 5, "housing"),
 ]
@@ -69,7 +87,9 @@ JOB_PARAMETERS = [
     ScoringParameter("cultura", "Cultura Empresarial", "Ambiente de trabajo", "🏢", 10, "job"),
     ScoringParameter("ubicacion_trabajo", "Ubicación", "Cercanía a tu vivienda", "📍", 10, "job"),
     ScoringParameter("flexibilidad", "Flexibilidad", "Trabajo remoto, horarios", "🏠", 10, "job"),
-    ScoringParameter("visa_sponsorship", "Patrocinio de Visa", "Si patrocinan visa de trabajo", "🛂", 15, "job"),
+    ScoringParameter(
+        "visa_sponsorship", "Patrocinio de Visa", "Si patrocinan visa de trabajo", "🛂", 15, "job"
+    ),
 ]
 
 # Parámetros para ESCUELAS
@@ -90,23 +110,27 @@ BUSINESS_PARAMETERS = [
     ScoringParameter("mercado", "Tamaño de Mercado", "Demanda en la zona", "🎯", 15, "business"),
     ScoringParameter("competencia", "Competencia", "Nivel de competencia", "⚔️", 10, "business"),
     ScoringParameter("ubicacion_negocio", "Ubicación", "Tráfico, visibilidad", "📍", 15, "business"),
-    ScoringParameter("empleados", "Facilidad de Contratación", "Disponibilidad de personal", "👥", 10, "business"),
+    ScoringParameter(
+        "empleados", "Facilidad de Contratación", "Disponibilidad de personal", "👥", 10, "business"
+    ),
     ScoringParameter("regulaciones", "Regulaciones", "Facilidad de permisos", "📋", 10, "business"),
 ]
 
 
 # ============== PESOS PERSONALIZADOS ==============
 
+
 @dataclass
 class CustomWeights:
     """Pesos personalizados del cliente"""
+
     user_id: int
-    location_weights: Dict[str, int] = field(default_factory=dict)
-    housing_weights: Dict[str, int] = field(default_factory=dict)
-    job_weights: Dict[str, int] = field(default_factory=dict)
-    school_weights: Dict[str, int] = field(default_factory=dict)
-    business_weights: Dict[str, int] = field(default_factory=dict)
-    
+    location_weights: dict[str, int] = field(default_factory=dict)
+    housing_weights: dict[str, int] = field(default_factory=dict)
+    job_weights: dict[str, int] = field(default_factory=dict)
+    school_weights: dict[str, int] = field(default_factory=dict)
+    business_weights: dict[str, int] = field(default_factory=dict)
+
     def __post_init__(self):
         # Inicializar con valores por defecto si están vacíos
         if not self.location_weights:
@@ -119,15 +143,15 @@ class CustomWeights:
             self.school_weights = {p.id: p.default_weight for p in SCHOOL_PARAMETERS}
         if not self.business_weights:
             self.business_weights = {p.id: p.default_weight for p in BUSINESS_PARAMETERS}
-    
-    def normalize_weights(self, weights: Dict[str, int]) -> Dict[str, float]:
+
+    def normalize_weights(self, weights: dict[str, int]) -> dict[str, float]:
         """Normaliza los pesos para que sumen 100"""
         total = sum(weights.values())
         if total == 0:
             return {k: 0 for k in weights}
         return {k: v / total for k, v in weights.items()}
-    
-    def to_dict(self) -> Dict:
+
+    def to_dict(self) -> dict:
         return {
             "user_id": self.user_id,
             "location_weights": self.location_weights,
@@ -136,9 +160,9 @@ class CustomWeights:
             "school_weights": self.school_weights,
             "business_weights": self.business_weights,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict) -> "CustomWeights":
+    def from_dict(cls, data: dict) -> "CustomWeights":
         return cls(
             user_id=data.get("user_id", 0),
             location_weights=data.get("location_weights", {}),
@@ -151,18 +175,20 @@ class CustomWeights:
 
 # ============== ITEM SCORED ==============
 
+
 @dataclass
 class ScoredItem:
     """Item con su puntuación calculada"""
+
     id: str
     name: str
     category: str  # location, housing, job, school, business
     total_score: float  # 0-100
-    scores_breakdown: Dict[str, float]  # score por cada parámetro
-    data: Dict[str, Any]  # datos originales del item
+    scores_breakdown: dict[str, float]  # score por cada parámetro
+    data: dict[str, Any]  # datos originales del item
     photo_url: str = ""
     detail_url: str = ""
-    
+
     def get_score_stars(self) -> str:
         """Retorna estrellas según el score"""
         if self.total_score >= 90:
@@ -175,7 +201,7 @@ class ScoredItem:
             return "⭐⭐"
         else:
             return "⭐"
-    
+
     def get_score_emoji(self) -> str:
         """Retorna emoji según el score"""
         if self.total_score >= 90:
@@ -188,36 +214,42 @@ class ScoredItem:
             return "🥉"
         else:
             return "📊"
-    
+
     def format_for_telegram(self) -> str:
         """Formatea el item para mostrar en Telegram"""
         stars = self.get_score_stars()
         emoji = self.get_score_emoji()
-        
+
         # Construir breakdown de scores
         breakdown_lines = []
         for param_id, score in sorted(self.scores_breakdown.items(), key=lambda x: x[1], reverse=True)[:5]:
             param_name = self._get_param_name(param_id)
             bar = self._score_bar(score)
             breakdown_lines.append(f"  {param_name}: {bar} {score:.0f}")
-        
+
         breakdown_text = "\n".join(breakdown_lines)
-        
+
         return f"""{emoji} *{self.name}*
 {stars} Score: {self.total_score:.1f}/100
 
 📊 *Desglose:*
 {breakdown_text}
 """
-    
+
     def _get_param_name(self, param_id: str) -> str:
         """Obtiene el nombre del parámetro"""
-        all_params = LOCATION_PARAMETERS + HOUSING_PARAMETERS + JOB_PARAMETERS + SCHOOL_PARAMETERS + BUSINESS_PARAMETERS
+        all_params = (
+            LOCATION_PARAMETERS
+            + HOUSING_PARAMETERS
+            + JOB_PARAMETERS
+            + SCHOOL_PARAMETERS
+            + BUSINESS_PARAMETERS
+        )
         for p in all_params:
             if p.id == param_id:
                 return f"{p.emoji} {p.name}"
         return param_id
-    
+
     def _score_bar(self, score: float) -> str:
         """Genera una barra visual del score"""
         filled = int(score / 10)
@@ -227,26 +259,27 @@ class ScoredItem:
 
 # ============== MOTOR DE SCORING ==============
 
+
 class ScoringEngine:
     """Motor principal de scoring"""
-    
+
     def __init__(self):
-        self.user_weights: Dict[int, CustomWeights] = {}
-    
+        self.user_weights: dict[int, CustomWeights] = {}
+
     def get_weights(self, user_id: int) -> CustomWeights:
         """Obtiene los pesos de un usuario"""
         if user_id not in self.user_weights:
             self.user_weights[user_id] = CustomWeights(user_id=user_id)
         return self.user_weights[user_id]
-    
+
     def set_weights(self, user_id: int, weights: CustomWeights):
         """Establece los pesos de un usuario"""
         self.user_weights[user_id] = weights
-    
+
     def update_weight(self, user_id: int, category: str, param_id: str, weight: int):
         """Actualiza un peso específico"""
         weights = self.get_weights(user_id)
-        
+
         if category == "location":
             weights.location_weights[param_id] = weight
         elif category == "housing":
@@ -257,28 +290,25 @@ class ScoringEngine:
             weights.school_weights[param_id] = weight
         elif category == "business":
             weights.business_weights[param_id] = weight
-        
+
         self.set_weights(user_id, weights)
-    
+
     def calculate_score(
-        self,
-        user_id: int,
-        category: str,
-        item_scores: Dict[str, float]  # {param_id: score 0-100}
-    ) -> Tuple[float, Dict[str, float]]:
+        self, user_id: int, category: str, item_scores: dict[str, float]  # {param_id: score 0-100}
+    ) -> tuple[float, dict[str, float]]:
         """
         Calcula el score total de un item
-        
+
         Args:
             user_id: ID del usuario
             category: Categoría (location, housing, job, school, business)
             item_scores: Diccionario con scores por parámetro
-        
+
         Returns:
             Tuple[score_total, breakdown_ponderado]
         """
         weights = self.get_weights(user_id)
-        
+
         # Obtener pesos según categoría
         if category == "location":
             user_weights = weights.location_weights
@@ -292,28 +322,28 @@ class ScoringEngine:
             user_weights = weights.business_weights
         else:
             user_weights = {}
-        
+
         # Normalizar pesos
         normalized = weights.normalize_weights(user_weights)
-        
+
         # Calcular score ponderado
         total_score = 0
         breakdown = {}
-        
+
         for param_id, weight in normalized.items():
             param_score = item_scores.get(param_id, 50)  # Default 50 si no hay score
             weighted_score = param_score * weight
             total_score += weighted_score
             breakdown[param_id] = param_score
-        
+
         return total_score, breakdown
-    
-    def score_location(self, user_id: int, location_data: Dict) -> ScoredItem:
+
+    def score_location(self, user_id: int, location_data: dict) -> ScoredItem:
         """Calcula el score de una ubicación (estado/ciudad)"""
-        
+
         # Extraer scores del location_data
         scores = location_data.get("scores", {})
-        
+
         # Mapear a nuestros parámetros
         item_scores = {
             "costo_vida": scores.get("costo_vida", 50),
@@ -326,9 +356,9 @@ class ScoringEngine:
             "clima": self._climate_score(location_data.get("clima", "")),
             "calidad_vida": scores.get("calidad_vida", 50),
         }
-        
+
         total, breakdown = self.calculate_score(user_id, "location", item_scores)
-        
+
         return ScoredItem(
             id=location_data.get("id", ""),
             name=location_data.get("nombre", ""),
@@ -338,14 +368,14 @@ class ScoringEngine:
             data=location_data,
             photo_url=location_data.get("foto_url", ""),
         )
-    
-    def score_housing(self, user_id: int, housing_data: Dict, user_context: Dict = None) -> ScoredItem:
+
+    def score_housing(self, user_id: int, housing_data: dict, user_context: dict = None) -> ScoredItem:
         """Calcula el score de una vivienda"""
-        
+
         # Calcular scores basados en los datos
         max_budget = user_context.get("max_budget", 3000) if user_context else 3000
         price = housing_data.get("price", 0)
-        
+
         # Score de precio (inverso - menor precio = mejor score)
         if price <= max_budget * 0.7:
             price_score = 100
@@ -355,7 +385,7 @@ class ScoringEngine:
             price_score = 40
         else:
             price_score = 20
-        
+
         item_scores = {
             "precio": price_score,
             "ubicacion": housing_data.get("location_score", 70),
@@ -365,9 +395,9 @@ class ScoringEngine:
             "cercania_trabajo": housing_data.get("commute_score", 50),
             "cercania_escuelas": housing_data.get("school_proximity_score", 50),
         }
-        
+
         total, breakdown = self.calculate_score(user_id, "housing", item_scores)
-        
+
         return ScoredItem(
             id=housing_data.get("zpid", housing_data.get("id", "")),
             name=housing_data.get("address", ""),
@@ -378,15 +408,15 @@ class ScoringEngine:
             photo_url=housing_data.get("photo_url", ""),
             detail_url=housing_data.get("zillow_url", ""),
         )
-    
-    def score_job(self, user_id: int, job_data: Dict, user_context: Dict = None) -> ScoredItem:
+
+    def score_job(self, user_id: int, job_data: dict, user_context: dict = None) -> ScoredItem:
         """Calcula el score de un trabajo"""
-        
+
         expected_salary = user_context.get("salary_expectation", 80000) if user_context else 80000
         salary_min = job_data.get("salary_min", 0)
         salary_max = job_data.get("salary_max", 0)
         avg_salary = (salary_min + salary_max) / 2 if salary_max else salary_min
-        
+
         # Score de salario
         if avg_salary >= expected_salary * 1.2:
             salary_score = 100
@@ -396,7 +426,7 @@ class ScoringEngine:
             salary_score = 60
         else:
             salary_score = 40
-        
+
         item_scores = {
             "salario": salary_score,
             "beneficios": job_data.get("benefits_score", 60),
@@ -406,9 +436,9 @@ class ScoringEngine:
             "flexibilidad": 90 if job_data.get("remote", False) else 50,
             "visa_sponsorship": 100 if job_data.get("visa_sponsorship", False) else 30,
         }
-        
+
         total, breakdown = self.calculate_score(user_id, "job", item_scores)
-        
+
         return ScoredItem(
             id=job_data.get("job_id", ""),
             name=f"{job_data.get('title', '')} @ {job_data.get('company', '')}",
@@ -418,10 +448,10 @@ class ScoringEngine:
             data=job_data,
             detail_url=job_data.get("apply_url", ""),
         )
-    
-    def score_school(self, user_id: int, school_data: Dict) -> ScoredItem:
+
+    def score_school(self, user_id: int, school_data: dict) -> ScoredItem:
         """Calcula el score de una escuela"""
-        
+
         item_scores = {
             "rating": school_data.get("rating", 5) * 10,  # Convertir 1-10 a 0-100
             "programas": 80 if "ESL" in school_data.get("programs", []) else 50,
@@ -431,9 +461,9 @@ class ScoringEngine:
             "seguridad_escuela": school_data.get("safety_score", 70),
             "distancia": self._distance_score(school_data.get("distance_miles", 5)),
         }
-        
+
         total, breakdown = self.calculate_score(user_id, "school", item_scores)
-        
+
         return ScoredItem(
             id=school_data.get("school_id", ""),
             name=school_data.get("name", ""),
@@ -443,17 +473,17 @@ class ScoringEngine:
             data=school_data,
             detail_url=school_data.get("website", ""),
         )
-    
-    def rank_items(self, items: List[ScoredItem], limit: int = 10) -> List[ScoredItem]:
+
+    def rank_items(self, items: list[ScoredItem], limit: int = 10) -> list[ScoredItem]:
         """Ordena items por score y retorna los mejores"""
         sorted_items = sorted(items, key=lambda x: x.total_score, reverse=True)
         return sorted_items[:limit]
-    
+
     def _climate_score(self, climate: str) -> float:
         """Convierte clima a score (esto se personalizará según preferencias)"""
         # Por defecto, todos los climas tienen score neutral
         return 70
-    
+
     def _size_score(self, sqft: int, bedrooms: int) -> float:
         """Calcula score de tamaño"""
         if sqft >= 2000 or bedrooms >= 4:
@@ -464,7 +494,7 @@ class ScoringEngine:
             return 60
         else:
             return 40
-    
+
     def _ratio_score(self, ratio: float) -> float:
         """Calcula score de ratio estudiante/profesor"""
         if ratio <= 12:
@@ -475,7 +505,7 @@ class ScoringEngine:
             return 60
         else:
             return 40
-    
+
     def _distance_score(self, miles: float) -> float:
         """Calcula score de distancia"""
         if miles <= 1:
@@ -488,8 +518,8 @@ class ScoringEngine:
             return 40
         else:
             return 20
-    
-    def get_weight_adjustment_keyboard(self, category: str) -> List[Dict]:
+
+    def get_weight_adjustment_keyboard(self, category: str) -> list[dict]:
         """Genera opciones para ajustar pesos"""
         if category == "location":
             params = LOCATION_PARAMETERS
@@ -503,22 +533,24 @@ class ScoringEngine:
             params = BUSINESS_PARAMETERS
         else:
             return []
-        
+
         options = []
         for p in params:
-            options.append({
-                "id": p.id,
-                "text": f"{p.emoji} {p.name}",
-                "description": p.description,
-                "default_weight": p.default_weight,
-            })
-        
+            options.append(
+                {
+                    "id": p.id,
+                    "text": f"{p.emoji} {p.name}",
+                    "description": p.description,
+                    "default_weight": p.default_weight,
+                }
+            )
+
         return options
-    
+
     def format_weights_summary(self, user_id: int, category: str) -> str:
         """Formatea un resumen de los pesos actuales"""
         weights = self.get_weights(user_id)
-        
+
         if category == "location":
             user_weights = weights.location_weights
             params = LOCATION_PARAMETERS
@@ -533,14 +565,14 @@ class ScoringEngine:
             params = SCHOOL_PARAMETERS
         else:
             return "Categoría no válida"
-        
+
         lines = ["📊 *Tus pesos actuales:*\n"]
-        
+
         for p in params:
             weight = user_weights.get(p.id, p.default_weight)
             bar = "█" * (weight // 10) + "░" * (10 - weight // 10)
             lines.append(f"{p.emoji} {p.name}: {bar} {weight}%")
-        
+
         return "\n".join(lines)
 
 
@@ -550,7 +582,8 @@ scoring_engine = ScoringEngine()
 
 # ============== FUNCIONES DE UTILIDAD ==============
 
-def get_parameters_for_category(category: str) -> List[ScoringParameter]:
+
+def get_parameters_for_category(category: str) -> list[ScoringParameter]:
     """Obtiene los parámetros de una categoría"""
     if category == "location":
         return LOCATION_PARAMETERS
@@ -569,19 +602,15 @@ def format_score_explanation(scored_item: ScoredItem) -> str:
     """Genera una explicación detallada del score"""
     lines = [
         f"🎯 *¿Por qué {scored_item.name} tiene score {scored_item.total_score:.1f}?*\n",
-        "Los factores más importantes según TUS prioridades:\n"
+        "Los factores más importantes según TUS prioridades:\n",
     ]
-    
+
     # Ordenar por score
-    sorted_scores = sorted(
-        scored_item.scores_breakdown.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )
-    
+    sorted_scores = sorted(scored_item.scores_breakdown.items(), key=lambda x: x[1], reverse=True)
+
     for i, (param_id, score) in enumerate(sorted_scores[:5], 1):
         emoji = "🟢" if score >= 70 else "🟡" if score >= 50 else "🔴"
         param_name = scored_item._get_param_name(param_id)
         lines.append(f"{i}. {emoji} {param_name}: {score:.0f}/100")
-    
+
     return "\n".join(lines)

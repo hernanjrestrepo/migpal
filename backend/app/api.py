@@ -1,22 +1,24 @@
 from fastapi import APIRouter
-from .config import settings
+
 from app.routes import (
-    users,
-    auth,
-    audit,
-    email,
-    assessment,
-    migration,
-    services,
-    documents,
     ai_assistant,
+    assessment,
+    audit,
+    auth,
+    bot,
     data_sources,
+    documents,
+    email,
     housing,
-    marketplace,
     knowledge,
+    marketplace,
+    migration,
     planner,
-    bot
+    services,
+    users,
 )
+
+from .config import settings
 
 router = APIRouter()
 

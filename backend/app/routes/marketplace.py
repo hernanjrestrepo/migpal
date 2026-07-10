@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 
@@ -12,10 +10,9 @@ from app.models.job_listing import JobListing
 router = APIRouter(prefix="/marketplace", tags=["marketplace"])
 
 
-@router.get("/businesses", response_model=List[BusinessListing])
+@router.get("/businesses", response_model=list[BusinessListing])
 def list_business_listings(
-    state: str = Query(None, min_length=2, max_length=2),
-    session: Session = Depends(get_session)
+    state: str = Query(None, min_length=2, max_length=2), session: Session = Depends(get_session)
 ):
     query = select(BusinessListing)
     if state:
@@ -26,10 +23,8 @@ def list_business_listings(
     return results
 
 
-@router.get("/jobs", response_model=List[JobListing])
-def list_job_listings(
-    session: Session = Depends(get_session)
-):
+@router.get("/jobs", response_model=list[JobListing])
+def list_job_listings(session: Session = Depends(get_session)):
     jobs = session.exec(select(JobListing).order_by(JobListing.created_at.desc()).limit(100)).all()
     if not jobs:
         raise HTTPException(status_code=404, detail="No job listings cached")

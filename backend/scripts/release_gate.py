@@ -18,37 +18,21 @@ GENERA:
 - Bugs encontrados/cerrados
 """
 
-import sys
-import os
-import asyncio
-import time
-import random
 import json
-from datetime import datetime
-from typing import List, Dict, Any, Tuple, Optional
+import os
+import sys
+import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 # Setup path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Imports del proyecto
-from app.services.flow_governor import (
-    FormThrottler, InputInterpreter, interpret_user_input,
-    can_recommend_visa, should_show_form, InputType
-)
-from app.services.memory_profiler import (
-    ProfileValidator, validate_profile, detect_correction,
-    can_make_decision, ProfileCompleteness
-)
-from app.services.never_silent import (
-    NeverSilentWrapper, get_never_silent, HealthCheck,
-    AntiMultipleInstances, WATCHDOG_TIMEOUT
-)
-from app.services.availability_watchdog import (
-    EmpathicFallback, get_empathic_fallback
-)
-
+from app.services.availability_watchdog import get_empathic_fallback
+from app.services.flow_governor import InputType, interpret_user_input
 
 # ============== CONFIGURACIÓN ==============
 
@@ -64,69 +48,73 @@ REQUIRED_COMPLETE_PLANS = 20
 
 # ============== DATA CLASSES ==============
 
+
 @dataclass
 class TestMetrics:
     """Métricas de un test"""
+
     name: str
     passed: bool
     duration_ms: float
-    details: Dict[str, Any] = field(default_factory=dict)
-    errors: List[str] = field(default_factory=list)
+    details: dict[str, Any] = field(default_factory=dict)
+    errors: list[str] = field(default_factory=list)
 
 
 @dataclass
 class SimulationResult:
     """Resultado de una simulación"""
+
     flow_id: int
     flow_name: str
     completed: bool
     steps_total: int
     steps_completed: int
-    response_times: List[float] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
-    friction_points: List[str] = field(default_factory=list)
+    response_times: list[float] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    friction_points: list[str] = field(default_factory=list)
 
 
 @dataclass
 class ReleaseReport:
     """Reporte completo de release"""
+
     timestamp: datetime
     version: str
-    
+
     # Métricas principales
     response_rate: float
     avg_response_time_ms: float
     total_inputs: int
     total_responses: int
-    
+
     # Crashes y silences
     crashes: int
     silent_failures: int
-    
+
     # Planes completos
     plans_completed: int
     plans_total: int
-    
+
     # Tests
     tests_passed: int
     tests_total: int
-    test_results: List[TestMetrics] = field(default_factory=list)
-    
+    test_results: list[TestMetrics] = field(default_factory=list)
+
     # Simulaciones
-    simulations: List[SimulationResult] = field(default_factory=list)
-    
+    simulations: list[SimulationResult] = field(default_factory=list)
+
     # Fricciones y bugs
-    top_frictions: List[Tuple[str, int]] = field(default_factory=list)
-    bugs_found: List[str] = field(default_factory=list)
-    bugs_closed: List[str] = field(default_factory=list)
-    
+    top_frictions: list[tuple[str, int]] = field(default_factory=list)
+    bugs_found: list[str] = field(default_factory=list)
+    bugs_closed: list[str] = field(default_factory=list)
+
     # Verificación manual
     manual_test_completed: bool = False
     manual_test_notes: str = ""
-    
+
     # Resultado final
     can_release: bool = False
-    blocking_reasons: List[str] = field(default_factory=list)
+    blocking_reasons: list[str] = field(default_factory=list)
 
 
 # ============== 20 PLANES COMPLETOS TIPO HUMANO ==============
@@ -154,9 +142,8 @@ HUMAN_SIMULATION_PLANS = [
             "me interesa Austin",
             "¿cuánto cuesta vivir ahí?",
             "perfecto, ¿cuáles son los siguientes pasos?",
-        ]
+        ],
     },
-    
     # Plan 2: Familia con niños
     {
         "name": "Family with Children",
@@ -177,9 +164,8 @@ HUMAN_SIMULATION_PLANS = [
             "¿qué opciones tenemos?",
             "¿puedo ejercer como médico allá?",
             "¿qué ciudades tienen buenas escuelas?",
-        ]
+        ],
     },
-    
     # Plan 3: Estudiante
     {
         "name": "Student",
@@ -197,9 +183,8 @@ HUMAN_SIMULATION_PLANS = [
             "¿qué universidades me recomiendas?",
             "¿cómo es el proceso de visa de estudiante?",
             "¿puedo trabajar mientras estudio?",
-        ]
+        ],
     },
-    
     # Plan 4: Emprendedor
     {
         "name": "Entrepreneur",
@@ -218,9 +203,8 @@ HUMAN_SIMULATION_PLANS = [
             "tenemos $200,000 para invertir",
             "¿qué visa necesito para abrir una empresa?",
             "¿cuál es el mejor estado para incorporar?",
-        ]
+        ],
     },
-    
     # Plan 5: Jubilado
     {
         "name": "Retiree",
@@ -238,9 +222,8 @@ HUMAN_SIMULATION_PLANS = [
             "nos gusta el clima cálido",
             "¿qué visa necesitamos?",
             "¿podemos comprar una casa?",
-        ]
+        ],
     },
-    
     # Plan 6: Artista
     {
         "name": "Artist",
@@ -258,9 +241,8 @@ HUMAN_SIMULATION_PLANS = [
             "tengo $15,000 ahorrados",
             "¿hay visa para artistas?",
             "¿cómo funciona?",
-        ]
+        ],
     },
-    
     # Plan 7: Enfermera
     {
         "name": "Nurse",
@@ -277,9 +259,8 @@ HUMAN_SIMULATION_PLANS = [
             "tengo $10,000 ahorrados",
             "¿hay demanda de enfermeras?",
             "¿qué certificaciones necesito?",
-        ]
+        ],
     },
-    
     # Plan 8: Deportista
     {
         "name": "Athlete",
@@ -295,9 +276,8 @@ HUMAN_SIMULATION_PLANS = [
             "¿qué visa necesito?",
             "¿puedo llevar a mi novia?",
             "ella es mi prometida",
-        ]
+        ],
     },
-    
     # Plan 9: Investigador
     {
         "name": "Researcher",
@@ -313,9 +293,8 @@ HUMAN_SIMULATION_PLANS = [
             "viajo con mi esposa y un hijo de 3 años",
             "mi esposa también es científica",
             "¿qué visa aplica para investigadores?",
-        ]
+        ],
     },
-    
     # Plan 10: Chef
     {
         "name": "Chef",
@@ -332,9 +311,8 @@ HUMAN_SIMULATION_PLANS = [
             "tengo $100,000 para invertir",
             "viajo con mi esposa",
             "¿qué visa necesito?",
-        ]
+        ],
     },
-    
     # Plan 11: Con correcciones
     {
         "name": "With Corrections",
@@ -349,9 +327,8 @@ HUMAN_SIMULATION_PLANS = [
             "corrijo: tengo 32 años",
             "soy ingeniero",
             "quiero migrar a USA",
-        ]
+        ],
     },
-    
     # Plan 12: Preguntas primero
     {
         "name": "Questions First",
@@ -366,9 +343,8 @@ HUMAN_SIMULATION_PLANS = [
             "soy de Ecuador",
             "tengo 28 años",
             "soy contadora",
-        ]
+        ],
     },
-    
     # Plan 13: Respuestas cortas
     {
         "name": "Short Answers",
@@ -384,9 +360,8 @@ HUMAN_SIMULATION_PLANS = [
             "sí",
             "trabajo",
             "6 meses",
-        ]
+        ],
     },
-    
     # Plan 14: Información completa de golpe
     {
         "name": "Complete Info at Once",
@@ -395,9 +370,8 @@ HUMAN_SIMULATION_PLANS = [
             "Hola, soy María González, tengo 33 años, soy de Argentina, trabajo como diseñadora gráfica, gano $3000 al mes, estoy casada y tengo un hijo de 5 años, tenemos $40,000 ahorrados y queremos migrar a Estados Unidos en los próximos 12 meses porque queremos mejores oportunidades para nuestro hijo",
             "¿qué visa nos conviene?",
             "¿qué ciudades recomiendas para familias?",
-        ]
+        ],
     },
-    
     # Plan 15: Cambio de planes
     {
         "name": "Change of Plans",
@@ -411,9 +385,8 @@ HUMAN_SIMULATION_PLANS = [
             "primero pensé en visa de turista",
             "pero mejor visa de trabajo",
             "soy arquitecto",
-        ]
+        ],
     },
-    
     # Plan 16: Urgencia
     {
         "name": "Urgent Case",
@@ -428,9 +401,8 @@ HUMAN_SIMULATION_PLANS = [
             "tengo familia en Miami",
             "¿qué puedo hacer?",
             "tengo $5,000",
-        ]
+        ],
     },
-    
     # Plan 17: Reunificación familiar
     {
         "name": "Family Reunification",
@@ -445,9 +417,8 @@ HUMAN_SIMULATION_PLANS = [
             "quiero reunirme con mi hermano",
             "¿él puede patrocinarme?",
             "¿cuánto tiempo toma?",
-        ]
+        ],
     },
-    
     # Plan 18: Inversionista
     {
         "name": "Investor",
@@ -462,9 +433,8 @@ HUMAN_SIMULATION_PLANS = [
             "quiero la visa de inversionista",
             "¿qué tipo de negocio me recomiendas?",
             "viajo con mi esposa",
-        ]
+        ],
     },
-    
     # Plan 19: Transferencia interna
     {
         "name": "Internal Transfer",
@@ -480,9 +450,8 @@ HUMAN_SIMULATION_PLANS = [
             "quieren transferirme a Nueva York",
             "viajo con mi esposa y 2 hijos",
             "¿qué visa necesito?",
-        ]
+        ],
     },
-    
     # Plan 20: Caso complejo
     {
         "name": "Complex Case",
@@ -499,133 +468,137 @@ HUMAN_SIMULATION_PLANS = [
             "queremos migrar a USA",
             "¿qué opciones tenemos?",
             "¿afecta que yo sea venezolano?",
-        ]
+        ],
     },
 ]
 
 
 # ============== SIMULADOR ==============
 
+
 class HumanSimulator:
     """Simula conversaciones tipo humano"""
-    
+
     def __init__(self):
-        self.results: List[SimulationResult] = []
+        self.results: list[SimulationResult] = []
         self.total_inputs = 0
         self.total_responses = 0
         self.crashes = 0
         self.silent_failures = 0
-        self.response_times: List[float] = []
-        self.friction_counts: Dict[str, int] = {}
-    
-    def simulate_input(self, text: str) -> Tuple[bool, float, Optional[str]]:
+        self.response_times: list[float] = []
+        self.friction_counts: dict[str, int] = {}
+
+    def simulate_input(self, text: str) -> tuple[bool, float, str | None]:
         """
         Simula un input y verifica respuesta.
         Returns: (responded, response_time_ms, error)
         """
         start_time = time.time()
-        
+
         try:
             # Interpretar input
             interpreted = interpret_user_input(text, "")
-            
+
             response_time = (time.time() - start_time) * 1000
-            
+
             # Verificar que hay respuesta
             if interpreted is None:
                 return False, response_time, "No interpretation"
-            
+
             # Si es UNKNOWN, verificar fallback
             if interpreted.input_type == InputType.UNKNOWN and not interpreted.extracted_data:
                 fallback = get_empathic_fallback()
                 response = fallback.get_phase_fallback("unknown", "es")
                 if not response:
                     return False, response_time, "No fallback response"
-            
+
             return True, response_time, None
-            
+
         except Exception as e:
             response_time = (time.time() - start_time) * 1000
             self.crashes += 1
             return False, response_time, str(e)
-    
-    def run_plan(self, plan: Dict[str, Any], plan_id: int) -> SimulationResult:
+
+    def run_plan(self, plan: dict[str, Any], plan_id: int) -> SimulationResult:
         """Ejecuta un plan completo"""
         result = SimulationResult(
             flow_id=plan_id,
             flow_name=plan["name"],
             completed=False,
             steps_total=len(plan["steps"]),
-            steps_completed=0
+            steps_completed=0,
         )
-        
+
         for step in plan["steps"]:
             self.total_inputs += 1
-            
+
             responded, response_time, error = self.simulate_input(step)
             result.response_times.append(response_time)
             self.response_times.append(response_time)
-            
+
             if responded:
                 self.total_responses += 1
                 result.steps_completed += 1
             else:
                 self.silent_failures += 1
                 result.errors.append(f"Step '{step[:30]}...': {error}")
-                
+
                 # Registrar fricción
                 friction = f"No response to: {step[:50]}"
                 self.friction_counts[friction] = self.friction_counts.get(friction, 0) + 1
                 result.friction_points.append(friction)
-        
+
         result.completed = result.steps_completed == result.steps_total
         return result
-    
-    def run_all_plans(self) -> List[SimulationResult]:
+
+    def run_all_plans(self) -> list[SimulationResult]:
         """Ejecuta todos los planes"""
         print("\n" + "=" * 60)
         print("🧪 SIMULACIÓN DE 20 PLANES TIPO HUMANO")
         print("=" * 60)
-        
+
         for i, plan in enumerate(HUMAN_SIMULATION_PLANS, 1):
             print(f"\n📋 Plan {i}/20: {plan['name']}")
             print(f"   Persona: {plan['persona']}")
             print(f"   Steps: {len(plan['steps'])}")
-            
+
             result = self.run_plan(plan, i)
             self.results.append(result)
-            
+
             status = "✅" if result.completed else "❌"
             print(f"   {status} Completed: {result.steps_completed}/{result.steps_total}")
-            
+
             if result.errors:
                 for error in result.errors[:2]:
                     print(f"      ⚠️ {error[:60]}...")
-        
+
         return self.results
-    
-    def get_metrics(self) -> Dict[str, Any]:
+
+    def get_metrics(self) -> dict[str, Any]:
         """Obtiene métricas de la simulación"""
         completed_plans = sum(1 for r in self.results if r.completed)
-        
+
         return {
             "total_inputs": self.total_inputs,
             "total_responses": self.total_responses,
             "response_rate": (self.total_responses / self.total_inputs * 100) if self.total_inputs > 0 else 0,
-            "avg_response_time_ms": sum(self.response_times) / len(self.response_times) if self.response_times else 0,
+            "avg_response_time_ms": (
+                sum(self.response_times) / len(self.response_times) if self.response_times else 0
+            ),
             "crashes": self.crashes,
             "silent_failures": self.silent_failures,
             "plans_completed": completed_plans,
             "plans_total": len(self.results),
-            "top_frictions": sorted(self.friction_counts.items(), key=lambda x: -x[1])[:10]
+            "top_frictions": sorted(self.friction_counts.items(), key=lambda x: -x[1])[:10],
         }
 
 
 # ============== RELEASE GATE ==============
 
+
 class ReleaseGate:
     """Gate de release que bloquea si falla cualquier criterio"""
-    
+
     def __init__(self):
         self.report = ReleaseReport(
             timestamp=datetime.now(),
@@ -639,9 +612,9 @@ class ReleaseGate:
             plans_completed=0,
             plans_total=REQUIRED_COMPLETE_PLANS,
             tests_passed=0,
-            tests_total=0
+            tests_total=0,
         )
-    
+
     def _get_version(self) -> str:
         """Obtiene la versión del proyecto"""
         try:
@@ -651,13 +624,13 @@ class ReleaseGate:
         except:
             pass
         return datetime.now().strftime("%Y.%m.%d")
-    
-    def run_module_tests(self) -> List[TestMetrics]:
+
+    def run_module_tests(self) -> list[TestMetrics]:
         """Ejecuta tests de módulos"""
         print("\n" + "=" * 60)
         print("📦 VERIFICACIÓN DE MÓDULOS")
         print("=" * 60)
-        
+
         results = []
         modules = [
             "app.services.never_silent",
@@ -665,39 +638,34 @@ class ReleaseGate:
             "app.services.memory_profiler",
             "app.services.availability_watchdog",
         ]
-        
+
         for module in modules:
             start = time.time()
             try:
                 __import__(module)
                 duration = (time.time() - start) * 1000
-                results.append(TestMetrics(
-                    name=f"Import {module}",
-                    passed=True,
-                    duration_ms=duration
-                ))
+                results.append(TestMetrics(name=f"Import {module}", passed=True, duration_ms=duration))
                 print(f"  ✅ {module}")
             except Exception as e:
                 duration = (time.time() - start) * 1000
-                results.append(TestMetrics(
-                    name=f"Import {module}",
-                    passed=False,
-                    duration_ms=duration,
-                    errors=[str(e)]
-                ))
+                results.append(
+                    TestMetrics(name=f"Import {module}", passed=False, duration_ms=duration, errors=[str(e)])
+                )
                 print(f"  ❌ {module}: {e}")
-        
+
         return results
-    
-    def run_hard_rules_tests(self) -> List[TestMetrics]:
+
+    def run_hard_rules_tests(self) -> list[TestMetrics]:
         """Ejecuta tests de reglas duras"""
         print("\n" + "=" * 60)
         print("🧪 TESTS DE REGLAS DURAS")
         print("=" * 60)
-        
+
         # Importar y ejecutar tests
         try:
             from tests.test_hard_rules_blocking import (
+                test_20_complete_flows,
+                test_fuzz_100_random_inputs,
                 test_rule_1_always_respond,
                 test_rule_1_callback_response,
                 test_rule_2_form_throttling,
@@ -705,10 +673,8 @@ class ReleaseGate:
                 test_rule_4_understanding_required,
                 test_rule_5_corrections_not_ignored,
                 test_rule_6_markdown_valid,
-                test_fuzz_100_random_inputs,
-                test_20_complete_flows
             )
-            
+
             tests = [
                 ("Rule 1: Always Respond", test_rule_1_always_respond),
                 ("Rule 1b: Callbacks", test_rule_1_callback_response),
@@ -720,110 +686,106 @@ class ReleaseGate:
                 ("Fuzz 100 Inputs", test_fuzz_100_random_inputs),
                 ("20 Flows", test_20_complete_flows),
             ]
-            
+
             results = []
             for name, test_func in tests:
                 start = time.time()
                 try:
                     result = test_func()
                     duration = (time.time() - start) * 1000
-                    results.append(TestMetrics(
-                        name=name,
-                        passed=result.passed,
-                        duration_ms=duration,
-                        details={"message": result.message},
-                        errors=result.details if not result.passed else []
-                    ))
+                    results.append(
+                        TestMetrics(
+                            name=name,
+                            passed=result.passed,
+                            duration_ms=duration,
+                            details={"message": result.message},
+                            errors=result.details if not result.passed else [],
+                        )
+                    )
                 except Exception as e:
                     duration = (time.time() - start) * 1000
-                    results.append(TestMetrics(
-                        name=name,
-                        passed=False,
-                        duration_ms=duration,
-                        errors=[str(e)]
-                    ))
-            
+                    results.append(
+                        TestMetrics(name=name, passed=False, duration_ms=duration, errors=[str(e)])
+                    )
+
             return results
-            
+
         except ImportError as e:
             print(f"  ❌ Could not import tests: {e}")
-            return [TestMetrics(
-                name="Import Tests",
-                passed=False,
-                duration_ms=0,
-                errors=[str(e)]
-            )]
-    
-    def run_simulations(self) -> Tuple[List[SimulationResult], Dict[str, Any]]:
+            return [TestMetrics(name="Import Tests", passed=False, duration_ms=0, errors=[str(e)])]
+
+    def run_simulations(self) -> tuple[list[SimulationResult], dict[str, Any]]:
         """Ejecuta simulaciones tipo humano"""
         simulator = HumanSimulator()
         results = simulator.run_all_plans()
         metrics = simulator.get_metrics()
         return results, metrics
-    
-    def check_manual_test(self) -> Tuple[bool, str]:
+
+    def check_manual_test(self) -> tuple[bool, str]:
         """Verifica si hay evidencia de test manual"""
         manual_test_file = Path(__file__).parent.parent / "data" / "manual_test_evidence.json"
-        
+
         if manual_test_file.exists():
             try:
                 with open(manual_test_file) as f:
                     evidence = json.load(f)
-                
+
                 if evidence.get("completed") and evidence.get("plan_maestro_completed"):
                     return True, evidence.get("notes", "Manual test completed")
             except:
                 pass
-        
+
         return False, "No manual test evidence found"
-    
+
     def evaluate_release(self) -> bool:
         """Evalúa si se puede hacer release"""
         blocking = []
-        
+
         # Verificar crashes
         if self.report.crashes > MAX_CRASHES:
             blocking.append(f"Crashes: {self.report.crashes} (max: {MAX_CRASHES})")
-        
+
         # Verificar silent failures
         if self.report.silent_failures > MAX_SILENT:
             blocking.append(f"Silent failures: {self.report.silent_failures} (max: {MAX_SILENT})")
-        
+
         # Verificar tasa de respuesta
         if self.report.response_rate < REQUIRED_RESPONSE_RATE:
-            blocking.append(f"Response rate: {self.report.response_rate:.1f}% (required: {REQUIRED_RESPONSE_RATE}%)")
-        
+            blocking.append(
+                f"Response rate: {self.report.response_rate:.1f}% (required: {REQUIRED_RESPONSE_RATE}%)"
+            )
+
         # Verificar planes completos
         if self.report.plans_completed < REQUIRED_COMPLETE_PLANS:
             blocking.append(f"Plans completed: {self.report.plans_completed}/{REQUIRED_COMPLETE_PLANS}")
-        
+
         # Verificar tests
         if self.report.tests_passed < self.report.tests_total:
             blocking.append(f"Tests: {self.report.tests_passed}/{self.report.tests_total} passed")
-        
+
         # Verificar test manual
         if not self.report.manual_test_completed:
             blocking.append("Manual test in Telegram not completed")
-        
+
         self.report.blocking_reasons = blocking
         self.report.can_release = len(blocking) == 0
-        
+
         return self.report.can_release
-    
+
     def generate_report(self) -> str:
         """Genera reporte markdown"""
         lines = [
-            f"# 🚀 MigPAL Release Report",
-            f"",
+            "# 🚀 MigPAL Release Report",
+            "",
             f"**Fecha:** {self.report.timestamp.strftime('%Y-%m-%d %H:%M:%S')}",
             f"**Versión:** {self.report.version}",
-            f"",
-            f"---",
-            f"",
-            f"## 📊 Resumen Ejecutivo",
-            f"",
-            f"| Métrica | Valor | Requerido | Estado |",
-            f"|---------|-------|-----------|--------|",
+            "",
+            "---",
+            "",
+            "## 📊 Resumen Ejecutivo",
+            "",
+            "| Métrica | Valor | Requerido | Estado |",
+            "|---------|-------|-----------|--------|",
             f"| Tasa de Respuesta | {self.report.response_rate:.1f}% | {REQUIRED_RESPONSE_RATE}% | {'✅' if self.report.response_rate >= REQUIRED_RESPONSE_RATE else '❌'} |",
             f"| Tiempo Medio | {self.report.avg_response_time_ms:.1f}ms | <1000ms | {'✅' if self.report.avg_response_time_ms < 1000 else '⚠️'} |",
             f"| Crashes | {self.report.crashes} | {MAX_CRASHES} | {'✅' if self.report.crashes <= MAX_CRASHES else '❌'} |",
@@ -831,112 +793,130 @@ class ReleaseGate:
             f"| Planes Completos | {self.report.plans_completed}/{self.report.plans_total} | {REQUIRED_COMPLETE_PLANS}/{REQUIRED_COMPLETE_PLANS} | {'✅' if self.report.plans_completed >= REQUIRED_COMPLETE_PLANS else '❌'} |",
             f"| Tests Pasados | {self.report.tests_passed}/{self.report.tests_total} | {self.report.tests_total}/{self.report.tests_total} | {'✅' if self.report.tests_passed >= self.report.tests_total else '❌'} |",
             f"| Test Manual | {'Sí' if self.report.manual_test_completed else 'No'} | Sí | {'✅' if self.report.manual_test_completed else '❌'} |",
-            f"",
-            f"---",
-            f"",
-            f"## 🎯 Decisión de Release",
-            f"",
+            "",
+            "---",
+            "",
+            "## 🎯 Decisión de Release",
+            "",
         ]
-        
+
         if self.report.can_release:
-            lines.extend([
-                f"### ✅ APROBADO PARA RELEASE",
-                f"",
-                f"Todos los criterios de calidad han sido cumplidos.",
-                f"",
-            ])
+            lines.extend(
+                [
+                    "### ✅ APROBADO PARA RELEASE",
+                    "",
+                    "Todos los criterios de calidad han sido cumplidos.",
+                    "",
+                ]
+            )
         else:
-            lines.extend([
-                f"### ❌ BLOQUEADO - NO RELEASE",
-                f"",
-                f"**Razones de bloqueo:**",
-                f"",
-            ])
+            lines.extend(
+                [
+                    "### ❌ BLOQUEADO - NO RELEASE",
+                    "",
+                    "**Razones de bloqueo:**",
+                    "",
+                ]
+            )
             for reason in self.report.blocking_reasons:
                 lines.append(f"- ⛔ {reason}")
             lines.append("")
-        
+
         # Tests
-        lines.extend([
-            f"---",
-            f"",
-            f"## 🧪 Resultados de Tests",
-            f"",
-            f"| Test | Estado | Tiempo |",
-            f"|------|--------|--------|",
-        ])
-        
+        lines.extend(
+            [
+                "---",
+                "",
+                "## 🧪 Resultados de Tests",
+                "",
+                "| Test | Estado | Tiempo |",
+                "|------|--------|--------|",
+            ]
+        )
+
         for test in self.report.test_results:
             status = "✅" if test.passed else "❌"
             lines.append(f"| {test.name} | {status} | {test.duration_ms:.0f}ms |")
-        
+
         # Simulaciones
-        lines.extend([
-            f"",
-            f"---",
-            f"",
-            f"## 📋 Simulaciones de Planes",
-            f"",
-            f"| # | Plan | Pasos | Estado |",
-            f"|---|------|-------|--------|",
-        ])
-        
+        lines.extend(
+            [
+                "",
+                "---",
+                "",
+                "## 📋 Simulaciones de Planes",
+                "",
+                "| # | Plan | Pasos | Estado |",
+                "|---|------|-------|--------|",
+            ]
+        )
+
         for sim in self.report.simulations:
             status = "✅" if sim.completed else "❌"
-            lines.append(f"| {sim.flow_id} | {sim.flow_name} | {sim.steps_completed}/{sim.steps_total} | {status} |")
-        
+            lines.append(
+                f"| {sim.flow_id} | {sim.flow_name} | {sim.steps_completed}/{sim.steps_total} | {status} |"
+            )
+
         # Fricciones
         if self.report.top_frictions:
-            lines.extend([
-                f"",
-                f"---",
-                f"",
-                f"## ⚠️ Top Fricciones",
-                f"",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "---",
+                    "",
+                    "## ⚠️ Top Fricciones",
+                    "",
+                ]
+            )
             for friction, count in self.report.top_frictions[:5]:
                 lines.append(f"- ({count}x) {friction}")
-        
+
         # Bugs
-        lines.extend([
-            f"",
-            f"---",
-            f"",
-            f"## 🐛 Bugs",
-            f"",
-            f"### Encontrados",
-            f"",
-        ])
-        
+        lines.extend(
+            [
+                "",
+                "---",
+                "",
+                "## 🐛 Bugs",
+                "",
+                "### Encontrados",
+                "",
+            ]
+        )
+
         if self.report.bugs_found:
             for bug in self.report.bugs_found:
                 lines.append(f"- 🔴 {bug}")
         else:
             lines.append("- Ninguno en esta ejecución")
-        
-        lines.extend([
-            f"",
-            f"### Cerrados",
-            f"",
-        ])
-        
+
+        lines.extend(
+            [
+                "",
+                "### Cerrados",
+                "",
+            ]
+        )
+
         if self.report.bugs_closed:
             for bug in self.report.bugs_closed:
                 lines.append(f"- 🟢 {bug}")
         else:
             lines.append("- N/A")
-        
+
         # Footer
-        lines.extend([
-            f"",
-            f"---",
-            f"",
-            f"*Generado automáticamente por release_gate.py*",
-            f"",
-        ])
-        
+        lines.extend(
+            [
+                "",
+                "---",
+                "",
+                "*Generado automáticamente por release_gate.py*",
+                "",
+            ]
+        )
+
         return "\n".join(lines)
-    
+
     def run(self) -> int:
         """Ejecuta el gate completo"""
         print("\n" + "=" * 70)
@@ -945,19 +925,19 @@ class ReleaseGate:
         print(f"Fecha: {self.report.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"Versión: {self.report.version}")
         print("=" * 70)
-        
+
         # 1. Tests de módulos
         module_tests = self.run_module_tests()
         self.report.test_results.extend(module_tests)
-        
+
         # 2. Tests de reglas duras
         hard_tests = self.run_hard_rules_tests()
         self.report.test_results.extend(hard_tests)
-        
+
         # Contar tests
         self.report.tests_total = len(self.report.test_results)
         self.report.tests_passed = sum(1 for t in self.report.test_results if t.passed)
-        
+
         # 3. Simulaciones
         simulations, metrics = self.run_simulations()
         self.report.simulations = simulations
@@ -969,23 +949,23 @@ class ReleaseGate:
         self.report.silent_failures = metrics["silent_failures"]
         self.report.plans_completed = metrics["plans_completed"]
         self.report.top_frictions = metrics["top_frictions"]
-        
+
         # 4. Verificar test manual
         manual_completed, manual_notes = self.check_manual_test()
         self.report.manual_test_completed = manual_completed
         self.report.manual_test_notes = manual_notes
-        
+
         # 5. Evaluar release
         can_release = self.evaluate_release()
-        
+
         # 6. Generar reporte
         report_content = self.generate_report()
-        
+
         # Guardar reporte
         REPORT_DIR.mkdir(parents=True, exist_ok=True)
-        with open(REPORT_FILE, 'w') as f:
+        with open(REPORT_FILE, "w") as f:
             f.write(report_content)
-        
+
         # Mostrar resumen
         print("\n" + "=" * 70)
         print("📊 RESUMEN FINAL")
@@ -1000,7 +980,7 @@ class ReleaseGate:
         print()
         print(f"📄 Reporte guardado en: {REPORT_FILE}")
         print()
-        
+
         if can_release:
             print("=" * 70)
             print("✅ RELEASE APROBADO")
@@ -1017,6 +997,7 @@ class ReleaseGate:
 
 
 # ============== MAIN ==============
+
 
 def main():
     gate = ReleaseGate()

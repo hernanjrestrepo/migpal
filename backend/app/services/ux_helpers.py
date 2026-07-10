@@ -9,42 +9,41 @@ Incluye:
 - Indicadores de fase y siguiente acción
 """
 
-from typing import Optional, Dict, Any
-from .phase_manager import Phase, PHASE_CONFIG, get_phase_manager
+from .phase_manager import PHASE_CONFIG, Phase, get_phase_manager
 
 
 def get_progress_header(user_id: int, phase_manager=None) -> str:
     """
     Genera el header de progreso para mostrar en cada mensaje.
-    
+
     Formato:
     📍 Paso X de 6 | ▓▓▓░░ 33% | Siguiente: [acción]
-    
+
     Args:
         user_id: ID del usuario
         phase_manager: Instancia del PhaseManager (opcional)
-    
+
     Returns:
         String con el header de progreso
     """
     if phase_manager is None:
         phase_manager = get_phase_manager()
-    
+
     current_phase = phase_manager.get_user_phase(user_id)
-    config = PHASE_CONFIG[current_phase]
-    
+    PHASE_CONFIG[current_phase]
+
     # Número de paso (1-6)
     step_number = current_phase.value + 1
     total_steps = 6
-    
+
     # Porcentaje de progreso
     progress_percent = int((current_phase.value / 5) * 100)
-    
+
     # Barra de progreso compacta
     bar_width = 5
     filled = int(bar_width * progress_percent / 100)
     bar = "▓" * filled + "░" * (bar_width - filled)
-    
+
     # Siguiente acción
     if current_phase == Phase.CIERRE:
         next_action = "¡Completado!"
@@ -55,27 +54,27 @@ def get_progress_header(user_id: int, phase_manager=None) -> str:
             next_action = f"{next_config.name} (${next_config.price})"
         else:
             next_action = next_config.name
-    
+
     return f"📍 Paso {step_number} de {total_steps} | {bar} {progress_percent}% | Siguiente: {next_action}"
 
 
 def get_phase_indicator(user_id: int, phase_manager=None) -> str:
     """
     Genera un indicador de fase más detallado.
-    
+
     Args:
         user_id: ID del usuario
         phase_manager: Instancia del PhaseManager (opcional)
-    
+
     Returns:
         String con el indicador de fase
     """
     if phase_manager is None:
         phase_manager = get_phase_manager()
-    
+
     current_phase = phase_manager.get_user_phase(user_id)
-    config = PHASE_CONFIG[current_phase]
-    
+    PHASE_CONFIG[current_phase]
+
     # Mostrar todas las fases con estado
     phases_display = []
     for phase in Phase:
@@ -87,7 +86,7 @@ def get_phase_indicator(user_id: int, phase_manager=None) -> str:
         else:
             status = "⬜"
         phases_display.append(f"{status}{p_config.emoji}")
-    
+
     return " ".join(phases_display)
 
 
@@ -96,57 +95,57 @@ def format_message_with_progress(
     message: str,
     show_header: bool = True,
     show_phase_indicator: bool = False,
-    phase_manager=None
+    phase_manager=None,
 ) -> str:
     """
     Formatea un mensaje agregando el header de progreso.
-    
+
     Args:
         user_id: ID del usuario
         message: Mensaje original
         show_header: Si mostrar el header de progreso
         show_phase_indicator: Si mostrar el indicador de fases
         phase_manager: Instancia del PhaseManager (opcional)
-    
+
     Returns:
         Mensaje formateado con progreso
     """
     parts = []
-    
+
     if show_header:
         header = get_progress_header(user_id, phase_manager)
         parts.append(header)
-    
+
     if show_phase_indicator:
         indicator = get_phase_indicator(user_id, phase_manager)
         parts.append(indicator)
-    
+
     if parts:
         parts.append("")  # Línea en blanco
         parts.append(message)
         return "\n".join(parts)
-    
+
     return message
 
 
 def get_payment_invitation(phase: Phase, user_name: str = "") -> str:
     """
     Genera una invitación natural al pago al cerrar una fase.
-    
+
     Args:
         phase: Fase que se va a pagar
         user_name: Nombre del usuario (opcional)
-    
+
     Returns:
         Mensaje de invitación al pago
     """
     config = PHASE_CONFIG[phase]
-    
+
     if config.price == 0:
         return ""
-    
+
     name_part = f", {user_name}" if user_name else ""
-    
+
     # Mensajes naturales según la fase
     invitations = {
         Phase.DIAGNOSTICO: f"""
@@ -195,18 +194,21 @@ Incluye:
 ¿Cómo prefieres pagar?
 """,
     }
-    
-    return invitations.get(phase, f"""
+
+    return invitations.get(
+        phase,
+        f"""
 Para continuar con **{config.name}**, la inversión es de **${config.price} USD**.
 
 ¿Cómo prefieres pagar?
-""")
+""",
+    )
 
 
 def get_payment_options_message() -> str:
     """
     Genera el mensaje con las opciones de pago disponibles.
-    
+
     Returns:
         Mensaje con opciones de pago
     """
@@ -223,17 +225,17 @@ Selecciona tu método preferido 👇
 def get_phase_completion_message(phase: Phase, user_name: str = "") -> str:
     """
     Genera mensaje de celebración al completar una fase.
-    
+
     Args:
         phase: Fase completada
         user_name: Nombre del usuario (opcional)
-    
+
     Returns:
         Mensaje de celebración
     """
     config = PHASE_CONFIG[phase]
     name_part = f" {user_name}" if user_name else ""
-    
+
     messages = {
         Phase.REGISTRO: f"🎉 ¡Registro completado{name_part}! Ya eres parte de MigPAL.",
         Phase.DIAGNOSTICO: f"📊 ¡Diagnóstico listo{name_part}! Ya sé exactamente cómo ayudarte.",
@@ -242,18 +244,18 @@ def get_phase_completion_message(phase: Phase, user_name: str = "") -> str:
         Phase.EJECUCION: f"🚀 ¡Aplicación enviada{name_part}! Ahora a esperar.",
         Phase.CIERRE: f"🎊 ¡FELICIDADES{name_part}! Has completado tu proceso migratorio.",
     }
-    
+
     return messages.get(phase, f"✅ Fase {config.name} completada.")
 
 
 def get_missing_data_prompt(missing_fields: list, current_field: str = None) -> str:
     """
     Genera un prompt amigable para solicitar datos faltantes.
-    
+
     Args:
         missing_fields: Lista de campos faltantes
         current_field: Campo actual que se está solicitando
-    
+
     Returns:
         Mensaje solicitando el dato
     """
@@ -272,23 +274,23 @@ def get_missing_data_prompt(missing_fields: list, current_field: str = None) -> 
         "criminal_record": "¿Tienes antecedentes penales?",
         "savings_range": "¿Cuánto tienes ahorrado aproximadamente?",
     }
-    
+
     if current_field and current_field in field_prompts:
         return field_prompts[current_field]
-    
+
     if missing_fields:
         first_field = missing_fields[0]
         return field_prompts.get(first_field, f"Necesito saber tu {first_field}")
-    
+
     return "¿En qué puedo ayudarte?"
 
 
 __all__ = [
-    'get_progress_header',
-    'get_phase_indicator',
-    'format_message_with_progress',
-    'get_payment_invitation',
-    'get_payment_options_message',
-    'get_phase_completion_message',
-    'get_missing_data_prompt',
+    "get_progress_header",
+    "get_phase_indicator",
+    "format_message_with_progress",
+    "get_payment_invitation",
+    "get_payment_options_message",
+    "get_phase_completion_message",
+    "get_missing_data_prompt",
 ]

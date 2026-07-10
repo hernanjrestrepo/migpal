@@ -1,12 +1,13 @@
 # Script to seed baseline data sources for MigPAL
 
-import sys
 import os
+import sys
 from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlmodel import Session, create_engine, select
+
 from app.models.data_source import DataSource
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./migpal.db")

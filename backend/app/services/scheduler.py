@@ -9,9 +9,7 @@ from app.models.planner_task import PlannerTask
 
 
 def ensure_task(session: Session, slug: str, owner: str = "system") -> PlannerTask:
-    task = session.exec(
-        select(PlannerTask).where(PlannerTask.linked_source_slug == slug)
-    ).first()
+    task = session.exec(select(PlannerTask).where(PlannerTask.linked_source_slug == slug)).first()
     if task:
         return task
     task = PlannerTask(

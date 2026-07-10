@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 
 from app.db.session import get_session
+from app.models.business_listing import BusinessListing
 from app.models.planner_task import PlannerTask
 from app.models.zillow_listing import ZillowListing
-from app.models.business_listing import BusinessListing
 
 router = APIRouter(prefix="/bot", tags=["bot"])
 

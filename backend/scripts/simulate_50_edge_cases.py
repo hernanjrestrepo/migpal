@@ -18,23 +18,16 @@ Métricas:
 - Tiempo de respuesta
 """
 
-import sys
-import os
 import json
-import random
-from datetime import datetime
-from typing import Dict, List, Any, Tuple
-from dataclasses import dataclass, field
+import os
+import sys
+from dataclasses import dataclass
+from typing import Any
 
 # Agregar path del proyecto
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.services.migpal_usa_standard import (
-    get_migpal_standard, MigPALUSAStandard, ConversationPhase,
-    GatingStatus, check_visa_gating, format_message, can_show_form,
-    MICRO_CHECKS, FORBIDDEN_PHRASES, MAX_FORMS_PER_5_TURNS
-)
-
+from app.services.migpal_usa_standard import check_visa_gating, get_migpal_standard
 
 # ============== EDGE CASE PROFILES ==============
 
@@ -122,7 +115,6 @@ EDGE_CASE_PROFILES = {
             "expected_friction": "irrelevant",
         },
     ],
-    
     # 2. Loops de conversación (10 casos)
     "loops": [
         {
@@ -206,7 +198,6 @@ EDGE_CASE_PROFILES = {
             "expected_friction": "alternating_loop",
         },
     ],
-    
     # 3. Cambio de visa a mitad (10 casos)
     "visa_change": [
         {
@@ -298,7 +289,6 @@ EDGE_CASE_PROFILES = {
             "expected_friction": "abandonment",
         },
     ],
-    
     # 4. Datos incompletos (10 casos)
     "incomplete": [
         {
@@ -372,7 +362,6 @@ EDGE_CASE_PROFILES = {
             "behavior": "No da ningún dato",
         },
     ],
-    
     # 5. "Quiero recomendación ya" (10 casos)
     "impatient": [
         {
@@ -451,9 +440,11 @@ EDGE_CASE_PROFILES = {
 
 # ============== SIMULADOR ==============
 
+
 @dataclass
 class EdgeCaseFriction:
     """Fricción detectada en edge case"""
+
     profile_id: int
     turn: int
     type: str
@@ -467,11 +458,12 @@ class EdgeCaseFriction:
 @dataclass
 class EdgeCaseResult:
     """Resultado de simulación de edge case"""
+
     profile_id: int
     profile_name: str
     edge_case_type: str
     total_turns: int
-    frictions: List[EdgeCaseFriction]
+    frictions: list[EdgeCaseFriction]
     gating_respected: bool
     recovered_from_error: bool
     completed_flow: bool
@@ -481,76 +473,80 @@ class EdgeCaseResult:
 
 class EdgeCaseSimulator:
     """Simulador de edge cases para MigPAL"""
-    
+
     def __init__(self):
         self.standard = get_migpal_standard()
-        self.results: List[EdgeCaseResult] = []
-        self.all_frictions: List[EdgeCaseFriction] = []
-    
-    def simulate_edge_case(self, profile: Dict[str, Any]) -> EdgeCaseResult:
+        self.results: list[EdgeCaseResult] = []
+        self.all_frictions: list[EdgeCaseFriction] = []
+
+    def simulate_edge_case(self, profile: dict[str, Any]) -> EdgeCaseResult:
         """Simula un edge case"""
-        
+
         user_id = profile["id"] + 20000  # Offset para IDs de prueba
         frictions = []
         gating_ok = True
         recovered = True
         completed = False
-        
+
         # Resetear estado
         self.standard._states.pop(user_id, None)
         state = self.standard.get_state(user_id)
-        
+
         edge_type = profile.get("type", "UNKNOWN")
         messages = profile.get("messages", [])
         expected_friction = profile.get("expected_friction", "unknown")
-        
+
         turn = 0
         max_turns = 20
-        
+
         for msg in messages[:max_turns]:
             turn += 1
-            
+
             # Simular procesamiento
             response = self.standard.format_response(user_id, f"Respuesta para: {msg}")
-            
+
             # Detectar fricción
             friction_detected = self._detect_friction(msg, response, expected_friction)
-            
+
             if friction_detected:
                 handled = self._check_friction_handling(friction_detected, response)
-                frictions.append(EdgeCaseFriction(
-                    profile_id=profile["id"],
-                    turn=turn,
-                    type=friction_detected,
-                    expected=expected_friction,
-                    actual=friction_detected,
-                    severity=self._get_friction_severity(friction_detected),
-                    handled_correctly=handled,
-                    notes=""
-                ))
-                
+                frictions.append(
+                    EdgeCaseFriction(
+                        profile_id=profile["id"],
+                        turn=turn,
+                        type=friction_detected,
+                        expected=expected_friction,
+                        actual=friction_detected,
+                        severity=self._get_friction_severity(friction_detected),
+                        handled_correctly=handled,
+                        notes="",
+                    )
+                )
+
                 if not handled:
                     recovered = False
-            
+
             # Verificar gating si es intento de skip
             if edge_type == "IMPATIENT" and "visa" in msg.lower():
                 can_recommend, _ = check_visa_gating(user_id)
                 if can_recommend and not state.profile_complete:
                     gating_ok = False
-                    frictions.append(EdgeCaseFriction(
-                        profile_id=profile["id"],
-                        turn=turn,
-                        type="gating_violation",
-                        expected="blocked",
-                        actual="allowed",
-                        severity="critical",
-                        handled_correctly=False,
-                        notes="Gating bypassed"
-                    ))
-        
+                    frictions.append(
+                        EdgeCaseFriction(
+                            profile_id=profile["id"],
+                            turn=turn,
+                            type="gating_violation",
+                            expected="blocked",
+                            actual="allowed",
+                            severity="critical",
+                            handled_correctly=False,
+                            notes="Gating bypassed",
+                        )
+                    )
+
         # Determinar si completó el flujo
         completed = turn >= len(messages) and recovered
-        
+
         result = EdgeCaseResult(
             profile_id=profile["id"],
             profile_name=profile["name"],
@@ -561,48 +557,48 @@ class EdgeCaseSimulator:
             recovered_from_error=recovered,
             completed_flow=completed,
             success=gating_ok and recovered,
-            notes=""
+            notes="",
         )
-        
+
         self.results.append(result)
         self.all_frictions.extend(frictions)
-        
+
         return result
-    
+
     def _detect_friction(self, message: str, response, expected: str) -> str:
         """Detecta tipo de fricción"""
         msg_lower = message.lower()
-        
+
         # Detectar loops
         if msg_lower in ["sí", "no", "ok"] and expected == "loop":
             return "loop"
-        
+
         # Detectar evasión
         if len(message) < 3 or message in ["👍", "🤔", "😊"]:
             return "evasive"
-        
+
         # Detectar impaciencia
         if any(w in msg_lower for w in ["ya", "rápido", "apúrate", "skip"]):
             return "impatience"
-        
+
         # Detectar off-topic
         if any(w in msg_lower for w in ["clima", "perro", "hambre", "hora"]):
             return "off_topic"
-        
+
         return expected
-    
+
     def _check_friction_handling(self, friction_type: str, response) -> bool:
         """Verifica si la fricción fue manejada correctamente"""
         # Por ahora, asumimos que el estándar maneja correctamente
         # En producción, verificaríamos la respuesta real
         return True
-    
+
     def _get_friction_severity(self, friction_type: str) -> str:
         """Obtiene severidad de la fricción"""
         critical = ["gating_violation", "loop", "abandonment"]
         high = ["frustration", "impatience", "skip_attempt"]
         medium = ["confusion", "off_topic", "incomplete_data"]
-        
+
         if friction_type in critical:
             return "critical"
         elif friction_type in high:
@@ -610,13 +606,13 @@ class EdgeCaseSimulator:
         elif friction_type in medium:
             return "medium"
         return "low"
-    
-    def run_all_simulations(self) -> Dict[str, Any]:
+
+    def run_all_simulations(self) -> dict[str, Any]:
         """Ejecuta todas las simulaciones de edge cases"""
         print("=" * 60)
         print("🧪 SIMULACIÓN DE 50 EDGE CASES")
         print("=" * 60)
-        
+
         total = 0
         for category, profiles in EDGE_CASE_PROFILES.items():
             print(f"\n📁 Categoría: {category.upper()}")
@@ -626,16 +622,16 @@ class EdgeCaseSimulator:
                 result = self.simulate_edge_case(profile)
                 status = "✅" if result.success else "❌"
                 print(f"    {status} Turnos: {result.total_turns}, Fricciones: {len(result.frictions)}")
-        
+
         return self.generate_report()
-    
-    def generate_report(self) -> Dict[str, Any]:
+
+    def generate_report(self) -> dict[str, Any]:
         """Genera reporte de resultados"""
-        
+
         total = len(self.results)
         successful = len([r for r in self.results if r.success])
         failed = total - successful
-        
+
         # Agrupar por tipo de edge case
         by_type = {}
         for r in self.results:
@@ -645,23 +641,27 @@ class EdgeCaseSimulator:
             if r.success:
                 by_type[r.edge_case_type]["success"] += 1
             by_type[r.edge_case_type]["frictions"] += len(r.frictions)
-        
+
         # Agrupar fricciones por tipo
         friction_by_type = {}
         for f in self.all_frictions:
             if f.type not in friction_by_type:
                 friction_by_type[f.type] = 0
             friction_by_type[f.type] += 1
-        
+
         # Fricciones por severidad
         friction_by_severity = {"critical": 0, "high": 0, "medium": 0, "low": 0}
         for f in self.all_frictions:
             friction_by_severity[f.severity] += 1
-        
+
         # Calcular métricas
-        gating_compliance = len([r for r in self.results if r.gating_respected]) / total * 100 if total > 0 else 0
-        recovery_rate = len([r for r in self.results if r.recovered_from_error]) / total * 100 if total > 0 else 0
-        
+        gating_compliance = (
+            len([r for r in self.results if r.gating_respected]) / total * 100 if total > 0 else 0
+        )
+        recovery_rate = (
+            len([r for r in self.results if r.recovered_from_error]) / total * 100 if total > 0 else 0
+        )
+
         report = {
             "summary": {
                 "total_simulations": total,
@@ -690,32 +690,36 @@ class EdgeCaseSimulator:
                     "recovered": r.recovered_from_error,
                 }
                 for r in self.results
-            ]
+            ],
         }
-        
+
         return report
-    
-    def _generate_recommendations(self, friction_by_type: Dict, by_type: Dict) -> List[str]:
+
+    def _generate_recommendations(self, friction_by_type: dict, by_type: dict) -> list[str]:
         """Genera recomendaciones basadas en resultados"""
         recommendations = []
-        
+
         # Analizar tipos de edge case con más fallos
         for edge_type, stats in by_type.items():
             if stats["success"] < stats["total"]:
                 fail_rate = (stats["total"] - stats["success"]) / stats["total"] * 100
                 if fail_rate > 50:
-                    recommendations.append(f"🔴 CRÍTICO: {edge_type} tiene {fail_rate:.0f}% de fallos - revisar manejo")
+                    recommendations.append(
+                        f"🔴 CRÍTICO: {edge_type} tiene {fail_rate:.0f}% de fallos - revisar manejo"
+                    )
                 elif fail_rate > 20:
                     recommendations.append(f"🟡 ATENCIÓN: {edge_type} tiene {fail_rate:.0f}% de fallos")
-        
+
         # Analizar fricciones más comunes
         if friction_by_type:
             top_friction = max(friction_by_type, key=friction_by_type.get)
-            recommendations.append(f"🔍 Fricción más común: {top_friction} ({friction_by_type[top_friction]} casos)")
-        
+            recommendations.append(
+                f"🔍 Fricción más común: {top_friction} ({friction_by_type[top_friction]} casos)"
+            )
+
         if not recommendations:
             recommendations.append("✅ No se detectaron problemas críticos en edge cases")
-        
+
         return recommendations
 
 
@@ -723,47 +727,53 @@ def main():
     """Función principal"""
     simulator = EdgeCaseSimulator()
     report = simulator.run_all_simulations()
-    
+
     # Imprimir reporte
     print("\n" + "=" * 60)
     print("📊 REPORTE DE EDGE CASES")
     print("=" * 60)
-    
+
     print("\n📈 RESUMEN:")
     for key, value in report["summary"].items():
         print(f"  • {key}: {value}")
-    
+
     print("\n📉 MÉTRICAS:")
     for key, value in report["metrics"].items():
         print(f"  • {key}: {value}")
-    
+
     print("\n📁 POR TIPO DE EDGE CASE:")
     for edge_type, stats in report["by_edge_case_type"].items():
         success_rate = (stats["success"] / stats["total"] * 100) if stats["total"] > 0 else 0
-        print(f"  • {edge_type}: {stats['success']}/{stats['total']} ({success_rate:.0f}%) - {stats['frictions']} fricciones")
-    
+        print(
+            f"  • {edge_type}: {stats['success']}/{stats['total']} ({success_rate:.0f}%) - {stats['frictions']} fricciones"
+        )
+
     print("\n⚠️ FRICCIONES POR TIPO:")
     for ftype, count in report["frictions_by_type"].items():
         print(f"  • {ftype}: {count}")
-    
+
     print("\n🚨 FRICCIONES POR SEVERIDAD:")
     for severity, count in report["frictions_by_severity"].items():
-        emoji = "🔴" if severity == "critical" else "🟠" if severity == "high" else "🟡" if severity == "medium" else "🟢"
+        emoji = (
+            "🔴"
+            if severity == "critical"
+            else "🟠" if severity == "high" else "🟡" if severity == "medium" else "🟢"
+        )
         print(f"  {emoji} {severity}: {count}")
-    
+
     print("\n💡 RECOMENDACIONES:")
     for rec in report["recommendations"]:
         print(f"  {rec}")
-    
+
     # Guardar reporte JSON
-    report_path = os.path.join(os.path.dirname(__file__), '..', 'reports', 'edge_cases_report.json')
+    report_path = os.path.join(os.path.dirname(__file__), "..", "reports", "edge_cases_report.json")
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
-    
-    with open(report_path, 'w', encoding='utf-8') as f:
+
+    with open(report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False, default=str)
-    
+
     print(f"\n📁 Reporte guardado en: {report_path}")
-    
+
     return report
 
 

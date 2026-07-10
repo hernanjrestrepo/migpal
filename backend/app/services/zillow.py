@@ -2,19 +2,18 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Optional
 
 import httpx
 from bs4 import BeautifulSoup
 from sqlmodel import Session, select
 
-from app.models.data_source import DataSource, ScrapeJob, ScrapedDocument
+from app.models.data_source import DataSource, ScrapedDocument, ScrapeJob
 from app.models.zillow_listing import ZillowListing
 
 ZILLOW_SOURCE_SLUG = "zillow"
 
 
-def get_zillow_source(session: Session) -> Optional[DataSource]:
+def get_zillow_source(session: Session) -> DataSource | None:
     return session.exec(select(DataSource).where(DataSource.slug == ZILLOW_SOURCE_SLUG)).first()
 
 
@@ -23,7 +22,7 @@ def fetch_city_listings(city: str, state: str) -> list[dict]:
     url = f"https://www.zillow.com/homes/for_rent/{url_city}-{state}/"
     headers = {
         "User-Agent": "Mozilla/5.0 (compatible; MigPALBot/0.1; +https://migpal.ai)",
-        "Accept-Language": "en-US,en;q=0.9"
+        "Accept-Language": "en-US,en;q=0.9",
     }
     with httpx.Client(timeout=30.0) as client:
         resp = client.get(url, headers=headers)
@@ -64,9 +63,7 @@ def upsert_listings(session: Session, source: DataSource, listings: list[dict], 
         if not listing_id:
             continue
 
-        existing = session.exec(
-            select(ZillowListing).where(ZillowListing.listing_id == listing_id)
-        ).first()
+        existing = session.exec(select(ZillowListing).where(ZillowListing.listing_id == listing_id)).first()
 
         metadata = {
             "status": item.get("status_text"),
@@ -94,7 +91,7 @@ def upsert_listings(session: Session, source: DataSource, listings: list[dict], 
                 address=item.get("address"),
                 city=city,
                 state=state,
-                metadata_blob=json.dumps(metadata)
+                metadata_blob=json.dumps(metadata),
             )
             session.add(listing)
             inserted += 1
@@ -110,11 +107,7 @@ def sync_city(session: Session, city: str, state: str, job: ScrapeJob) -> Scrape
     listings = fetch_city_listings(city, state)
     records = upsert_listings(session, source, listings, city, state)
 
-    doc_payload = {
-        "city": city,
-        "state": state,
-        "records": records
-    }
+    doc_payload = {"city": city, "state": state, "records": records}
     content = json.dumps(doc_payload)
     content_hash = hashlib.sha256(content.encode()).hexdigest()
 
@@ -123,7 +116,7 @@ def sync_city(session: Session, city: str, state: str, job: ScrapeJob) -> Scrape
         title=f"Zillow {city}, {state} listings",
         content=content,
         content_hash=content_hash,
-        metadata_blob=json.dumps({"city": city, "state": state})
+        metadata_blob=json.dumps({"city": city, "state": state}),
     )
     session.add(doc)
     session.commit()

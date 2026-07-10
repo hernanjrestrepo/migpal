@@ -14,13 +14,8 @@ GRÁFICOS:
 """
 
 import io
-import os
-import re
-import random
 import logging
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass
-import asyncio
+import random
 
 import httpx
 
@@ -29,9 +24,11 @@ logger = logging.getLogger(__name__)
 # Intentar importar matplotlib
 try:
     import matplotlib
-    matplotlib.use('Agg')  # Backend sin GUI
-    import matplotlib.pyplot as plt
+
+    matplotlib.use("Agg")  # Backend sin GUI
     import matplotlib.patches as mpatches
+    import matplotlib.pyplot as plt
+
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
@@ -56,7 +53,6 @@ CITY_IMAGES = {
     "jacksonville": [
         "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Jacksonville_Skyline_Panorama_2.jpg/1280px-Jacksonville_Skyline_Panorama_2.jpg",
     ],
-    
     # Texas
     "houston": [
         "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Panoramic_Houston_skyline.jpg/1280px-Panoramic_Houston_skyline.jpg",
@@ -70,7 +66,6 @@ CITY_IMAGES = {
     "san_antonio": [
         "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/San_Antonio_skyline_Oct_2012.jpg/1280px-San_Antonio_skyline_Oct_2012.jpg",
     ],
-    
     # California
     "los_angeles": [
         "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/LA_Skyline_Mountains2.jpg/1280px-LA_Skyline_Mountains2.jpg",
@@ -84,7 +79,6 @@ CITY_IMAGES = {
     "san_jose": [
         "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Downtown_San_Jose_%28cropped%29.jpg/1280px-Downtown_San_Jose_%28cropped%29.jpg",
     ],
-    
     # New York
     "new_york": [
         "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/New_york_times_square-terabyte.jpg/1280px-New_york_times_square-terabyte.jpg",
@@ -92,7 +86,6 @@ CITY_IMAGES = {
     "new_york_city": [
         "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/New_york_times_square-terabyte.jpg/1280px-New_york_times_square-terabyte.jpg",
     ],
-    
     # Otros
     "chicago": [
         "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/2008-06-10_3000x1000_chicago_background.jpg/1280px-2008-06-10_3000x1000_chicago_background.jpg",
@@ -128,17 +121,17 @@ async def get_city_image_url(city_name: str) -> str:
     """Obtiene URL de imagen para una ciudad"""
     # Normalizar nombre
     city_key = city_name.lower().replace(" ", "_").replace("-", "_")
-    
+
     # Buscar en imágenes conocidas
     if city_key in CITY_IMAGES:
         return random.choice(CITY_IMAGES[city_key])
-    
+
     # Fallback a Unsplash
     query = city_name.replace(" ", "+")
     return f"https://source.unsplash.com/800x400/?{query},city,skyline"
 
 
-async def download_image(url: str) -> Optional[bytes]:
+async def download_image(url: str) -> bytes | None:
     """Descarga una imagen y retorna los bytes"""
     try:
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
@@ -152,9 +145,10 @@ async def download_image(url: str) -> Optional[bytes]:
 
 # ============== GENERADOR DE GRÁFICOS ==============
 
+
 class ChartGenerator:
     """Generador de gráficos para Telegram"""
-    
+
     def __init__(self):
         self.colors = {
             "primary": "#2196F3",
@@ -167,7 +161,7 @@ class ChartGenerator:
             "dark": "#37474F",
             "light": "#ECEFF1",
         }
-        
+
         self.category_colors = [
             "#2196F3",  # Azul
             "#4CAF50",  # Verde
@@ -179,38 +173,34 @@ class ChartGenerator:
             "#795548",  # Marrón
             "#607D8B",  # Gris azulado
         ]
-    
+
     def _setup_style(self):
         """Configura el estilo de los gráficos"""
         if not MATPLOTLIB_AVAILABLE:
             return
-        
-        plt.style.use('seaborn-v0_8-whitegrid')
-        plt.rcParams['font.family'] = 'sans-serif'
-        plt.rcParams['font.size'] = 10
-        plt.rcParams['axes.titlesize'] = 14
-        plt.rcParams['axes.labelsize'] = 11
-        plt.rcParams['figure.facecolor'] = 'white'
-        plt.rcParams['axes.facecolor'] = 'white'
-        plt.rcParams['savefig.facecolor'] = 'white'
-    
+
+        plt.style.use("seaborn-v0_8-whitegrid")
+        plt.rcParams["font.family"] = "sans-serif"
+        plt.rcParams["font.size"] = 10
+        plt.rcParams["axes.titlesize"] = 14
+        plt.rcParams["axes.labelsize"] = 11
+        plt.rcParams["figure.facecolor"] = "white"
+        plt.rcParams["axes.facecolor"] = "white"
+        plt.rcParams["savefig.facecolor"] = "white"
+
     def generate_city_comparison_chart(
-        self,
-        city1_name: str,
-        city1_scores: Dict[str, float],
-        city2_name: str,
-        city2_scores: Dict[str, float]
-    ) -> Optional[bytes]:
+        self, city1_name: str, city1_scores: dict[str, float], city2_name: str, city2_scores: dict[str, float]
+    ) -> bytes | None:
         """Genera gráfico de comparación de ciudades"""
         if not MATPLOTLIB_AVAILABLE:
             return None
-        
+
         self._setup_style()
-        
+
         categories = list(city1_scores.keys())
         scores1 = [city1_scores.get(cat, 50) for cat in categories]
         scores2 = [city2_scores.get(cat, 50) for cat in categories]
-        
+
         # Traducir categorías
         category_labels = {
             "costo_vida": "Costo de Vida",
@@ -224,66 +214,74 @@ class ChartGenerator:
             "calidad_vida": "Calidad Vida",
         }
         labels = [category_labels.get(cat, cat) for cat in categories]
-        
+
         # Crear figura
         fig, ax = plt.subplots(figsize=(10, 6))
-        
+
         x = range(len(categories))
         width = 0.35
-        
-        bars1 = ax.bar([i - width/2 for i in x], scores1, width, label=city1_name, color=self.colors["primary"])
-        bars2 = ax.bar([i + width/2 for i in x], scores2, width, label=city2_name, color=self.colors["accent"])
-        
-        ax.set_ylabel('Score')
-        ax.set_title(f'Comparación: {city1_name} vs {city2_name}')
+
+        bars1 = ax.bar(
+            [i - width / 2 for i in x], scores1, width, label=city1_name, color=self.colors["primary"]
+        )
+        bars2 = ax.bar(
+            [i + width / 2 for i in x], scores2, width, label=city2_name, color=self.colors["accent"]
+        )
+
+        ax.set_ylabel("Score")
+        ax.set_title(f"Comparación: {city1_name} vs {city2_name}")
         ax.set_xticks(x)
-        ax.set_xticklabels(labels, rotation=45, ha='right')
+        ax.set_xticklabels(labels, rotation=45, ha="right")
         ax.legend()
         ax.set_ylim(0, 100)
-        
+
         # Agregar valores en las barras
         for bar in bars1:
             height = bar.get_height()
-            ax.annotate(f'{height:.0f}',
-                       xy=(bar.get_x() + bar.get_width() / 2, height),
-                       xytext=(0, 3),
-                       textcoords="offset points",
-                       ha='center', va='bottom', fontsize=8)
-        
+            ax.annotate(
+                f"{height:.0f}",
+                xy=(bar.get_x() + bar.get_width() / 2, height),
+                xytext=(0, 3),
+                textcoords="offset points",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+            )
+
         for bar in bars2:
             height = bar.get_height()
-            ax.annotate(f'{height:.0f}',
-                       xy=(bar.get_x() + bar.get_width() / 2, height),
-                       xytext=(0, 3),
-                       textcoords="offset points",
-                       ha='center', va='bottom', fontsize=8)
-        
+            ax.annotate(
+                f"{height:.0f}",
+                xy=(bar.get_x() + bar.get_width() / 2, height),
+                xytext=(0, 3),
+                textcoords="offset points",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+            )
+
         plt.tight_layout()
-        
+
         # Guardar a bytes
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+        plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
         buf.seek(0)
         plt.close(fig)
-        
+
         return buf.getvalue()
-    
-    def generate_city_radar_chart(
-        self,
-        city_name: str,
-        scores: Dict[str, float]
-    ) -> Optional[bytes]:
+
+    def generate_city_radar_chart(self, city_name: str, scores: dict[str, float]) -> bytes | None:
         """Genera gráfico de radar para una ciudad"""
         if not MATPLOTLIB_AVAILABLE:
             return None
-        
+
         self._setup_style()
-        
+
         import numpy as np
-        
+
         categories = list(scores.keys())
         values = [scores.get(cat, 50) for cat in categories]
-        
+
         # Traducir categorías
         category_labels = {
             "costo_vida": "Costo Vida",
@@ -297,95 +295,92 @@ class ChartGenerator:
             "calidad_vida": "Calidad",
         }
         labels = [category_labels.get(cat, cat) for cat in categories]
-        
+
         # Número de variables
         num_vars = len(categories)
-        
+
         # Calcular ángulos
         angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
         values += values[:1]  # Cerrar el polígono
         angles += angles[:1]
-        
+
         # Crear figura
         fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
-        
+
         # Dibujar el radar
         ax.fill(angles, values, color=self.colors["primary"], alpha=0.25)
         ax.plot(angles, values, color=self.colors["primary"], linewidth=2)
-        
+
         # Configurar ejes
         ax.set_xticks(angles[:-1])
         ax.set_xticklabels(labels, size=10)
         ax.set_ylim(0, 100)
-        ax.set_title(f'Perfil de {city_name}', size=14, y=1.08)
-        
+        ax.set_title(f"Perfil de {city_name}", size=14, y=1.08)
+
         plt.tight_layout()
-        
+
         # Guardar a bytes
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+        plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
         buf.seek(0)
         plt.close(fig)
-        
+
         return buf.getvalue()
-    
-    def generate_price_distribution_chart(
-        self,
-        city_name: str,
-        prices: List[int]
-    ) -> Optional[bytes]:
+
+    def generate_price_distribution_chart(self, city_name: str, prices: list[int]) -> bytes | None:
         """Genera gráfico de distribución de precios"""
         if not MATPLOTLIB_AVAILABLE or not prices:
             return None
-        
+
         self._setup_style()
-        
+
         fig, ax = plt.subplots(figsize=(10, 5))
-        
+
         # Histograma
-        ax.hist(prices, bins=15, color=self.colors["primary"], edgecolor='white', alpha=0.7)
-        
+        ax.hist(prices, bins=15, color=self.colors["primary"], edgecolor="white", alpha=0.7)
+
         # Línea de media
         mean_price = sum(prices) / len(prices)
-        ax.axvline(mean_price, color=self.colors["danger"], linestyle='--', linewidth=2, label=f'Media: ${mean_price:,.0f}')
-        
-        ax.set_xlabel('Precio ($/mes)')
-        ax.set_ylabel('Cantidad de propiedades')
-        ax.set_title(f'Distribución de Precios de Renta en {city_name}')
+        ax.axvline(
+            mean_price,
+            color=self.colors["danger"],
+            linestyle="--",
+            linewidth=2,
+            label=f"Media: ${mean_price:,.0f}",
+        )
+
+        ax.set_xlabel("Precio ($/mes)")
+        ax.set_ylabel("Cantidad de propiedades")
+        ax.set_title(f"Distribución de Precios de Renta en {city_name}")
         ax.legend()
-        
+
         plt.tight_layout()
-        
+
         # Guardar a bytes
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+        plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
         buf.seek(0)
         plt.close(fig)
-        
+
         return buf.getvalue()
-    
-    def generate_score_gauge(
-        self,
-        title: str,
-        score: float,
-        max_score: float = 100
-    ) -> Optional[bytes]:
+
+    def generate_score_gauge(self, title: str, score: float, max_score: float = 100) -> bytes | None:
         """Genera un gauge de score"""
         if not MATPLOTLIB_AVAILABLE:
             return None
-        
+
         self._setup_style()
-        
+
         import numpy as np
-        
+
         fig, ax = plt.subplots(figsize=(6, 4))
-        
+
         # Crear semicírculo
         theta = np.linspace(0, np.pi, 100)
-        
+
         # Fondo gris
-        ax.fill_between(theta, 0, 1, alpha=0.1, color='gray')
-        
+        ax.fill_between(theta, 0, 1, alpha=0.1, color="gray")
+
         # Determinar color según score
         if score >= 75:
             color = self.colors["success"]
@@ -393,80 +388,94 @@ class ChartGenerator:
             color = self.colors["warning"]
         else:
             color = self.colors["danger"]
-        
+
         # Arco de score
         score_angle = (score / max_score) * np.pi
         theta_score = np.linspace(0, score_angle, 50)
         ax.fill_between(theta_score, 0.6, 1, alpha=0.7, color=color)
-        
+
         # Texto del score
-        ax.text(np.pi/2, 0.3, f'{score:.0f}', ha='center', va='center', fontsize=36, fontweight='bold', color=color)
-        ax.text(np.pi/2, 0.05, title, ha='center', va='center', fontsize=12)
-        
+        ax.text(
+            np.pi / 2,
+            0.3,
+            f"{score:.0f}",
+            ha="center",
+            va="center",
+            fontsize=36,
+            fontweight="bold",
+            color=color,
+        )
+        ax.text(np.pi / 2, 0.05, title, ha="center", va="center", fontsize=12)
+
         ax.set_xlim(0, np.pi)
         ax.set_ylim(0, 1.2)
-        ax.axis('off')
-        
+        ax.axis("off")
+
         plt.tight_layout()
-        
+
         # Guardar a bytes
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+        plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
         buf.seek(0)
         plt.close(fig)
-        
+
         return buf.getvalue()
-    
+
     def generate_housing_summary_chart(
-        self,
-        city_name: str,
-        avg_rent_1br: int,
-        avg_rent_2br: int,
-        avg_rent_3br: int,
-        median_home_price: int
-    ) -> Optional[bytes]:
+        self, city_name: str, avg_rent_1br: int, avg_rent_2br: int, avg_rent_3br: int, median_home_price: int
+    ) -> bytes | None:
         """Genera gráfico resumen de vivienda"""
         if not MATPLOTLIB_AVAILABLE:
             return None
-        
+
         self._setup_style()
-        
+
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-        
+
         # Gráfico de rentas
-        categories = ['1 BR', '2 BR', '3 BR']
+        categories = ["1 BR", "2 BR", "3 BR"]
         rents = [avg_rent_1br, avg_rent_2br, avg_rent_3br]
         colors = [self.colors["info"], self.colors["primary"], self.colors["accent"]]
-        
+
         bars = ax1.bar(categories, rents, color=colors)
-        ax1.set_ylabel('Renta mensual ($)')
-        ax1.set_title(f'Rentas Promedio en {city_name}')
-        
-        for bar, rent in zip(bars, rents):
-            ax1.annotate(f'${rent:,}',
-                        xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
-                        xytext=(0, 3),
-                        textcoords="offset points",
-                        ha='center', va='bottom', fontsize=11, fontweight='bold')
-        
+        ax1.set_ylabel("Renta mensual ($)")
+        ax1.set_title(f"Rentas Promedio en {city_name}")
+
+        for bar, rent in zip(bars, rents, strict=False):
+            ax1.annotate(
+                f"${rent:,}",
+                xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
+                xytext=(0, 3),
+                textcoords="offset points",
+                ha="center",
+                va="bottom",
+                fontsize=11,
+                fontweight="bold",
+            )
+
         # Gráfico de precio de casa
-        ax2.barh(['Precio Mediano'], [median_home_price], color=self.colors["success"])
-        ax2.set_xlabel('Precio ($)')
-        ax2.set_title('Precio Mediano de Casa')
-        ax2.annotate(f'${median_home_price:,}',
-                    xy=(median_home_price, 0),
-                    xytext=(5, 0),
-                    textcoords="offset points",
-                    ha='left', va='center', fontsize=12, fontweight='bold')
-        
+        ax2.barh(["Precio Mediano"], [median_home_price], color=self.colors["success"])
+        ax2.set_xlabel("Precio ($)")
+        ax2.set_title("Precio Mediano de Casa")
+        ax2.annotate(
+            f"${median_home_price:,}",
+            xy=(median_home_price, 0),
+            xytext=(5, 0),
+            textcoords="offset points",
+            ha="left",
+            va="center",
+            fontsize=12,
+            fontweight="bold",
+        )
+
         plt.tight_layout()
-        
+
         # Guardar a bytes
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+        plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
         buf.seek(0)
         plt.close(fig)
-        
+
         return buf.getvalue()
 
 
@@ -475,14 +484,21 @@ chart_generator = ChartGenerator()
 
 
 # Funciones helper
-def generate_comparison_chart(city1_name: str, city1_scores: Dict, city2_name: str, city2_scores: Dict) -> Optional[bytes]:
+def generate_comparison_chart(
+    city1_name: str, city1_scores: dict, city2_name: str, city2_scores: dict
+) -> bytes | None:
     return chart_generator.generate_city_comparison_chart(city1_name, city1_scores, city2_name, city2_scores)
 
-def generate_radar_chart(city_name: str, scores: Dict) -> Optional[bytes]:
+
+def generate_radar_chart(city_name: str, scores: dict) -> bytes | None:
     return chart_generator.generate_city_radar_chart(city_name, scores)
 
-def generate_price_chart(city_name: str, prices: List[int]) -> Optional[bytes]:
+
+def generate_price_chart(city_name: str, prices: list[int]) -> bytes | None:
     return chart_generator.generate_price_distribution_chart(city_name, prices)
 
-def generate_housing_chart(city_name: str, rent_1br: int, rent_2br: int, rent_3br: int, home_price: int) -> Optional[bytes]:
+
+def generate_housing_chart(
+    city_name: str, rent_1br: int, rent_2br: int, rent_3br: int, home_price: int
+) -> bytes | None:
     return chart_generator.generate_housing_summary_chart(city_name, rent_1br, rent_2br, rent_3br, home_price)

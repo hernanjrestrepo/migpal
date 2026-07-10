@@ -1,14 +1,16 @@
-from typing import Optional
-from sqlmodel import SQLModel, Field
 from datetime import datetime
+
+from sqlmodel import Field, SQLModel
+
 
 class MigrationProcess(SQLModel, table=True):
     """
     Represents a migration process/route (e.g., US H1B Visa, Canada Express Entry)
     """
+
     __tablename__ = "migration_processes"
-    
-    id: Optional[int] = Field(default=None, primary_key=True)
+
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)  # "US Work Visa H1B", "Canada Express Entry"
     country_from: str = Field(index=True)  # Origin country
     country_to: str = Field(index=True)  # Destination country

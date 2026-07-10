@@ -16,8 +16,7 @@ router = APIRouter()
 
 @router.post("/token")
 async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Session = Depends(get_session)
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(get_session)
 ):
     user = db.exec(select(User).where(User.username == form_data.username)).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
@@ -27,7 +26,5 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token_expires = timedelta(minutes=settings.AUTH_ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}

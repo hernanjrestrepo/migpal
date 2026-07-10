@@ -4,15 +4,18 @@ Tests para el sistema de Onboarding Conversacional v5.0
 ========================================================
 """
 
-import unittest
-import sys
 import os
+import sys
+import unittest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.services.conversational_onboarding import (
-    InfoExtractor, QuestionGenerator, ReflectionGenerator,
-    ConversationalEngine, UserProfile, ProfileField,
-    VisaRecommendationEngine, get_conversational_engine
+    ConversationalEngine,
+    InfoExtractor,
+    UserProfile,
+    VisaRecommendationEngine,
+    get_conversational_engine,
 )
 
 
@@ -85,7 +88,7 @@ class TestInfoExtractor(unittest.TestCase):
             ("para el 2025", "2025"),
         ]
 
-        for text, expected in test_cases:
+        for text, _expected in test_cases:
             with self.subTest(text=text):
                 extracted = extractor.extract_all(text)
                 if "timeline" in extracted:
@@ -274,11 +277,7 @@ class TestConversationalFlow(unittest.TestCase):
         }
 
         # Mensaje inicial
-        response1, user_data = engine.process_message(
-            "Hola, quiero irme a Estados Unidos",
-            user_data,
-            "es"
-        )
+        response1, user_data = engine.process_message("Hola, quiero irme a Estados Unidos", user_data, "es")
 
         # Debe extraer el destino y hacer reflexión
         self.assertIn("USA", str(user_data.get("conversational_profile", {})))
@@ -287,9 +286,7 @@ class TestConversationalFlow(unittest.TestCase):
 
         # Segunda respuesta
         response2, user_data = engine.process_message(
-            "Soy ingeniero de software con 5 años de experiencia",
-            user_data,
-            "es"
+            "Soy ingeniero de software con 5 años de experiencia", user_data, "es"
         )
 
         # Debe extraer profesión y experiencia
@@ -299,9 +296,9 @@ class TestConversationalFlow(unittest.TestCase):
 
         # Debe hacer reflexión empática
         self.assertTrue(
-            "ingeniero" in response2.lower() or
-            "experiencia" in response2.lower() or
-            "puertas" in response2.lower()
+            "ingeniero" in response2.lower()
+            or "experiencia" in response2.lower()
+            or "puertas" in response2.lower()
         )
 
     def test_question_detection_marks_pending(self):
@@ -327,11 +324,7 @@ class TestConversationalFlow(unittest.TestCase):
             _, user_data = engine.process_message(msg, user_data, "es")
 
         # Hacer una pregunta
-        response, user_data = engine.process_message(
-            "¿Qué opciones de visa tengo?",
-            user_data,
-            "es"
-        )
+        response, user_data = engine.process_message("¿Qué opciones de visa tengo?", user_data, "es")
 
         # Debe marcar la pregunta como pendiente
         self.assertIn("pending_ai_question", user_data)

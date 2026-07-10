@@ -4,9 +4,9 @@ Registra evidencia de test manual en Telegram.
 Usar después de completar el Plan Maestro manualmente.
 """
 
-import sys
-import os
 import json
+import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -20,21 +20,21 @@ def register_manual_test():
     print("📝 REGISTRO DE TEST MANUAL EN TELEGRAM")
     print("=" * 50)
     print()
-    
+
     # Preguntar detalles
     print("¿Completaste el Plan Maestro en Telegram? (s/n): ", end="")
     completed = input().strip().lower() == "s"
-    
+
     if not completed:
         print("❌ Test manual no completado. No se registra evidencia.")
         return 1
-    
+
     print("\nIngresa el chat_id del usuario de prueba: ", end="")
     chat_id = input().strip()
-    
+
     print("\nIngresa notas adicionales (opcional): ", end="")
     notes = input().strip()
-    
+
     # Crear evidencia
     evidence = {
         "completed": True,
@@ -42,14 +42,14 @@ def register_manual_test():
         "timestamp": datetime.now().isoformat(),
         "chat_id": chat_id,
         "notes": notes or "Test manual completado exitosamente",
-        "tester": os.environ.get("USER", "unknown")
+        "tester": os.environ.get("USER", "unknown"),
     }
-    
+
     # Guardar
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    with open(EVIDENCE_FILE, 'w') as f:
+    with open(EVIDENCE_FILE, "w") as f:
         json.dump(evidence, f, indent=2)
-    
+
     print()
     print("=" * 50)
     print("✅ EVIDENCIA REGISTRADA")
@@ -57,7 +57,7 @@ def register_manual_test():
     print(f"Archivo: {EVIDENCE_FILE}")
     print(f"Timestamp: {evidence['timestamp']}")
     print()
-    
+
     return 0
 
 
@@ -66,7 +66,7 @@ def show_evidence():
     if EVIDENCE_FILE.exists():
         with open(EVIDENCE_FILE) as f:
             evidence = json.load(f)
-        
+
         print("=" * 50)
         print("📋 EVIDENCIA DE TEST MANUAL")
         print("=" * 50)

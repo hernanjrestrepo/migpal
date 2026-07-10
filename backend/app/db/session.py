@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
-from sqlmodel import SQLModel, create_engine, Session
+
 from dotenv import load_dotenv
+from sqlmodel import Session, SQLModel, create_engine
 
 # Load backend-specific .env (preferred) and fall back to project root
 backend_root = Path(__file__).resolve().parents[2]
@@ -20,6 +21,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./migpal.db")
 # The `connect_args` are needed only for SQLite
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(DATABASE_URL, echo=False, connect_args=connect_args)
+
 
 # This function is kept for now, as it might be useful for quick dev setups,
 # but for production and testing, Alembic is the source of truth.

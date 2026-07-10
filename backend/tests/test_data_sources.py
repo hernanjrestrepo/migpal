@@ -1,11 +1,11 @@
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from main import app
 from app.db.session import engine
-from app.models.user import User
 from app.models.data_source import DataSource
+from app.models.user import User
 from app.utils.password import get_password_hash
+from main import app
 
 client = TestClient(app)
 
@@ -31,7 +31,7 @@ def login_admin() -> str:
     response = client.post(
         "/api/v1/auth/token",
         data={"username": "admin_ds", "password": "Admin123!"},
-        headers={"Content-Type": "application/x-www-form-urlencoded"}
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     assert response.status_code == 200
     return response.json()["access_token"]
@@ -73,8 +73,7 @@ def test_admin_can_create_source_and_job():
     token = login_admin()
 
     job_response = client.post(
-        f"/api/v1/data-sources/{source.id}/jobs",
-        headers={"Authorization": f"Bearer {token}"}
+        f"/api/v1/data-sources/{source.id}/jobs", headers={"Authorization": f"Bearer {token}"}
     )
     assert job_response.status_code == 201
     body = job_response.json()

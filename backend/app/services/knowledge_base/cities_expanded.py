@@ -15,83 +15,282 @@ Esta base incluye:
 - Suburbios de áreas metropolitanas principales
 """
 
-from typing import Dict, List, Any, Optional
 import random
 
 # ============== DATOS BASE POR ESTADO ==============
 
 # Multiplicadores de costo de vida por estado (100 = promedio nacional)
 STATE_COST_MULTIPLIERS = {
-    "AL": 87, "AK": 127, "AZ": 103, "AR": 87, "CA": 151,
-    "CO": 105, "CT": 121, "DE": 102, "FL": 103, "GA": 93,
-    "HI": 193, "ID": 97, "IL": 94, "IN": 90, "IA": 90,
-    "KS": 86, "KY": 90, "LA": 91, "ME": 99, "MD": 129,
-    "MA": 135, "MI": 89, "MN": 97, "MS": 84, "MO": 88,
-    "MT": 95, "NE": 90, "NV": 104, "NH": 106, "NJ": 120,
-    "NM": 91, "NY": 139, "NC": 95, "ND": 89, "OH": 90,
-    "OK": 87, "OR": 113, "PA": 94, "RI": 107, "SC": 89,
-    "SD": 88, "TN": 90, "TX": 93, "UT": 101, "VT": 103,
-    "VA": 103, "WA": 118, "WV": 84, "WI": 93, "WY": 92,
+    "AL": 87,
+    "AK": 127,
+    "AZ": 103,
+    "AR": 87,
+    "CA": 151,
+    "CO": 105,
+    "CT": 121,
+    "DE": 102,
+    "FL": 103,
+    "GA": 93,
+    "HI": 193,
+    "ID": 97,
+    "IL": 94,
+    "IN": 90,
+    "IA": 90,
+    "KS": 86,
+    "KY": 90,
+    "LA": 91,
+    "ME": 99,
+    "MD": 129,
+    "MA": 135,
+    "MI": 89,
+    "MN": 97,
+    "MS": 84,
+    "MO": 88,
+    "MT": 95,
+    "NE": 90,
+    "NV": 104,
+    "NH": 106,
+    "NJ": 120,
+    "NM": 91,
+    "NY": 139,
+    "NC": 95,
+    "ND": 89,
+    "OH": 90,
+    "OK": 87,
+    "OR": 113,
+    "PA": 94,
+    "RI": 107,
+    "SC": 89,
+    "SD": 88,
+    "TN": 90,
+    "TX": 93,
+    "UT": 101,
+    "VT": 103,
+    "VA": 103,
+    "WA": 118,
+    "WV": 84,
+    "WI": 93,
+    "WY": 92,
     "DC": 152,
 }
 
 # Porcentaje de latinos por estado
 STATE_LATINO_PCT = {
-    "AL": 4.8, "AK": 7.5, "AZ": 31.7, "AR": 8.0, "CA": 39.4,
-    "CO": 22.0, "CT": 17.3, "DE": 9.8, "FL": 26.8, "GA": 10.1,
-    "HI": 10.7, "ID": 13.0, "IL": 18.0, "IN": 7.5, "IA": 6.5,
-    "KS": 12.5, "KY": 4.0, "LA": 5.5, "ME": 1.8, "MD": 11.0,
-    "MA": 12.6, "MI": 5.6, "MN": 5.8, "MS": 3.4, "MO": 4.5,
-    "MT": 4.1, "NE": 11.8, "NV": 29.2, "NH": 4.3, "NJ": 21.0,
-    "NM": 49.3, "NY": 19.5, "NC": 10.2, "ND": 4.0, "OH": 4.4,
-    "OK": 11.3, "OR": 13.9, "PA": 8.0, "RI": 16.6, "SC": 6.2,
-    "SD": 4.2, "TN": 6.0, "TX": 40.2, "UT": 14.4, "VT": 2.0,
-    "VA": 10.0, "WA": 13.5, "WV": 1.8, "WI": 7.5, "WY": 10.2,
+    "AL": 4.8,
+    "AK": 7.5,
+    "AZ": 31.7,
+    "AR": 8.0,
+    "CA": 39.4,
+    "CO": 22.0,
+    "CT": 17.3,
+    "DE": 9.8,
+    "FL": 26.8,
+    "GA": 10.1,
+    "HI": 10.7,
+    "ID": 13.0,
+    "IL": 18.0,
+    "IN": 7.5,
+    "IA": 6.5,
+    "KS": 12.5,
+    "KY": 4.0,
+    "LA": 5.5,
+    "ME": 1.8,
+    "MD": 11.0,
+    "MA": 12.6,
+    "MI": 5.6,
+    "MN": 5.8,
+    "MS": 3.4,
+    "MO": 4.5,
+    "MT": 4.1,
+    "NE": 11.8,
+    "NV": 29.2,
+    "NH": 4.3,
+    "NJ": 21.0,
+    "NM": 49.3,
+    "NY": 19.5,
+    "NC": 10.2,
+    "ND": 4.0,
+    "OH": 4.4,
+    "OK": 11.3,
+    "OR": 13.9,
+    "PA": 8.0,
+    "RI": 16.6,
+    "SC": 6.2,
+    "SD": 4.2,
+    "TN": 6.0,
+    "TX": 40.2,
+    "UT": 14.4,
+    "VT": 2.0,
+    "VA": 10.0,
+    "WA": 13.5,
+    "WV": 1.8,
+    "WI": 7.5,
+    "WY": 10.2,
     "DC": 11.3,
 }
 
 # Clima por estado
 STATE_CLIMATE = {
-    "AL": "calido", "AK": "frio", "AZ": "calido", "AR": "templado", "CA": "templado",
-    "CO": "frio", "CT": "frio", "DE": "templado", "FL": "calido", "GA": "templado",
-    "HI": "calido", "ID": "frio", "IL": "frio", "IN": "frio", "IA": "frio",
-    "KS": "templado", "KY": "templado", "LA": "calido", "ME": "frio", "MD": "templado",
-    "MA": "frio", "MI": "frio", "MN": "frio", "MS": "calido", "MO": "templado",
-    "MT": "frio", "NE": "frio", "NV": "calido", "NH": "frio", "NJ": "templado",
-    "NM": "calido", "NY": "frio", "NC": "templado", "ND": "frio", "OH": "frio",
-    "OK": "templado", "OR": "templado", "PA": "frio", "RI": "frio", "SC": "templado",
-    "SD": "frio", "TN": "templado", "TX": "calido", "UT": "frio", "VT": "frio",
-    "VA": "templado", "WA": "templado", "WV": "templado", "WI": "frio", "WY": "frio",
+    "AL": "calido",
+    "AK": "frio",
+    "AZ": "calido",
+    "AR": "templado",
+    "CA": "templado",
+    "CO": "frio",
+    "CT": "frio",
+    "DE": "templado",
+    "FL": "calido",
+    "GA": "templado",
+    "HI": "calido",
+    "ID": "frio",
+    "IL": "frio",
+    "IN": "frio",
+    "IA": "frio",
+    "KS": "templado",
+    "KY": "templado",
+    "LA": "calido",
+    "ME": "frio",
+    "MD": "templado",
+    "MA": "frio",
+    "MI": "frio",
+    "MN": "frio",
+    "MS": "calido",
+    "MO": "templado",
+    "MT": "frio",
+    "NE": "frio",
+    "NV": "calido",
+    "NH": "frio",
+    "NJ": "templado",
+    "NM": "calido",
+    "NY": "frio",
+    "NC": "templado",
+    "ND": "frio",
+    "OH": "frio",
+    "OK": "templado",
+    "OR": "templado",
+    "PA": "frio",
+    "RI": "frio",
+    "SC": "templado",
+    "SD": "frio",
+    "TN": "templado",
+    "TX": "calido",
+    "UT": "frio",
+    "VT": "frio",
+    "VA": "templado",
+    "WA": "templado",
+    "WV": "templado",
+    "WI": "frio",
+    "WY": "frio",
     "DC": "templado",
 }
 
 # Región por estado
 STATE_REGION = {
-    "AL": "sur", "AK": "costa_oeste", "AZ": "montanas", "AR": "sur", "CA": "costa_oeste",
-    "CO": "montanas", "CT": "costa_este", "DE": "costa_este", "FL": "costa_este", "GA": "costa_este",
-    "HI": "costa_oeste", "ID": "montanas", "IL": "midwest", "IN": "midwest", "IA": "midwest",
-    "KS": "midwest", "KY": "sur", "LA": "sur", "ME": "costa_este", "MD": "costa_este",
-    "MA": "costa_este", "MI": "midwest", "MN": "midwest", "MS": "sur", "MO": "midwest",
-    "MT": "montanas", "NE": "midwest", "NV": "montanas", "NH": "costa_este", "NJ": "costa_este",
-    "NM": "montanas", "NY": "costa_este", "NC": "costa_este", "ND": "midwest", "OH": "midwest",
-    "OK": "sur", "OR": "costa_oeste", "PA": "costa_este", "RI": "costa_este", "SC": "costa_este",
-    "SD": "midwest", "TN": "sur", "TX": "sur", "UT": "montanas", "VT": "costa_este",
-    "VA": "costa_este", "WA": "costa_oeste", "WV": "costa_este", "WI": "midwest", "WY": "montanas",
+    "AL": "sur",
+    "AK": "costa_oeste",
+    "AZ": "montanas",
+    "AR": "sur",
+    "CA": "costa_oeste",
+    "CO": "montanas",
+    "CT": "costa_este",
+    "DE": "costa_este",
+    "FL": "costa_este",
+    "GA": "costa_este",
+    "HI": "costa_oeste",
+    "ID": "montanas",
+    "IL": "midwest",
+    "IN": "midwest",
+    "IA": "midwest",
+    "KS": "midwest",
+    "KY": "sur",
+    "LA": "sur",
+    "ME": "costa_este",
+    "MD": "costa_este",
+    "MA": "costa_este",
+    "MI": "midwest",
+    "MN": "midwest",
+    "MS": "sur",
+    "MO": "midwest",
+    "MT": "montanas",
+    "NE": "midwest",
+    "NV": "montanas",
+    "NH": "costa_este",
+    "NJ": "costa_este",
+    "NM": "montanas",
+    "NY": "costa_este",
+    "NC": "costa_este",
+    "ND": "midwest",
+    "OH": "midwest",
+    "OK": "sur",
+    "OR": "costa_oeste",
+    "PA": "costa_este",
+    "RI": "costa_este",
+    "SC": "costa_este",
+    "SD": "midwest",
+    "TN": "sur",
+    "TX": "sur",
+    "UT": "montanas",
+    "VT": "costa_este",
+    "VA": "costa_este",
+    "WA": "costa_oeste",
+    "WV": "costa_este",
+    "WI": "midwest",
+    "WY": "montanas",
     "DC": "costa_este",
 }
 
 # Nombres de estados completos
 STATE_NAMES = {
-    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California",
-    "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware", "FL": "Florida", "GA": "Georgia",
-    "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois", "IN": "Indiana", "IA": "Iowa",
-    "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
-    "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi", "MO": "Missouri",
-    "MT": "Montana", "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire", "NJ": "New Jersey",
-    "NM": "New Mexico", "NY": "New York", "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio",
-    "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
-    "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont",
-    "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
+    "AL": "Alabama",
+    "AK": "Alaska",
+    "AZ": "Arizona",
+    "AR": "Arkansas",
+    "CA": "California",
+    "CO": "Colorado",
+    "CT": "Connecticut",
+    "DE": "Delaware",
+    "FL": "Florida",
+    "GA": "Georgia",
+    "HI": "Hawaii",
+    "ID": "Idaho",
+    "IL": "Illinois",
+    "IN": "Indiana",
+    "IA": "Iowa",
+    "KS": "Kansas",
+    "KY": "Kentucky",
+    "LA": "Louisiana",
+    "ME": "Maine",
+    "MD": "Maryland",
+    "MA": "Massachusetts",
+    "MI": "Michigan",
+    "MN": "Minnesota",
+    "MS": "Mississippi",
+    "MO": "Missouri",
+    "MT": "Montana",
+    "NE": "Nebraska",
+    "NV": "Nevada",
+    "NH": "New Hampshire",
+    "NJ": "New Jersey",
+    "NM": "New Mexico",
+    "NY": "New York",
+    "NC": "North Carolina",
+    "ND": "North Dakota",
+    "OH": "Ohio",
+    "OK": "Oklahoma",
+    "OR": "Oregon",
+    "PA": "Pennsylvania",
+    "RI": "Rhode Island",
+    "SC": "South Carolina",
+    "SD": "South Dakota",
+    "TN": "Tennessee",
+    "TX": "Texas",
+    "UT": "Utah",
+    "VT": "Vermont",
+    "VA": "Virginia",
+    "WA": "Washington",
+    "WV": "West Virginia",
+    "WI": "Wisconsin",
+    "WY": "Wyoming",
     "DC": "District of Columbia",
 }
 
@@ -153,7 +352,6 @@ CITIES_RAW = [
     ("Tampa", "FL", 399700, False, 26.0),
     ("Arlington", "TX", 398854, False, 29.0),
     ("New Orleans", "LA", 383997, False, 6.0),
-    
     # CIUDADES 51-100
     ("Wichita", "KS", 397532, False, 17.0),
     ("Bakersfield", "CA", 403455, False, 52.0),
@@ -205,7 +403,6 @@ CITIES_RAW = [
     ("Boise", "ID", 235684, True, 8.0),
     ("Spokane", "WA", 228989, False, 6.0),
     ("Baton Rouge", "LA", 227470, True, 4.0),
-    
     # CIUDADES 101-200 (Medianas importantes)
     ("Tacoma", "WA", 219346, False, 12.0),
     ("San Bernardino", "CA", 222101, False, 66.0),
@@ -257,7 +454,6 @@ CITIES_RAW = [
     ("Elk Grove", "CA", 176124, False, 16.0),
     ("Salem", "OR", 175535, True, 24.0),
     ("Pembroke Pines", "FL", 171178, False, 22.0),
-    
     # CIUDADES 201-400 (Medianas)
     ("Eugene", "OR", 176654, False, 9.0),
     ("Garden Grove", "CA", 172646, False, 38.0),
@@ -309,7 +505,6 @@ CITIES_RAW = [
     ("Fullerton", "CA", 139132, False, 35.0),
     ("Charleston", "SC", 150227, False, 4.0),
     ("West Valley City", "UT", 140230, False, 28.0),
-    
     # CIUDADES 401-600
     ("Visalia", "CA", 141384, False, 55.0),
     ("Hampton", "VA", 137148, False, 5.0),
@@ -361,7 +556,6 @@ CITIES_RAW = [
     ("Murrieta", "CA", 113326, False, 28.0),
     ("Carlsbad", "CA", 114746, False, 13.0),
     ("North Charleston", "SC", 114852, False, 6.0),
-    
     # CIUDADES 601-800
     ("Temecula", "CA", 110003, False, 28.0),
     ("Clovis", "CA", 120124, False, 32.0),
@@ -413,7 +607,6 @@ CITIES_RAW = [
     ("Menifee", "CA", 102527, False, 32.0),
     ("Nampa", "ID", 100200, False, 22.0),
     ("Spokane Valley", "WA", 102976, False, 6.0),
-    
     # CIUDADES 801-1000+ (Pequeñas pero importantes)
     ("Bend", "OR", 99178, False, 8.0),
     ("Redding", "CA", 92025, False, 12.0),
@@ -499,7 +692,6 @@ CITIES_RAW = [
     ("Freer", "TX", 2818, False, 92.0),
     ("San Diego", "TX", 4488, False, 95.0),
     ("Premont", "TX", 2653, False, 95.0),
-    
     # Más ciudades de otros estados con comunidad latina
     ("Yuma", "AZ", 95548, False, 65.0),
     ("Nogales", "AZ", 20103, False, 95.0),
@@ -544,7 +736,6 @@ CITIES_RAW = [
     ("San Manuel", "AZ", 3551, False, 55.0),
     ("Oracle", "AZ", 3686, False, 18.0),
     ("Catalina", "AZ", 7025, False, 15.0),
-    
     # Ciudades de Nuevo México (alta población latina)
     ("Las Cruces", "NM", 111385, False, 58.0),
     ("Rio Rancho", "NM", 104046, False, 42.0),
@@ -576,7 +767,6 @@ CITIES_RAW = [
     ("Milan", "NM", 3388, False, 58.0),
     ("Bloomfield", "NM", 7831, False, 28.0),
     ("Aztec", "NM", 6763, False, 32.0),
-    
     # Ciudades de Colorado con comunidad latina
     ("Pueblo", "CO", 111876, False, 52.0),
     ("Greeley", "CO", 108795, False, 38.0),
@@ -609,7 +799,6 @@ CITIES_RAW = [
     ("Wellington", "CO", 10223, False, 12.0),
     ("Berthoud", "CO", 10332, False, 12.0),
     ("Mead", "CO", 5186, False, 15.0),
-    
     # Más ciudades de California
     ("Indio", "CA", 92539, False, 68.0),
     ("Coachella", "CA", 45373, False, 98.0),
@@ -657,21 +846,24 @@ CITIES_RAW = [
 
 # ============== GENERADOR DE CIUDADES ==============
 
-def generate_city_data(name: str, state_code: str, population: int, is_capital: bool = False, latino_pct_override: float = None) -> Dict:
+
+def generate_city_data(
+    name: str, state_code: str, population: int, is_capital: bool = False, latino_pct_override: float = None
+) -> dict:
     """Genera datos completos para una ciudad basado en datos del estado"""
-    
+
     city_id = name.lower().replace(" ", "_").replace(".", "")
     state_name = STATE_NAMES.get(state_code, state_code)
-    
+
     # Obtener datos base del estado
     cost_mult = STATE_COST_MULTIPLIERS.get(state_code, 100)
     state_latino = STATE_LATINO_PCT.get(state_code, 10.0)
     climate = STATE_CLIMATE.get(state_code, "templado")
     region = STATE_REGION.get(state_code, "midwest")
-    
+
     # Usar override de latino_pct si existe
     latino_pct = latino_pct_override if latino_pct_override is not None else state_latino
-    
+
     # Calcular tamaño de ciudad
     if population >= 500000:
         size = "grande"
@@ -682,18 +874,18 @@ def generate_city_data(name: str, state_code: str, population: int, is_capital: 
     else:
         size = "pequeña"
         size_mult = 0.9
-    
+
     # Calcular precios de vivienda basados en costo de vida y tamaño
     base_rent_1br = 1200
     rent_1br = int(base_rent_1br * (cost_mult / 100) * size_mult)
     rent_2br = int(rent_1br * 1.35)
     rent_3br = int(rent_1br * 1.7)
     home_price = int(rent_1br * 200)  # Aproximación
-    
+
     # Calcular ingreso medio
     base_income = 55000
     median_income = int(base_income * (cost_mult / 100) * size_mult)
-    
+
     # Calcular scores
     cost_score = max(10, min(90, 100 - cost_mult + 10))
     safety_score = random.randint(40, 75)
@@ -702,11 +894,11 @@ def generate_city_data(name: str, state_code: str, population: int, is_capital: 
     health_score = random.randint(55, 85)
     transport_score = 30 if size == "pequeña" else (50 if size == "mediana" else 70)
     latino_score = min(95, int(latino_pct * 1.2))
-    
+
     # Clima score basado en preferencias típicas
     climate_scores = {"calido": 80, "templado": 85, "frio": 60}
     climate_score = climate_scores.get(climate, 70)
-    
+
     # Industrias basadas en tamaño y región
     industries_by_region = {
         "costa_este": ["finanzas", "tech", "salud", "educacion", "turismo"],
@@ -716,14 +908,14 @@ def generate_city_data(name: str, state_code: str, population: int, is_capital: 
         "montanas": ["turismo", "tech", "energia", "mineria", "agricultura"],
     }
     industries = industries_by_region.get(region, ["servicios", "comercio", "salud"])
-    
+
     # Generar descripción
     descriptions = {
         "grande": f"Ciudad grande y diversa con múltiples oportunidades en {', '.join(industries[:2])}.",
-        "mediana": f"Ciudad mediana con buen balance entre costo de vida y oportunidades.",
-        "pequeña": f"Ciudad pequeña con comunidad unida y bajo costo de vida.",
+        "mediana": "Ciudad mediana con buen balance entre costo de vida y oportunidades.",
+        "pequeña": "Ciudad pequeña con comunidad unida y bajo costo de vida.",
     }
-    
+
     return {
         "id": city_id,
         "name": name,
@@ -779,31 +971,32 @@ def generate_city_data(name: str, state_code: str, population: int, is_capital: 
             "comunidad_latina": latino_score,
             "clima": climate_score,
             "calidad_vida": int((cost_score + safety_score + opportunity_score) / 3),
-        }
+        },
     }
 
 
-def generate_all_cities() -> Dict[str, Dict]:
+def generate_all_cities() -> dict[str, dict]:
     """Genera la base de datos completa de ciudades"""
     cities = {}
-    
+
     # Importar ciudades adicionales
     try:
         from .cities_additional import ADDITIONAL_CITIES
+
         all_cities = CITIES_RAW + ADDITIONAL_CITIES
     except ImportError:
         all_cities = CITIES_RAW
-    
+
     for city_data in all_cities:
         name = city_data[0]
         state = city_data[1]
         population = city_data[2]
         is_capital = city_data[3] if len(city_data) > 3 else False
         latino_pct = city_data[4] if len(city_data) > 4 else None
-        
+
         city = generate_city_data(name, state, population, is_capital, latino_pct)
         cities[city["id"]] = city
-    
+
     return cities
 
 
@@ -813,7 +1006,8 @@ CITIES_EXPANDED = generate_all_cities()
 
 # ============== FUNCIONES DE BÚSQUEDA ==============
 
-def get_city_expanded(city_id: str) -> Optional[Dict]:
+
+def get_city_expanded(city_id: str) -> dict | None:
     """Obtiene una ciudad por ID"""
     return CITIES_EXPANDED.get(city_id.lower().replace(" ", "_"))
 
@@ -827,13 +1021,13 @@ def search_cities_expanded(
     max_population: int = None,
     min_latino_pct: float = None,
     max_cost_index: int = None,
-    industries: List[str] = None,
+    industries: list[str] = None,
     limit: int = 100,
-) -> List[Dict]:
+) -> list[dict]:
     """Busca ciudades con filtros"""
     results = []
-    
-    for city_id, city in CITIES_EXPANDED.items():
+
+    for _city_id, city in CITIES_EXPANDED.items():
         # Aplicar filtros
         if state_code and city["state_code"] != state_code.upper():
             continue
@@ -855,12 +1049,12 @@ def search_cities_expanded(
             city_industries = set(city.get("top_industries", []))
             if not any(ind in city_industries for ind in industries):
                 continue
-        
+
         results.append(city)
-    
+
     # Ordenar por población
     results.sort(key=lambda x: x["population"], reverse=True)
-    
+
     return results[:limit]
 
 
@@ -869,12 +1063,12 @@ def get_cities_count_expanded() -> int:
     return len(CITIES_EXPANDED)
 
 
-def get_cities_by_state_expanded(state_code: str) -> List[Dict]:
+def get_cities_by_state_expanded(state_code: str) -> list[dict]:
     """Obtiene todas las ciudades de un estado"""
     return search_cities_expanded(state_code=state_code, limit=500)
 
 
-def get_top_latino_cities(min_pct: float = 30.0, limit: int = 50) -> List[Dict]:
+def get_top_latino_cities(min_pct: float = 30.0, limit: int = 50) -> list[dict]:
     """Obtiene ciudades con mayor población latina"""
     results = [c for c in CITIES_EXPANDED.values() if c["latino_pct"] >= min_pct]
     results.sort(key=lambda x: x["latino_pct"], reverse=True)

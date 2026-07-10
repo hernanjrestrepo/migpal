@@ -3,12 +3,11 @@ MigPAL Case Storage
 Persistencia de datos de usuarios y casos migratorios
 """
 
-import os
 import json
 import logging
-from typing import Dict, Optional, Any
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,19 +23,19 @@ def get_case_path(user_id: int) -> Path:
     return case_dir
 
 
-def save_user_data(user_id: int, data: Dict[str, Any]) -> bool:
+def save_user_data(user_id: int, data: dict[str, Any]) -> bool:
     """Save user data to disk"""
     try:
         case_dir = get_case_path(user_id)
-        
+
         # Update timestamp
         data["updated_at"] = datetime.now().isoformat()
-        
+
         # Save main profile
         profile_path = case_dir / "profile.json"
         with open(profile_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        
+
         logger.info(f"Saved data for user {user_id}")
         return True
     except Exception as e:
@@ -44,18 +43,18 @@ def save_user_data(user_id: int, data: Dict[str, Any]) -> bool:
         return False
 
 
-def load_user_data(user_id: int) -> Optional[Dict[str, Any]]:
+def load_user_data(user_id: int) -> dict[str, Any] | None:
     """Load user data from disk"""
     try:
         case_dir = get_case_path(user_id)
         profile_path = case_dir / "profile.json"
-        
+
         if profile_path.exists():
-            with open(profile_path, "r", encoding="utf-8") as f:
+            with open(profile_path, encoding="utf-8") as f:
                 data = json.load(f)
             logger.info(f"Loaded data for user {user_id}")
             return data
-        
+
         return None
     except Exception as e:
         logger.error(f"Error loading data for user {user_id}: {e}")
@@ -67,29 +66,26 @@ def save_conversation(user_id: int, message: str, response: str, role: str = "us
     try:
         case_dir = get_case_path(user_id)
         conv_path = case_dir / "conversations.json"
-        
+
         # Load existing conversations
         conversations = []
         if conv_path.exists():
-            with open(conv_path, "r", encoding="utf-8") as f:
+            with open(conv_path, encoding="utf-8") as f:
                 conversations = json.load(f)
-        
+
         # Add new message
-        conversations.append({
-            "timestamp": datetime.now().isoformat(),
-            "role": role,
-            "message": message,
-            "response": response
-        })
-        
+        conversations.append(
+            {"timestamp": datetime.now().isoformat(), "role": role, "message": message, "response": response}
+        )
+
         # Keep last 100 messages
         if len(conversations) > 100:
             conversations = conversations[-100:]
-        
+
         # Save
         with open(conv_path, "w", encoding="utf-8") as f:
             json.dump(conversations, f, ensure_ascii=False, indent=2)
-        
+
         return True
     except Exception as e:
         logger.error(f"Error saving conversation for user {user_id}: {e}")
@@ -101,38 +97,38 @@ def load_conversations(user_id: int, limit: int = 20) -> list:
     try:
         case_dir = get_case_path(user_id)
         conv_path = case_dir / "conversations.json"
-        
+
         if conv_path.exists():
-            with open(conv_path, "r", encoding="utf-8") as f:
+            with open(conv_path, encoding="utf-8") as f:
                 conversations = json.load(f)
             return conversations[-limit:]
-        
+
         return []
     except Exception as e:
         logger.error(f"Error loading conversations for user {user_id}: {e}")
         return []
 
 
-def save_document_info(user_id: int, doc_info: Dict[str, Any]) -> bool:
+def save_document_info(user_id: int, doc_info: dict[str, Any]) -> bool:
     """Save document information"""
     try:
         case_dir = get_case_path(user_id)
         docs_path = case_dir / "documents.json"
-        
+
         # Load existing documents
         documents = []
         if docs_path.exists():
-            with open(docs_path, "r", encoding="utf-8") as f:
+            with open(docs_path, encoding="utf-8") as f:
                 documents = json.load(f)
-        
+
         # Add new document
         doc_info["uploaded_at"] = datetime.now().isoformat()
         documents.append(doc_info)
-        
+
         # Save
         with open(docs_path, "w", encoding="utf-8") as f:
             json.dump(documents, f, ensure_ascii=False, indent=2)
-        
+
         return True
     except Exception as e:
         logger.error(f"Error saving document for user {user_id}: {e}")
@@ -144,11 +140,11 @@ def load_documents(user_id: int) -> list:
     try:
         case_dir = get_case_path(user_id)
         docs_path = case_dir / "documents.json"
-        
+
         if docs_path.exists():
-            with open(docs_path, "r", encoding="utf-8") as f:
+            with open(docs_path, encoding="utf-8") as f:
                 return json.load(f)
-        
+
         return []
     except Exception as e:
         logger.error(f"Error loading documents for user {user_id}: {e}")
@@ -160,12 +156,12 @@ def get_user_summary(user_id: int) -> str:
     data = load_user_data(user_id)
     if not data:
         return "No hay datos guardados."
-    
+
     profile = data.get("profile", {})
     personal = profile.get("personal", {})
     route = data.get("selected_route", {})
     state = data.get("state", "start")
-    
+
     summary = f"""
 📋 *Resumen del Caso*
 
@@ -187,19 +183,19 @@ def get_user_summary(user_id: int) -> str:
 📊 *Estado:* {state}
 📅 *Última actualización:* {data.get('updated_at', 'N/A')}
 """
-    
+
     # Add family info
     family = data.get("family_members", [])
     if family:
         summary += f"\n👨‍👩‍👧‍👦 *Familia:* {len(family)} miembro(s)\n"
         for member in family:
             summary += f"  • {member.get('name', 'N/A')} ({member.get('relation', 'N/A')})\n"
-    
+
     # Add documents count
     docs = load_documents(user_id)
     if docs:
         summary += f"\n📎 *Documentos:* {len(docs)} archivo(s)\n"
-    
+
     return summary
 
 
@@ -207,6 +203,7 @@ def delete_user_data(user_id: int) -> bool:
     """Delete all user data (for /nuevo command)"""
     try:
         import shutil
+
         case_dir = get_case_path(user_id)
         if case_dir.exists():
             shutil.rmtree(case_dir)
@@ -226,12 +223,14 @@ def list_all_cases() -> list:
                 user_id = case_dir.name
                 data = load_user_data(int(user_id))
                 if data:
-                    cases.append({
-                        "user_id": user_id,
-                        "name": data.get("profile", {}).get("personal", {}).get("name", "N/A"),
-                        "state": data.get("state", "unknown"),
-                        "updated_at": data.get("updated_at", "N/A")
-                    })
+                    cases.append(
+                        {
+                            "user_id": user_id,
+                            "name": data.get("profile", {}).get("personal", {}).get("name", "N/A"),
+                            "state": data.get("state", "unknown"),
+                            "updated_at": data.get("updated_at", "N/A"),
+                        }
+                    )
         return cases
     except Exception as e:
         logger.error(f"Error listing cases: {e}")

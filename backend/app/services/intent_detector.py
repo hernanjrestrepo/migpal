@@ -8,56 +8,56 @@ El usuario NO debe usar comandos. Escribe naturalmente y el bot entiende.
 "Busco casa en Miami" → Acción: buscar_viviendas(Miami, FL)
 """
 
+import logging
 import re
-from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
-import logging
 
 logger = logging.getLogger(__name__)
 
 
 class Intent(Enum):
     """Intenciones detectables"""
+
     # Exploración
     EXPLORE_CITIES = "explore_cities"
     EXPLORE_STATE = "explore_state"
     EXPLORE_NEIGHBORHOODS = "explore_neighborhoods"
-    
+
     # Búsquedas
     SEARCH_HOUSING = "search_housing"
     SEARCH_JOBS = "search_jobs"
     SEARCH_SCHOOLS = "search_schools"
     SEARCH_UNIVERSITIES = "search_universities"
-    
+
     # Comparaciones
     COMPARE_CITIES = "compare_cities"
     COMPARE_STATES = "compare_states"
-    
+
     # Información
     INFO_CITY = "info_city"
     INFO_STATE = "info_state"
     INFO_VISA = "info_visa"
     INFO_COSTS = "info_costs"
-    
+
     # Proceso
     START_FLOW = "start_flow"
     CHECK_PROGRESS = "check_progress"
     VIEW_PROFILE = "view_profile"
-    
+
     # Pagos
     VIEW_PRICES = "view_prices"
     MAKE_PAYMENT = "make_payment"
-    
+
     # Ayuda
     HELP = "help"
     SOS = "sos"
-    
+
     # Conversación general
     GREETING = "greeting"
     THANKS = "thanks"
     QUESTION = "question"
-    
+
     # No detectado
     UNKNOWN = "unknown"
 
@@ -65,9 +65,10 @@ class Intent(Enum):
 @dataclass
 class DetectedIntent:
     """Resultado de detección de intención"""
+
     intent: Intent
     confidence: float  # 0-1
-    entities: Dict[str, str]  # Entidades extraídas (ciudad, estado, etc.)
+    entities: dict[str, str]  # Entidades extraídas (ciudad, estado, etc.)
     original_message: str
     suggested_response: str = ""
 
@@ -84,7 +85,6 @@ INTENT_PATTERNS = {
         r"(?:dónde|donde)\s*(?:puedo|debería)\s*vivir",
         r"opciones?\s*de\s*ciudades?",
     ],
-    
     # Exploración de estado específico
     Intent.EXPLORE_STATE: [
         r"(?:quiero|me gustaría)?\s*(?:ver|explorar)\s*(?:ciudades?\s*(?:de|en))?\s*(florida|texas|california|new york|arizona|nevada|illinois|georgia|washington|tennessee|new jersey|maryland)",
@@ -92,7 +92,6 @@ INTENT_PATTERNS = {
         r"(?:qué|cuáles?)\s*ciudades?\s*hay\s*en\s*(florida|texas|california|new york|arizona|nevada|illinois|georgia|washington|tennessee|new jersey|maryland)",
         r"(florida|texas|california|new york|arizona|nevada|illinois|georgia|washington|tennessee|new jersey|maryland)\s*(?:ciudades?|opciones?)",
     ],
-    
     # Búsqueda de viviendas
     Intent.SEARCH_HOUSING: [
         r"(?:busco|quiero|necesito|me gustaría)\s*(?:una?\s*)?(?:casa|apartamento|vivienda|depa|piso|renta|alquiler)",
@@ -102,7 +101,6 @@ INTENT_PATTERNS = {
         r"viviendas?\s*(?:en|para)",
         r"(?:buscar|ver)\s*(?:casas?|apartamentos?|viviendas?)",
     ],
-    
     # Búsqueda de empleos
     Intent.SEARCH_JOBS: [
         r"(?:busco|quiero|necesito)\s*(?:un?\s*)?(?:trabajo|empleo|job)",
@@ -112,7 +110,6 @@ INTENT_PATTERNS = {
         r"(?:trabajos?|empleos?)\s*(?:que\s*)?(?:patrocin|sponsor)",
         r"(?:buscar|ver)\s*(?:trabajos?|empleos?)",
     ],
-    
     # Búsqueda de escuelas
     Intent.SEARCH_SCHOOLS: [
         r"(?:busco|quiero|necesito)\s*(?:una?\s*)?(?:escuela|colegio|school)",
@@ -122,7 +119,6 @@ INTENT_PATTERNS = {
         r"(?:mejores?|buenas?)\s*(?:escuelas?|colegios?)",
         r"(?:opciones?|precios?)\s*(?:de\s*)?(?:escuelas?|colegios?)",
     ],
-    
     # Búsqueda de universidades
     Intent.SEARCH_UNIVERSITIES: [
         r"(?:busco|quiero|necesito)\s*(?:una?\s*)?(?:universidad|college|uni)",
@@ -132,7 +128,6 @@ INTENT_PATTERNS = {
         r"(?:opciones?|precios?)\s*(?:de\s*)?(?:universidades?|colleges?)",
         r"(?:estudiar|carrera|maestría|doctorado)\s*(?:en\s*)?(?:usa|estados\s*unidos)",
     ],
-    
     # Comparar ciudades
     Intent.COMPARE_CITIES: [
         r"(?:compara|comparar|comparación|vs|versus)\s*(\w+)\s*(?:y|con|vs|versus)\s*(\w+)",
@@ -140,7 +135,6 @@ INTENT_PATTERNS = {
         r"diferencias?\s*entre\s*(\w+)\s*y\s*(\w+)",
         r"(\w+)\s*(?:o|vs|versus)\s*(\w+)\s*(?:\?|cual|cuál)",
     ],
-    
     # Información de ciudad
     Intent.INFO_CITY: [
         r"(?:cuéntame|dime|información|info)\s*(?:sobre|de)\s*(\w+)",
@@ -148,7 +142,6 @@ INTENT_PATTERNS = {
         r"(?:qué|que)\s*(?:hay|tiene|ofrece)\s*(\w+)",
         r"(\w+)\s*(?:es\s*)?(?:buena?|segura?|cara?|barata?)\s*\?",
     ],
-    
     # Información de visa
     Intent.INFO_VISA: [
         r"(?:qué|cuál|cual)\s*visa\s*(?:necesito|me\s*conviene|puedo)",
@@ -157,7 +150,6 @@ INTENT_PATTERNS = {
         r"(?:requisitos?|documentos?)\s*(?:para|de)\s*(?:la\s*)?visa",
         r"(?:probabilidad|chances?)\s*(?:de\s*)?(?:visa|aprobación)",
     ],
-    
     # Costos
     Intent.INFO_COSTS: [
         r"(?:cuánto|cuanto)\s*(?:cuesta|vale|necesito)",
@@ -165,7 +157,6 @@ INTENT_PATTERNS = {
         r"(?:presupuesto|dinero)\s*(?:para|necesario)",
         r"(?:qué|que)\s*tan\s*(?:caro|barato|costoso)",
     ],
-    
     # Iniciar flujo
     Intent.START_FLOW: [
         r"(?:quiero|me\s*gustaría|quisiera)\s*(?:empezar|iniciar|comenzar)",
@@ -174,7 +165,6 @@ INTENT_PATTERNS = {
         r"(?:estoy\s*)?listo\s*(?:para\s*)?(?:empezar|iniciar)",
         r"(?:vamos|dale|ok|sí|si)\s*(?:empecemos|iniciemos|comencemos)?",
     ],
-    
     # Ver progreso
     Intent.CHECK_PROGRESS: [
         r"(?:cómo|como)\s*(?:voy|va)\s*(?:mi\s*)?(?:proceso|progreso|caso)",
@@ -182,27 +172,23 @@ INTENT_PATTERNS = {
         r"(?:qué|que)\s*(?:me\s*)?falta",
         r"(?:cuánto|cuanto)\s*(?:me\s*)?falta",
     ],
-    
     # Ver perfil
     Intent.VIEW_PROFILE: [
         r"(?:mi|ver\s*mi)\s*perfil",
         r"(?:qué|que)\s*(?:tienes?|sabes?)\s*(?:de\s*)?mí",
         r"(?:mis?\s*)?datos?",
     ],
-    
     # Precios
     Intent.VIEW_PRICES: [
         r"(?:cuánto|cuanto)\s*(?:cobran|cuesta|vale)\s*(?:el\s*)?(?:servicio|migpal)",
         r"(?:precios?|tarifas?|costos?)\s*(?:de\s*)?(?:migpal|servicio)",
         r"(?:qué|que)\s*(?:incluye|ofrece)\s*(?:el\s*)?(?:servicio|pago)",
     ],
-    
     # Saludos
     Intent.GREETING: [
         r"^(?:hola|hi|hello|hey|buenos?\s*(?:días|tardes|noches)|qué\s*tal|saludos?)[\s\!\?]*$",
         r"^(?:buenas?|qué\s*onda|qué\s*hay)[\s\!\?]*$",
     ],
-    
     # Agradecimientos
     Intent.THANKS: [
         r"(?:muchas?\s*)?gracias",
@@ -210,7 +196,6 @@ INTENT_PATTERNS = {
         r"(?:muy\s*)?amable",
         r"(?:thanks?|thank\s*you)",
     ],
-    
     # Ayuda
     Intent.HELP: [
         r"(?:necesito\s*)?ayuda",
@@ -219,7 +204,6 @@ INTENT_PATTERNS = {
         r"(?:cómo|como)\s*funciona",
         r"(?:explícame|explicame)",
     ],
-    
     # SOS
     Intent.SOS: [
         r"(?:emergencia|urgente|ayuda\s*urgente)",
@@ -231,65 +215,107 @@ INTENT_PATTERNS = {
 
 # Mapeo de estados (nombres a códigos)
 STATE_MAPPING = {
-    "florida": "FL", "fl": "FL",
-    "texas": "TX", "tx": "TX",
-    "california": "CA", "ca": "CA",
-    "new york": "NY", "ny": "NY", "nueva york": "NY",
-    "arizona": "AZ", "az": "AZ",
-    "nevada": "NV", "nv": "NV",
-    "illinois": "IL", "il": "IL",
-    "georgia": "GA", "ga": "GA",
-    "washington": "WA", "wa": "WA",
-    "tennessee": "TN", "tn": "TN",
-    "new jersey": "NJ", "nj": "NJ",
-    "maryland": "MD", "md": "MD",
-    "colorado": "CO", "co": "CO",
-    "north carolina": "NC", "nc": "NC",
-    "virginia": "VA", "va": "VA",
-    "massachusetts": "MA", "ma": "MA",
-    "ohio": "OH", "oh": "OH",
-    "michigan": "MI", "mi": "MI",
-    "pennsylvania": "PA", "pa": "PA",
-    "oregon": "OR", "or": "OR",
+    "florida": "FL",
+    "fl": "FL",
+    "texas": "TX",
+    "tx": "TX",
+    "california": "CA",
+    "ca": "CA",
+    "new york": "NY",
+    "ny": "NY",
+    "nueva york": "NY",
+    "arizona": "AZ",
+    "az": "AZ",
+    "nevada": "NV",
+    "nv": "NV",
+    "illinois": "IL",
+    "il": "IL",
+    "georgia": "GA",
+    "ga": "GA",
+    "washington": "WA",
+    "wa": "WA",
+    "tennessee": "TN",
+    "tn": "TN",
+    "new jersey": "NJ",
+    "nj": "NJ",
+    "maryland": "MD",
+    "md": "MD",
+    "colorado": "CO",
+    "co": "CO",
+    "north carolina": "NC",
+    "nc": "NC",
+    "virginia": "VA",
+    "va": "VA",
+    "massachusetts": "MA",
+    "ma": "MA",
+    "ohio": "OH",
+    "oh": "OH",
+    "michigan": "MI",
+    "mi": "MI",
+    "pennsylvania": "PA",
+    "pa": "PA",
+    "oregon": "OR",
+    "or": "OR",
 }
 
 # Ciudades conocidas
 KNOWN_CITIES = [
-    "miami", "orlando", "tampa", "jacksonville",  # Florida
-    "houston", "dallas", "austin", "san antonio",  # Texas
-    "los angeles", "san francisco", "san diego", "san jose",  # California
-    "new york", "brooklyn", "queens", "manhattan",  # New York
-    "phoenix", "tucson", "scottsdale",  # Arizona
-    "las vegas", "reno",  # Nevada
+    "miami",
+    "orlando",
+    "tampa",
+    "jacksonville",  # Florida
+    "houston",
+    "dallas",
+    "austin",
+    "san antonio",  # Texas
+    "los angeles",
+    "san francisco",
+    "san diego",
+    "san jose",  # California
+    "new york",
+    "brooklyn",
+    "queens",
+    "manhattan",  # New York
+    "phoenix",
+    "tucson",
+    "scottsdale",  # Arizona
+    "las vegas",
+    "reno",  # Nevada
     "chicago",  # Illinois
     "atlanta",  # Georgia
-    "seattle", "tacoma",  # Washington
-    "nashville", "memphis",  # Tennessee
-    "newark", "jersey city",  # New Jersey
+    "seattle",
+    "tacoma",  # Washington
+    "nashville",
+    "memphis",  # Tennessee
+    "newark",
+    "jersey city",  # New Jersey
     "baltimore",  # Maryland
-    "denver", "boulder",  # Colorado
-    "charlotte", "raleigh",  # North Carolina
-    "boston", "cambridge",  # Massachusetts
+    "denver",
+    "boulder",  # Colorado
+    "charlotte",
+    "raleigh",  # North Carolina
+    "boston",
+    "cambridge",  # Massachusetts
 ]
 
 
 class IntentDetector:
     """Motor de detección de intención"""
-    
+
     def __init__(self):
         self.patterns = INTENT_PATTERNS
         self.state_mapping = STATE_MAPPING
         self.known_cities = KNOWN_CITIES
-    
+
     def detect(self, message: str) -> DetectedIntent:
         """Detecta la intención del mensaje"""
         message_lower = message.lower().strip()
-        
+
         # Buscar coincidencias con patrones
         best_match = None
         best_confidence = 0.0
         entities = {}
-        
+
         for intent, patterns in self.patterns.items():
             for pattern in patterns:
                 match = re.search(pattern, message_lower, re.IGNORECASE)
@@ -297,11 +323,11 @@ class IntentDetector:
                     # Calcular confianza basada en la longitud del match
                     confidence = len(match.group()) / len(message_lower)
                     confidence = min(1.0, confidence * 1.5)  # Boost
-                    
+
                     if confidence > best_confidence:
                         best_confidence = confidence
                         best_match = intent
-                        
+
                         # Extraer entidades del match
                         if match.groups():
                             groups = match.groups()
@@ -314,54 +340,54 @@ class IntentDetector:
                                     entities["city2"] = groups[1]
                             elif intent == Intent.INFO_CITY:
                                 entities["city"] = groups[0]
-        
+
         # Extraer entidades adicionales del mensaje
         entities.update(self._extract_entities(message_lower))
-        
+
         # Si no hay match, intentar detectar por keywords
         if not best_match or best_confidence < 0.3:
             keyword_intent, keyword_confidence = self._detect_by_keywords(message_lower)
             if keyword_confidence > best_confidence:
                 best_match = keyword_intent
                 best_confidence = keyword_confidence
-        
+
         # Default a UNKNOWN si no hay match
         if not best_match:
             best_match = Intent.UNKNOWN
             best_confidence = 0.0
-        
+
         return DetectedIntent(
             intent=best_match,
             confidence=best_confidence,
             entities=entities,
             original_message=message,
-            suggested_response=self._get_suggested_response(best_match, entities)
+            suggested_response=self._get_suggested_response(best_match, entities),
         )
-    
-    def _extract_entities(self, message: str) -> Dict[str, str]:
+
+    def _extract_entities(self, message: str) -> dict[str, str]:
         """Extrae entidades del mensaje"""
         entities = {}
-        
+
         # Buscar estados
         for state_name, state_code in self.state_mapping.items():
             if state_name in message:
                 entities["state"] = state_code
                 break
-        
+
         # Buscar ciudades
         for city in self.known_cities:
             if city in message:
                 entities["city"] = city.title()
                 break
-        
+
         # Buscar números (presupuesto, salario)
-        numbers = re.findall(r'\$?\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+k', message)
+        numbers = re.findall(r"\$?\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+k", message)
         if numbers:
             entities["amount"] = numbers[0]
-        
+
         return entities
-    
-    def _detect_by_keywords(self, message: str) -> Tuple[Intent, float]:
+
+    def _detect_by_keywords(self, message: str) -> tuple[Intent, float]:
         """Detecta intención por keywords simples"""
         keywords = {
             Intent.EXPLORE_CITIES: ["ciudad", "ciudades", "explorar", "vivir", "mudarme"],
@@ -373,20 +399,20 @@ class IntentDetector:
             Intent.INFO_COSTS: ["costo", "precio", "dinero", "presupuesto", "cuánto"],
             Intent.HELP: ["ayuda", "help", "no entiendo", "cómo"],
         }
-        
+
         best_intent = Intent.UNKNOWN
         best_score = 0
-        
+
         for intent, words in keywords.items():
             score = sum(1 for word in words if word in message)
             if score > best_score:
                 best_score = score
                 best_intent = intent
-        
+
         confidence = min(1.0, best_score * 0.3)
         return best_intent, confidence
-    
-    def _get_suggested_response(self, intent: Intent, entities: Dict) -> str:
+
+    def _get_suggested_response(self, intent: Intent, entities: dict) -> str:
         """Genera una respuesta sugerida basada en la intención"""
         responses = {
             Intent.EXPLORE_CITIES: "Te muestro las mejores ciudades para ti...",
@@ -405,8 +431,8 @@ class IntentDetector:
             Intent.SOS: "🚨 Entiendo que es urgente. Te conecto con ayuda inmediata...",
         }
         return responses.get(intent, "")
-    
-    def get_action(self, detected: DetectedIntent) -> Tuple[str, Dict]:
+
+    def get_action(self, detected: DetectedIntent) -> tuple[str, dict]:
         """Convierte la intención detectada en una acción ejecutable"""
         action_mapping = {
             Intent.EXPLORE_CITIES: ("cmd_explore", {}),
@@ -415,10 +441,10 @@ class IntentDetector:
             Intent.SEARCH_JOBS: ("cmd_jobs", {}),
             Intent.SEARCH_SCHOOLS: ("cmd_schools", {"city": detected.entities.get("city")}),
             Intent.SEARCH_UNIVERSITIES: ("cmd_universities", {}),
-            Intent.COMPARE_CITIES: ("cmd_compare", {
-                "city1": detected.entities.get("city1"),
-                "city2": detected.entities.get("city2")
-            }),
+            Intent.COMPARE_CITIES: (
+                "cmd_compare",
+                {"city1": detected.entities.get("city1"), "city2": detected.entities.get("city2")},
+            ),
             Intent.INFO_CITY: ("cmd_city_info", {"city": detected.entities.get("city")}),
             Intent.INFO_VISA: ("cmd_visa_info", {}),
             Intent.INFO_COSTS: ("cmd_costs", {}),
@@ -431,7 +457,7 @@ class IntentDetector:
             Intent.GREETING: ("greeting", {}),
             Intent.THANKS: ("thanks", {}),
         }
-        
+
         return action_mapping.get(detected.intent, ("unknown", {}))
 
 
@@ -444,7 +470,7 @@ def detect_intent(message: str) -> DetectedIntent:
     return intent_detector.detect(message)
 
 
-def get_action_from_message(message: str) -> Tuple[str, Dict, float]:
+def get_action_from_message(message: str) -> tuple[str, dict, float]:
     """Detecta intención y retorna acción con confianza"""
     detected = detect_intent(message)
     action, params = intent_detector.get_action(detected)

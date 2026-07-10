@@ -4,21 +4,21 @@ Script seguro para iniciar MigPAL v5.0
 Maneja conflictos de múltiples instancias
 """
 
-import time
-import subprocess
 import os
-import sys
 import signal
+import subprocess
+import sys
+import time
+
 
 def kill_existing_processes():
     """Mata procesos existentes del bot"""
     print("🔍 Buscando procesos existentes...")
     try:
         # Buscar procesos Python relacionados con telegram
-        result = subprocess.run(['pgrep', '-f', 'run_telegram_bot.py'],
-                              capture_output=True, text=True)
+        result = subprocess.run(["pgrep", "-f", "run_telegram_bot.py"], capture_output=True, text=True)
         if result.stdout:
-            pids = result.stdout.strip().split('\n')
+            pids = result.stdout.strip().split("\n")
             for pid in pids:
                 if pid and pid != str(os.getpid()):
                     print(f"⚡ Matando proceso {pid}")
@@ -30,13 +30,11 @@ def kill_existing_processes():
     except Exception as e:
         print(f"⚠️ Error matando procesos: {e}")
 
+
 def clear_locks():
     """Limpia archivos de lock"""
     print("🧹 Limpiando archivos de lock...")
-    lock_files = [
-        'data/migpal_bot.lock',
-        'data/last_update.txt'
-    ]
+    lock_files = ["data/migpal_bot.lock", "data/last_update.txt"]
     for lock_file in lock_files:
         if os.path.exists(lock_file):
             try:
@@ -47,18 +45,20 @@ def clear_locks():
 
     # Resetear last_update
     try:
-        with open('data/last_update.txt', 'w') as f:
-            f.write('0')
+        with open("data/last_update.txt", "w") as f:
+            f.write("0")
     except:
         pass
+
 
 def wait_for_release():
     """Espera a que se libere el bot"""
     print("⏳ Esperando 30 segundos para que se libere el bot...")
     for i in range(30, 0, -1):
-        print(f"\r⏳ Esperando: {i} segundos...", end='', flush=True)
+        print(f"\r⏳ Esperando: {i} segundos...", end="", flush=True)
         time.sleep(1)
     print("\n✅ Tiempo de espera completado")
+
 
 def start_bot():
     """Inicia el bot"""
@@ -66,26 +66,27 @@ def start_bot():
     print("=" * 50)
 
     # Activar entorno virtual si existe
-    venv_activate = '.venv/bin/activate'
+    venv_activate = ".venv/bin/activate"
     if os.path.exists(venv_activate):
-        activate_cmd = f'source {venv_activate} && '
+        activate_cmd = f"source {venv_activate} && "
     else:
-        activate_cmd = ''
+        activate_cmd = ""
 
     # Iniciar el bot
     if activate_cmd:
         # Usar bash para source
         cmd = f'bash -c "{activate_cmd}python3 run_telegram_bot.py"'
     else:
-        cmd = 'python3 run_telegram_bot.py'
+        cmd = "python3 run_telegram_bot.py"
     subprocess.run(cmd, shell=True)
+
 
 def main():
     print("🤖 MigPAL v5.0 - Inicio Seguro")
     print("=" * 50)
 
     # Cambiar al directorio del backend
-    os.chdir('/workspace/hjrm/migpal/backend')
+    os.chdir("/workspace/hjrm/migpal/backend")
 
     # Ejecutar pasos de limpieza
     kill_existing_processes()
@@ -94,6 +95,7 @@ def main():
 
     # Iniciar el bot
     start_bot()
+
 
 if __name__ == "__main__":
     try:

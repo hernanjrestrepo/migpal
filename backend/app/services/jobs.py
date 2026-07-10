@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 
-import httpx
 from sqlmodel import Session, select
 
 from app.models.data_source import DataSource, ScrapeJob
@@ -35,9 +34,7 @@ def _persist_jobs(session: Session, source: DataSource, jobs: list[dict]):
         job_id = item.get("job_id")
         if not job_id:
             continue
-        existing = session.exec(
-            select(JobListing).where(JobListing.job_id == job_id)
-        ).first()
+        existing = session.exec(select(JobListing).where(JobListing.job_id == job_id)).first()
         data = JobListing(
             source_id=source.id,
             job_id=job_id,
@@ -46,7 +43,7 @@ def _persist_jobs(session: Session, source: DataSource, jobs: list[dict]):
             location=item.get("location"),
             url=item.get("url", ""),
             salary=item.get("salary"),
-            metadata_blob=json.dumps(item)
+            metadata_blob=json.dumps(item),
         )
         if existing:
             for field in ["title", "company", "location", "url", "salary", "metadata_blob"]:

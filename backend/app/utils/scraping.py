@@ -3,7 +3,6 @@ from __future__ import annotations
 """Utility helpers for MigPAL scraping jobs (skeleton for MVP)."""
 
 from datetime import datetime
-from typing import Optional
 
 from sqlmodel import Session
 
@@ -24,7 +23,7 @@ def start_job(session: Session, source: DataSource, job: ScrapeJob) -> None:
     session.commit()
 
 
-def finish_job(session: Session, job: ScrapeJob, *, records: int = 0, error: Optional[str] = None) -> None:
+def finish_job(session: Session, job: ScrapeJob, *, records: int = 0, error: str | None = None) -> None:
     job.finished_at = datetime.utcnow()
     job.records_ingested = records
 

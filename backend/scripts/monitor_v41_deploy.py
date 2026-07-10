@@ -6,14 +6,14 @@ Monitorea logs durante 30 minutos post-deploy.
 Detecta: errores middleware, loops, timeouts.
 """
 
+import json
 import os
+import re
 import sys
 import time
-import json
-import re
-from datetime import datetime, timedelta
-from typing import Dict, List, Any
 from collections import defaultdict
+from datetime import datetime, timedelta
+from typing import Any
 
 # Configuración
 MONITOR_DURATION_MINUTES = 30
@@ -46,11 +46,11 @@ class DeployMonitor:
             "gating_events": 0,
         }
         self.last_position = 0
-        
-    def read_new_logs(self) -> List[str]:
+
+    def read_new_logs(self) -> list[str]:
         """Lee nuevas líneas del log"""
         try:
-            with open(LOG_FILE, 'r') as f:
+            with open(LOG_FILE) as f:
                 f.seek(self.last_position)
                 lines = f.readlines()
                 self.last_position = f.tell()
@@ -60,62 +60,54 @@ class DeployMonitor:
         except Exception as e:
             print(f"Error reading log: {e}")
             return []
-    
-    def analyze_line(self, line: str) -> Dict[str, bool]:
+
+    def analyze_line(self, line: str) -> dict[str, bool]:
         """Analiza una línea de log"""
         results = {}
         for pattern_name, pattern in PATTERNS.items():
             results[pattern_name] = bool(re.search(pattern, line))
         return results
-    
+
     def process_logs(self):
         """Procesa nuevos logs"""
         lines = self.read_new_logs()
-        
+
         for line in lines:
             self.stats["total_lines"] += 1
             analysis = self.analyze_line(line)
-            
+
             if analysis["error"]:
                 self.stats["errors"] += 1
-                self.events["errors"].append({
-                    "time": datetime.now().isoformat(),
-                    "line": line.strip()[:200]
-                })
-            
+                self.events["errors"].append({"time": datetime.now().isoformat(), "line": line.strip()[:200]})
+
             if analysis["warning"]:
                 self.stats["warnings"] += 1
-            
+
             if analysis["v4_middleware"]:
                 self.stats["v4_events"] += 1
                 if analysis["error"]:
-                    self.events["v4_errors"].append({
-                        "time": datetime.now().isoformat(),
-                        "line": line.strip()[:200]
-                    })
-            
+                    self.events["v4_errors"].append(
+                        {"time": datetime.now().isoformat(), "line": line.strip()[:200]}
+                    )
+
             if analysis["loop"]:
                 self.stats["loops_detected"] += 1
-                self.events["loops"].append({
-                    "time": datetime.now().isoformat(),
-                    "line": line.strip()[:200]
-                })
-            
+                self.events["loops"].append({"time": datetime.now().isoformat(), "line": line.strip()[:200]})
+
             if analysis["timeout"]:
                 self.stats["timeouts"] += 1
-                self.events["timeouts"].append({
-                    "time": datetime.now().isoformat(),
-                    "line": line.strip()[:200]
-                })
-            
+                self.events["timeouts"].append(
+                    {"time": datetime.now().isoformat(), "line": line.strip()[:200]}
+                )
+
             if analysis["gating"]:
                 self.stats["gating_events"] += 1
-    
+
     def get_status(self) -> str:
         """Obtiene estado actual"""
         elapsed = (datetime.now() - self.start_time).total_seconds() / 60
         remaining = max(0, MONITOR_DURATION_MINUTES - elapsed)
-        
+
         status = "🟢 HEALTHY"
         if self.stats["errors"] > 10:
             status = "🔴 CRITICAL"
@@ -123,7 +115,7 @@ class DeployMonitor:
             status = "🟠 WARNING"
         elif self.stats["loops_detected"] > 0 or self.stats["timeouts"] > 3:
             status = "🟡 ATTENTION"
-        
+
         return f"""
 ╔══════════════════════════════════════════════════════════╗
 ║  MigPAL v4.1 Deploy Monitor                              ║
@@ -141,8 +133,8 @@ class DeployMonitor:
 ║  • Gating: {self.stats['gating_events']:10d}                               ║
 ╚══════════════════════════════════════════════════════════╝
 """
-    
-    def generate_report(self) -> Dict[str, Any]:
+
+    def generate_report(self) -> dict[str, Any]:
         """Genera reporte final"""
         return {
             "monitor_id": f"v41_deploy_{self.start_time.strftime('%Y%m%d_%H%M%S')}",
@@ -151,38 +143,42 @@ class DeployMonitor:
             "duration_minutes": (datetime.now() - self.start_time).total_seconds() / 60,
             "stats": self.stats,
             "events": dict(self.events),
-            "status": "PASSED" if self.stats["errors"] < 5 and self.stats["loops_detected"] == 0 else "FAILED",
-            "p0_issues": [e for e in self.events.get("errors", []) if "critical" in e.get("line", "").lower()],
+            "status": (
+                "PASSED" if self.stats["errors"] < 5 and self.stats["loops_detected"] == 0 else "FAILED"
+            ),
+            "p0_issues": [
+                e for e in self.events.get("errors", []) if "critical" in e.get("line", "").lower()
+            ],
             "p1_issues": [e for e in self.events.get("v4_errors", [])],
         }
-    
+
     def run(self, duration_minutes: int = None):
         """Ejecuta el monitor"""
         if duration_minutes:
             self.end_time = self.start_time + timedelta(minutes=duration_minutes)
-        
-        print(f"🚀 Starting v4.1 deploy monitor...")
+
+        print("🚀 Starting v4.1 deploy monitor...")
         print(f"   Duration: {MONITOR_DURATION_MINUTES} minutes")
         print(f"   Log file: {LOG_FILE}")
         print(f"   Report: {REPORT_FILE}")
         print()
-        
+
         try:
             while datetime.now() < self.end_time:
                 self.process_logs()
                 print(self.get_status())
                 time.sleep(10)  # Check every 10 seconds
-                
+
         except KeyboardInterrupt:
             print("\n⚠️ Monitor interrupted by user")
-        
+
         # Generate final report
         report = self.generate_report()
-        
+
         os.makedirs(os.path.dirname(REPORT_FILE), exist_ok=True)
-        with open(REPORT_FILE, 'w') as f:
+        with open(REPORT_FILE, "w") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
-        
+
         print(f"\n📁 Report saved: {REPORT_FILE}")
         print(f"\n{'='*60}")
         print(f"FINAL STATUS: {report['status']}")
@@ -190,7 +186,7 @@ class DeployMonitor:
         print(f"P0 Issues: {len(report['p0_issues'])}")
         print(f"P1 Issues: {len(report['p1_issues'])}")
         print(f"{'='*60}")
-        
+
         return report
 
 

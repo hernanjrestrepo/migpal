@@ -10,86 +10,85 @@ FUENTES:
 - GreatSchools (educación)
 """
 
-from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
-import json
-import os
 
 # ============== ESTRUCTURA DE CIUDAD ==============
+
 
 @dataclass
 class CityData:
     """Datos completos de una ciudad"""
+
     id: str
     name: str
     state: str
     state_code: str
     county: str
-    
+
     # Población
     population: int
     metro_population: int
     population_growth: float  # % anual
-    
+
     # Demografía
     latino_pct: float
     median_age: float
-    
+
     # Economía
     median_income: int
     unemployment_rate: float
     poverty_rate: float
-    
+
     # Vivienda
     median_home_price: int
     median_rent_1br: int
     median_rent_2br: int
     median_rent_3br: int
-    
+
     # Costo de vida
     cost_of_living_index: int  # 100 = promedio nacional
-    
+
     # Seguridad
     crime_index: int  # 1-100, menor es más seguro
     violent_crime_rate: float
     property_crime_rate: float
-    
+
     # Clima
     climate: str  # calido, templado, frio
     avg_temp_summer: int  # Fahrenheit
     avg_temp_winter: int
     sunny_days: int
     rainy_days: int
-    
+
     # Educación
     school_rating: float  # 1-10
-    top_schools: List[str]
-    universities: List[str]
-    
+    top_schools: list[str]
+    universities: list[str]
+
     # Transporte
     walk_score: int
     transit_score: int
     bike_score: int
     avg_commute_minutes: int
-    
+
     # Industrias
-    top_industries: List[str]
-    major_employers: List[str]
-    
+    top_industries: list[str]
+    major_employers: list[str]
+
     # Calidad de vida
     quality_of_life_score: int  # 1-100
     healthcare_score: int
-    
+
     # Extras
     description: str
-    pros: List[str]
-    cons: List[str]
+    pros: list[str]
+    cons: list[str]
     photo_url: str
-    
+
     # Scores calculados
-    scores: Dict[str, int] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict:
+    scores: dict[str, int] = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
         return {
             "id": self.id,
             "name": self.name,
@@ -139,7 +138,7 @@ class CityData:
 # ============== BASE DE DATOS DE CIUDADES ==============
 
 # Ciudades principales (Top 100 por población + ciudades importantes para latinos)
-CITIES_DATABASE: Dict[str, Dict] = {
+CITIES_DATABASE: dict[str, dict] = {
     # ==================== FLORIDA ====================
     "miami": {
         "id": "miami",
@@ -193,9 +192,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 95,
             "clima": 85,
             "calidad_vida": 72,
-        }
+        },
     },
-    
     "orlando": {
         "id": "orlando",
         "name": "Orlando",
@@ -235,7 +233,13 @@ CITIES_DATABASE: Dict[str, Dict] = {
         "quality_of_life_score": 75,
         "healthcare_score": 72,
         "description": "Ciudad familiar conocida por sus parques temáticos. Creciente hub tecnológico con excelente calidad de vida.",
-        "pros": ["Parques temáticos", "Sin impuesto estatal", "Crecimiento económico", "Clima cálido", "Familiar"],
+        "pros": [
+            "Parques temáticos",
+            "Sin impuesto estatal",
+            "Crecimiento económico",
+            "Clima cálido",
+            "Familiar",
+        ],
         "cons": ["Turismo excesivo", "Tráfico", "Huracanes", "Calor en verano"],
         "photo_url": "https://images.unsplash.com/photo-1575089976121-8ed7b2a54265?w=800",
         "scores": {
@@ -248,9 +252,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 75,
             "clima": 80,
             "calidad_vida": 75,
-        }
+        },
     },
-    
     "tampa": {
         "id": "tampa",
         "name": "Tampa",
@@ -290,7 +293,12 @@ CITIES_DATABASE: Dict[str, Dict] = {
         "quality_of_life_score": 76,
         "healthcare_score": 78,
         "description": "Ciudad en crecimiento con excelente balance entre costo de vida y oportunidades. Playas cercanas y vida cultural activa.",
-        "pros": ["Costo de vida razonable", "Playas cercanas", "Sin impuesto estatal", "Crecimiento económico"],
+        "pros": [
+            "Costo de vida razonable",
+            "Playas cercanas",
+            "Sin impuesto estatal",
+            "Crecimiento económico",
+        ],
         "cons": ["Tráfico", "Huracanes", "Humedad", "Transporte público limitado"],
         "photo_url": "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800",
         "scores": {
@@ -303,9 +311,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 70,
             "clima": 82,
             "calidad_vida": 76,
-        }
+        },
     },
-    
     "jacksonville": {
         "id": "jacksonville",
         "name": "Jacksonville",
@@ -358,9 +365,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 45,
             "clima": 78,
             "calidad_vida": 70,
-        }
+        },
     },
-    
     # ==================== TEXAS ====================
     "houston": {
         "id": "houston",
@@ -401,7 +407,12 @@ CITIES_DATABASE: Dict[str, Dict] = {
         "quality_of_life_score": 68,
         "healthcare_score": 85,
         "description": "Cuarta ciudad más grande de USA. Centro mundial de energía y medicina con gran diversidad y bajo costo de vida.",
-        "pros": ["Sin impuesto estatal", "Bajo costo de vida", "Diversidad", "Oportunidades en energía y salud"],
+        "pros": [
+            "Sin impuesto estatal",
+            "Bajo costo de vida",
+            "Diversidad",
+            "Oportunidades en energía y salud",
+        ],
         "cons": ["Tráfico terrible", "Calor extremo", "Huracanes", "Sprawl urbano"],
         "photo_url": "https://images.unsplash.com/photo-1530089711124-9ca31fb9e863?w=800",
         "scores": {
@@ -414,9 +425,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 90,
             "clima": 60,
             "calidad_vida": 68,
-        }
+        },
     },
-    
     "dallas": {
         "id": "dallas",
         "name": "Dallas",
@@ -469,9 +479,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 85,
             "clima": 65,
             "calidad_vida": 72,
-        }
+        },
     },
-    
     "austin": {
         "id": "austin",
         "name": "Austin",
@@ -511,7 +520,13 @@ CITIES_DATABASE: Dict[str, Dict] = {
         "quality_of_life_score": 82,
         "healthcare_score": 80,
         "description": "Capital de Texas y hub tecnológico. Conocida por su música, cultura y calidad de vida. 'Keep Austin Weird'.",
-        "pros": ["Sin impuesto estatal", "Hub tech", "Cultura vibrante", "Música en vivo", "Outdoor lifestyle"],
+        "pros": [
+            "Sin impuesto estatal",
+            "Hub tech",
+            "Cultura vibrante",
+            "Música en vivo",
+            "Outdoor lifestyle",
+        ],
         "cons": ["Costo de vida en aumento", "Tráfico", "Calor extremo", "Gentrificación"],
         "photo_url": "https://images.unsplash.com/photo-1531218150217-54595bc2b934?w=800",
         "scores": {
@@ -524,9 +539,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 75,
             "clima": 70,
             "calidad_vida": 82,
-        }
+        },
     },
-    
     "san_antonio": {
         "id": "san_antonio",
         "name": "San Antonio",
@@ -566,7 +580,13 @@ CITIES_DATABASE: Dict[str, Dict] = {
         "quality_of_life_score": 72,
         "healthcare_score": 75,
         "description": "Ciudad histórica con el Álamo. Gran comunidad latina, bajo costo de vida y cultura tex-mex auténtica.",
-        "pros": ["Muy bajo costo de vida", "Sin impuesto estatal", "Gran comunidad latina", "Historia", "Amabilidad"],
+        "pros": [
+            "Muy bajo costo de vida",
+            "Sin impuesto estatal",
+            "Gran comunidad latina",
+            "Historia",
+            "Amabilidad",
+        ],
         "cons": ["Calor extremo", "Transporte limitado", "Menos oportunidades tech"],
         "photo_url": "https://images.unsplash.com/photo-1568515387631-8b650bbcdb90?w=800",
         "scores": {
@@ -579,9 +599,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 95,
             "clima": 65,
             "calidad_vida": 72,
-        }
+        },
     },
-    
     # ==================== CALIFORNIA ====================
     "los_angeles": {
         "id": "los_angeles",
@@ -635,9 +654,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 90,
             "clima": 95,
             "calidad_vida": 70,
-        }
+        },
     },
-    
     "san_francisco": {
         "id": "san_francisco",
         "name": "San Francisco",
@@ -690,9 +708,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 55,
             "clima": 75,
             "calidad_vida": 75,
-        }
+        },
     },
-    
     "san_diego": {
         "id": "san_diego",
         "name": "San Diego",
@@ -745,9 +762,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 75,
             "clima": 98,
             "calidad_vida": 82,
-        }
+        },
     },
-    
     # ==================== NEW YORK ====================
     "new_york_city": {
         "id": "new_york_city",
@@ -788,7 +804,13 @@ CITIES_DATABASE: Dict[str, Dict] = {
         "quality_of_life_score": 72,
         "healthcare_score": 85,
         "description": "La ciudad que nunca duerme. Centro financiero y cultural del mundo con infinitas oportunidades.",
-        "pros": ["Máximas oportunidades", "Transporte público", "Cultura", "Diversidad", "No necesitas carro"],
+        "pros": [
+            "Máximas oportunidades",
+            "Transporte público",
+            "Cultura",
+            "Diversidad",
+            "No necesitas carro",
+        ],
         "cons": ["Muy caro", "Apartamentos pequeños", "Inviernos fríos", "Ritmo acelerado"],
         "photo_url": "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800",
         "scores": {
@@ -801,9 +823,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 80,
             "clima": 50,
             "calidad_vida": 72,
-        }
+        },
     },
-    
     # ==================== OTROS ESTADOS ====================
     "chicago": {
         "id": "chicago",
@@ -857,9 +878,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 75,
             "clima": 35,
             "calidad_vida": 68,
-        }
+        },
     },
-    
     "denver": {
         "id": "denver",
         "name": "Denver",
@@ -912,9 +932,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 70,
             "clima": 75,
             "calidad_vida": 80,
-        }
+        },
     },
-    
     "phoenix": {
         "id": "phoenix",
         "name": "Phoenix",
@@ -967,9 +986,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 85,
             "clima": 70,
             "calidad_vida": 70,
-        }
+        },
     },
-    
     "atlanta": {
         "id": "atlanta",
         "name": "Atlanta",
@@ -1022,9 +1040,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 35,
             "clima": 70,
             "calidad_vida": 70,
-        }
+        },
     },
-    
     "seattle": {
         "id": "seattle",
         "name": "Seattle",
@@ -1077,9 +1094,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 35,
             "clima": 55,
             "calidad_vida": 78,
-        }
+        },
     },
-    
     "charlotte": {
         "id": "charlotte",
         "name": "Charlotte",
@@ -1132,9 +1148,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 55,
             "clima": 75,
             "calidad_vida": 75,
-        }
+        },
     },
-    
     "nashville": {
         "id": "nashville",
         "name": "Nashville",
@@ -1163,7 +1178,11 @@ CITIES_DATABASE: Dict[str, Dict] = {
         "sunny_days": 208,
         "rainy_days": 119,
         "school_rating": 5.5,
-        "top_schools": ["Hume-Fogg Academic", "Martin Luther King Jr. Magnet", "Nashville School of the Arts"],
+        "top_schools": [
+            "Hume-Fogg Academic",
+            "Martin Luther King Jr. Magnet",
+            "Nashville School of the Arts",
+        ],
         "universities": ["Vanderbilt", "Belmont", "Tennessee State", "Lipscomb"],
         "walk_score": 28,
         "transit_score": 24,
@@ -1187,9 +1206,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 45,
             "clima": 70,
             "calidad_vida": 75,
-        }
+        },
     },
-    
     "las_vegas": {
         "id": "las_vegas",
         "name": "Las Vegas",
@@ -1242,9 +1260,8 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 75,
             "clima": 70,
             "calidad_vida": 65,
-        }
+        },
     },
-    
     "boston": {
         "id": "boston",
         "name": "Boston",
@@ -1284,7 +1301,13 @@ CITIES_DATABASE: Dict[str, Dict] = {
         "quality_of_life_score": 78,
         "healthcare_score": 92,
         "description": "Ciudad universitaria con las mejores instituciones del mundo. Hub de biotech y salud.",
-        "pros": ["Mejores universidades", "Biotech hub", "Transporte público", "Historia", "Salud de clase mundial"],
+        "pros": [
+            "Mejores universidades",
+            "Biotech hub",
+            "Transporte público",
+            "Historia",
+            "Salud de clase mundial",
+        ],
         "cons": ["Muy caro", "Inviernos duros", "Tráfico", "Apartamentos pequeños"],
         "photo_url": "https://images.unsplash.com/photo-1501979376754-1d09c4639f67?w=800",
         "scores": {
@@ -1297,14 +1320,15 @@ CITIES_DATABASE: Dict[str, Dict] = {
             "comunidad_latina": 60,
             "clima": 40,
             "calidad_vida": 78,
-        }
+        },
     },
 }
 
 
 # ============== FUNCIONES DE BÚSQUEDA ==============
 
-def get_city(city_id: str) -> Optional[Dict]:
+
+def get_city(city_id: str) -> dict | None:
     """Obtiene datos de una ciudad por ID"""
     return CITIES_DATABASE.get(city_id.lower().replace(" ", "_"))
 
@@ -1318,12 +1342,12 @@ def search_cities(
     min_latino_pct: float = None,
     max_cost_index: int = None,
     min_safety_score: int = None,
-    industries: List[str] = None,
+    industries: list[str] = None,
     limit: int = 50,
-) -> List[Dict]:
+) -> list[dict]:
     """
     Busca ciudades según criterios
-    
+
     Args:
         state_code: Código del estado (ej: "FL", "TX")
         region: Región (costa_este, costa_oeste, sur, midwest, montanas)
@@ -1335,80 +1359,80 @@ def search_cities(
         min_safety_score: Score mínimo de seguridad (100 - crime_index)
         industries: Lista de industrias requeridas
         limit: Número máximo de resultados
-    
+
     Returns:
         Lista de ciudades que cumplen los criterios
     """
     results = []
-    
+
     # Importar datos de estados para filtrar por región
     from .cities_usa import STATES_DATA
-    
-    for city_id, city in CITIES_DATABASE.items():
+
+    for _city_id, city in CITIES_DATABASE.items():
         # Filtrar por estado
         if state_code and city["state_code"] != state_code.upper():
             continue
-        
+
         # Filtrar por región
         if region:
             state_data = STATES_DATA.get(city["state_code"])
             if state_data and state_data.get("region") != region:
                 continue
-        
+
         # Filtrar por clima
         if climate and city.get("climate") != climate:
             continue
-        
+
         # Filtrar por población
         if min_population and city["population"] < min_population:
             continue
         if max_population and city["population"] > max_population:
             continue
-        
+
         # Filtrar por población latina
         if min_latino_pct and city["latino_pct"] < min_latino_pct:
             continue
-        
+
         # Filtrar por costo de vida
         if max_cost_index and city["cost_of_living_index"] > max_cost_index:
             continue
-        
+
         # Filtrar por seguridad
         if min_safety_score:
             safety_score = 100 - city["crime_index"]
             if safety_score < min_safety_score:
                 continue
-        
+
         # Filtrar por industrias
         if industries:
             city_industries = set(city.get("top_industries", []))
             if not any(ind in city_industries for ind in industries):
                 continue
-        
+
         results.append(city)
-    
+
     # Ordenar por población (mayor primero)
     results.sort(key=lambda x: x["population"], reverse=True)
-    
+
     return results[:limit]
 
 
-def get_cities_by_state(state_code: str) -> List[Dict]:
+def get_cities_by_state(state_code: str) -> list[dict]:
     """Obtiene todas las ciudades de un estado"""
     return search_cities(state_code=state_code, limit=100)
 
 
-def get_top_cities_for_latinos(limit: int = 20) -> List[Dict]:
+def get_top_cities_for_latinos(limit: int = 20) -> list[dict]:
     """Obtiene las mejores ciudades para latinos"""
     return search_cities(min_latino_pct=20.0, limit=limit)
 
 
-def get_affordable_cities(max_cost_index: int = 100, limit: int = 20) -> List[Dict]:
+def get_affordable_cities(max_cost_index: int = 100, limit: int = 20) -> list[dict]:
     """Obtiene ciudades económicas"""
     return search_cities(max_cost_index=max_cost_index, limit=limit)
 
 
-def get_safe_cities(min_safety_score: int = 50, limit: int = 20) -> List[Dict]:
+def get_safe_cities(min_safety_score: int = 50, limit: int = 20) -> list[dict]:
     """Obtiene ciudades seguras"""
     return search_cities(min_safety_score=min_safety_score, limit=limit)
 

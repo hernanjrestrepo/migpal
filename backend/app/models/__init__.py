@@ -1,19 +1,19 @@
 # This file ensures that all models are imported and registered with SQLModel
 # before they are used, which can help prevent circular import issues with relationships.
 
-from .user import User
-from .audit_log import AuditLog
-from .migration_process import MigrationProcess
-from .user_migration_profile import UserMigrationProfile
-from .service_provider import ServiceProvider
 from .ai_conversation import AIConversation
-from .document import Document
-from .data_source import DataSource, ScrapeJob, ScrapedDocument
-from .zillow_listing import ZillowListing
+from .audit_log import AuditLog
 from .business_listing import BusinessListing
-from .school_ranking import SchoolRanking
+from .data_source import DataSource, ScrapedDocument, ScrapeJob
+from .document import Document
 from .job_listing import JobListing
+from .migration_process import MigrationProcess
 from .planner_task import PlannerTask
+from .school_ranking import SchoolRanking
+from .service_provider import ServiceProvider
+from .user import User
+from .user_migration_profile import UserMigrationProfile
+from .zillow_listing import ZillowListing
 
 # Rebuild models to resolve forward references, the Pydantic v2+ way
 User.model_rebuild()

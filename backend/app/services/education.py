@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import json
-from typing import Optional
 
 import httpx
 from sqlmodel import Session, select
 
-from app.models.data_source import DataSource, ScrapeJob, ScrapedDocument
+from app.models.data_source import DataSource, ScrapedDocument, ScrapeJob
 from app.models.school_ranking import SchoolRanking
 
 
@@ -41,7 +40,7 @@ def sync_greatschools(session: Session, source: DataSource, job: ScrapeJob) -> N
         title="GreatSchools San Francisco",
         content=payload,
         content_hash=str(hash(payload)),
-        metadata_blob=json.dumps(params)
+        metadata_blob=json.dumps(params),
     )
     session.add(doc)
     session.commit()
@@ -63,9 +62,7 @@ def _persist_schools(session: Session, source: DataSource, xml_payload: str) -> 
         school_id = school.findtext("gsId")
         if not school_id:
             continue
-        existing = session.exec(
-            select(SchoolRanking).where(SchoolRanking.school_id == school_id)
-        ).first()
+        existing = session.exec(select(SchoolRanking).where(SchoolRanking.school_id == school_id)).first()
         data = SchoolRanking(
             source_id=source.id,
             school_id=school_id,
@@ -74,10 +71,12 @@ def _persist_schools(session: Session, source: DataSource, xml_payload: str) -> 
             state=school.findtext("state"),
             rating=_safe_float(school.findtext("rating")),
             grades=school.findtext("gradeRange"),
-            metadata_blob=json.dumps({
-                "district": school.findtext("district"),
-                "enrollment": school.findtext("enrollment"),
-            })
+            metadata_blob=json.dumps(
+                {
+                    "district": school.findtext("district"),
+                    "enrollment": school.findtext("enrollment"),
+                }
+            ),
         )
         if existing:
             for field in ["name", "city", "state", "rating", "grades", "metadata_blob"]:
@@ -87,7 +86,7 @@ def _persist_schools(session: Session, source: DataSource, xml_payload: str) -> 
     session.commit()
 
 
-def _safe_float(value: Optional[str]) -> Optional[float]:
+def _safe_float(value: str | None) -> float | None:
     if not value:
         return None
     try:

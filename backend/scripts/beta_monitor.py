@@ -18,22 +18,23 @@ MÉTRICAS MONITOREADAS:
 - Puntos de fricción
 """
 
-import sys
-import os
-import json
-import time
 import argparse
-from datetime import datetime, timedelta
-from pathlib import Path
+import json
+import os
+import sys
+import time
+from datetime import datetime
 
 # Agregar path del proyecto
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.services.beta_tracker import (
-    get_beta_tracker, BETA_LOG_PATH, BETA_EVENTS_FILE,
-    BETA_METRICS_FILE, generate_beta_report, save_beta_report
-)
 from app.services.beta_integration import get_beta_status
+from app.services.beta_tracker import (
+    BETA_EVENTS_FILE,
+    generate_beta_report,
+    get_beta_tracker,
+    save_beta_report,
+)
 
 # Configuración
 REFRESH_INTERVAL = 5  # segundos
@@ -42,7 +43,7 @@ MIN_USERS_FOR_REPORT = 5
 
 def clear_screen():
     """Limpia la pantalla"""
-    os.system('clear' if os.name != 'nt' else 'cls')
+    os.system("clear" if os.name != "nt" else "cls")
 
 
 def format_duration(minutes: float) -> str:
@@ -60,7 +61,7 @@ def get_recent_events(limit: int = 20) -> list:
     events = []
     try:
         if BETA_EVENTS_FILE.exists():
-            with open(BETA_EVENTS_FILE, 'r') as f:
+            with open(BETA_EVENTS_FILE) as f:
                 for line in f:
                     if line.strip():
                         events.append(json.loads(line))
@@ -74,48 +75,51 @@ def get_friction_alerts() -> list:
     """Detecta alertas de fricción"""
     alerts = []
     tracker = get_beta_tracker()
-    
+
     for uid, metrics in tracker._user_metrics.items():
         # Alta frustración
         if metrics.frustration_count >= 2:
-            alerts.append({
-                "type": "FRUSTRATION",
-                "user_id": uid,
-                "phase": metrics.current_phase,
-                "count": metrics.frustration_count,
-                "severity": "HIGH" if metrics.frustration_count >= 3 else "MEDIUM"
-            })
-        
+            alerts.append(
+                {
+                    "type": "FRUSTRATION",
+                    "user_id": uid,
+                    "phase": metrics.current_phase,
+                    "count": metrics.frustration_count,
+                    "severity": "HIGH" if metrics.frustration_count >= 3 else "MEDIUM",
+                }
+            )
+
         # Muchas preguntas repetidas
         if metrics.questions_repeated >= 2:
-            alerts.append({
-                "type": "REPEATED_QUESTIONS",
-                "user_id": uid,
-                "phase": metrics.current_phase,
-                "count": metrics.questions_repeated,
-                "severity": "MEDIUM"
-            })
-        
+            alerts.append(
+                {
+                    "type": "REPEATED_QUESTIONS",
+                    "user_id": uid,
+                    "phase": metrics.current_phase,
+                    "count": metrics.questions_repeated,
+                    "severity": "MEDIUM",
+                }
+            )
+
         # Abandono detectado
         if metrics.abandoned_at_phase:
-            alerts.append({
-                "type": "ABANDON",
-                "user_id": uid,
-                "phase": metrics.abandoned_at_phase,
-                "severity": "HIGH"
-            })
-        
+            alerts.append(
+                {"type": "ABANDON", "user_id": uid, "phase": metrics.abandoned_at_phase, "severity": "HIGH"}
+            )
+
         # Tiempo excesivo en fase
         for phase, time_min in metrics.time_per_phase.items():
             if time_min > 20:  # Más de 20 minutos
-                alerts.append({
-                    "type": "SLOW_PHASE",
-                    "user_id": uid,
-                    "phase": phase,
-                    "time": time_min,
-                    "severity": "MEDIUM"
-                })
-    
+                alerts.append(
+                    {
+                        "type": "SLOW_PHASE",
+                        "user_id": uid,
+                        "phase": phase,
+                        "time": time_min,
+                        "severity": "MEDIUM",
+                    }
+                )
+
     return alerts
 
 
@@ -123,18 +127,18 @@ def display_dashboard():
     """Muestra dashboard de monitoreo"""
     clear_screen()
     tracker = get_beta_tracker()
-    
+
     print("=" * 70)
     print("🧪 MIGPAL BETA MONITOR - MODO OBSERVACIÓN")
     print("=" * 70)
     print(f"Última actualización: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
-    
+
     # Estado general
     total_users = len(tracker._user_metrics)
     active_users = len(tracker.get_active_users())
     completed_users = len(tracker.get_completed_users())
-    
+
     print("📊 ESTADO GENERAL")
     print("-" * 40)
     print(f"  Usuarios totales:    {total_users}")
@@ -144,20 +148,20 @@ def display_dashboard():
         print(f"  Tasa completación:   {completed_users/total_users*100:.1f}%")
         print(f"  Tasa abandono:       {(total_users-active_users)/total_users*100:.1f}%")
     print()
-    
+
     # Métricas por usuario
     if tracker._user_metrics:
         print("👥 USUARIOS ACTIVOS")
         print("-" * 40)
         print(f"{'ID':<12} {'Fase':<15} {'Msgs':<6} {'Frust':<6} {'Pagos':<8}")
         print("-" * 40)
-        
+
         for uid, m in tracker._user_metrics.items():
             phase = m.current_phase[:12] if m.current_phase else "?"
             paid = f"${m.total_paid:.0f}" if m.total_paid > 0 else "-"
             print(f"{uid:<12} {phase:<15} {m.total_messages:<6} {m.frustration_count:<6} {paid:<8}")
         print()
-    
+
     # Tiempos por fase (promedio)
     phase_times = {}
     for m in tracker._user_metrics.values():
@@ -165,7 +169,7 @@ def display_dashboard():
             if phase not in phase_times:
                 phase_times[phase] = []
             phase_times[phase].append(time)
-    
+
     if phase_times:
         print("⏱️ TIEMPO PROMEDIO POR FASE")
         print("-" * 40)
@@ -175,7 +179,7 @@ def display_dashboard():
                 bar = "█" * int(avg / 2) + "░" * (20 - int(avg / 2))
                 print(f"  {phase:<15} [{bar}] {format_duration(avg)}")
         print()
-    
+
     # Alertas de fricción
     alerts = get_friction_alerts()
     if alerts:
@@ -183,9 +187,11 @@ def display_dashboard():
         print("-" * 40)
         for alert in alerts[:5]:  # Mostrar máximo 5
             severity_icon = "🔴" if alert["severity"] == "HIGH" else "🟡"
-            print(f"  {severity_icon} [{alert['type']}] User {alert['user_id']} - {alert.get('phase', 'N/A')}")
+            print(
+                f"  {severity_icon} [{alert['type']}] User {alert['user_id']} - {alert.get('phase', 'N/A')}"
+            )
         print()
-    
+
     # Eventos recientes
     events = get_recent_events(10)
     if events:
@@ -198,12 +204,12 @@ def display_dashboard():
             phase = event.get("phase", "")[:10]
             print(f"  {ts} | {etype:<20} | User {uid} | {phase}")
         print()
-    
+
     # Conversión a pago
     total_prompted = sum(m.payments_prompted for m in tracker._user_metrics.values())
     total_completed = sum(m.payments_completed for m in tracker._user_metrics.values())
     total_revenue = sum(m.total_paid for m in tracker._user_metrics.values())
-    
+
     if total_prompted > 0:
         print("💰 CONVERSIÓN A PAGO")
         print("-" * 40)
@@ -212,7 +218,7 @@ def display_dashboard():
         print(f"  Conversión:    {total_completed/total_prompted*100:.1f}%")
         print(f"  Ingresos:      ${total_revenue:.2f}")
         print()
-    
+
     # Estado del reporte
     print("📋 REPORTE")
     print("-" * 40)
@@ -222,7 +228,7 @@ def display_dashboard():
     else:
         print(f"  ⏳ Esperando usuarios ({total_users}/{MIN_USERS_FOR_REPORT})")
     print()
-    
+
     print("=" * 70)
     print("Presiona Ctrl+C para salir | Actualización cada 5 segundos")
     print("=" * 70)
@@ -231,10 +237,10 @@ def display_dashboard():
 def show_status():
     """Muestra estado actual"""
     print(get_beta_status())
-    
-    tracker = get_beta_tracker()
+
+    get_beta_tracker()
     alerts = get_friction_alerts()
-    
+
     if alerts:
         print("\n⚠️ ALERTAS ACTIVAS:")
         for alert in alerts:
@@ -245,20 +251,20 @@ def generate_report_if_ready():
     """Genera reporte si hay suficientes usuarios"""
     tracker = get_beta_tracker()
     total_users = len(tracker._user_metrics)
-    
+
     if total_users < MIN_USERS_FOR_REPORT:
         print(f"⏳ Insuficientes usuarios: {total_users}/{MIN_USERS_FOR_REPORT}")
         print("El reporte se generará cuando haya al menos 5 usuarios.")
         return None
-    
+
     print(f"✅ Generando reporte con {total_users} usuarios...")
     path = save_beta_report()
     print(f"📁 Reporte guardado en: {path}")
-    
+
     # Mostrar resumen
     print("\n" + "=" * 60)
     print(generate_beta_report())
-    
+
     return path
 
 
@@ -267,7 +273,7 @@ def run_monitor():
     print("🧪 Iniciando monitor beta...")
     print("Presiona Ctrl+C para salir")
     print()
-    
+
     try:
         while True:
             display_dashboard()
@@ -282,9 +288,9 @@ def main():
     parser.add_argument("--status", action="store_true", help="Ver estado actual")
     parser.add_argument("--alerts", action="store_true", help="Ver alertas de fricción")
     parser.add_argument("--events", action="store_true", help="Ver eventos recientes")
-    
+
     args = parser.parse_args()
-    
+
     if args.report:
         generate_report_if_ready()
     elif args.status:
@@ -294,7 +300,9 @@ def main():
         if alerts:
             print("⚠️ ALERTAS DE FRICCIÓN:")
             for alert in alerts:
-                print(f"  [{alert['severity']}] {alert['type']}: User {alert['user_id']} - {alert.get('phase', 'N/A')}")
+                print(
+                    f"  [{alert['severity']}] {alert['type']}: User {alert['user_id']} - {alert.get('phase', 'N/A')}"
+                )
         else:
             print("✅ No hay alertas activas")
     elif args.events:

@@ -4,10 +4,10 @@ Diagnóstico del Bot de Telegram
 Verifica: token, webhook, polling, instancias, conectividad
 """
 
-import os
-import sys
 import asyncio
+import os
 import subprocess
+import sys
 from datetime import datetime
 
 # Cargar variables de entorno
@@ -15,12 +15,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
     from dotenv import load_dotenv
-    load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
+
+    load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 except:
     pass
 
 # SECURITY: Token MUST be set in .env - no hardcoded fallback
-BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 
 
 async def diagnose():
@@ -29,20 +30,21 @@ async def diagnose():
     print("=" * 60)
     print(f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
-    
+
     issues = []
-    
+
     # 1. Verificar token
     print("1️⃣ Verificando token...")
     try:
         import httpx
+
         async with httpx.AsyncClient() as client:
             response = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe")
             data = response.json()
-            
+
             if data.get("ok"):
                 bot_info = data["result"]
-                print(f"   ✅ Token válido")
+                print("   ✅ Token válido")
                 print(f"   Bot: @{bot_info.get('username')}")
                 print(f"   ID: {bot_info.get('id')}")
             else:
@@ -52,60 +54,58 @@ async def diagnose():
         print(f"   ❌ Error verificando token: {e}")
         issues.append(f"Error de token: {e}")
     print()
-    
+
     # 2. Verificar webhook
     print("2️⃣ Verificando webhook...")
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getWebhookInfo")
             data = response.json()
-            
+
             if data.get("ok"):
                 webhook = data["result"]
                 if webhook.get("url"):
                     print(f"   ⚠️ Webhook ACTIVO: {webhook['url']}")
-                    print(f"   Para usar polling, desactiva el webhook:")
+                    print("   Para usar polling, desactiva el webhook:")
                     print(f"   curl 'https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook'")
                     issues.append("Webhook activo (debe estar desactivado para polling)")
                 else:
-                    print(f"   ✅ Webhook desactivado (correcto para polling)")
-                
+                    print("   ✅ Webhook desactivado (correcto para polling)")
+
                 pending = webhook.get("pending_update_count", 0)
                 print(f"   Updates pendientes: {pending}")
-                
+
                 if webhook.get("last_error_message"):
                     print(f"   ⚠️ Último error: {webhook['last_error_message']}")
     except Exception as e:
         print(f"   ❌ Error verificando webhook: {e}")
         issues.append(f"Error de webhook: {e}")
     print()
-    
+
     # 3. Verificar procesos locales
     print("3️⃣ Verificando procesos locales...")
     try:
-        result = subprocess.run(
-            ["pgrep", "-f", "telegram_bot"],
-            capture_output=True, text=True
-        )
-        pids = [p for p in result.stdout.strip().split('\n') if p]
-        
+        result = subprocess.run(["pgrep", "-f", "telegram_bot"], capture_output=True, text=True)
+        pids = [p for p in result.stdout.strip().split("\n") if p]
+
         if pids:
             print(f"   ⚠️ Procesos encontrados: {pids}")
             for pid in pids:
                 try:
                     ps_result = subprocess.run(
                         ["ps", "-p", pid, "-o", "pid,ppid,cmd", "--no-headers"],
-                        capture_output=True, text=True
+                        capture_output=True,
+                        text=True,
                     )
                     print(f"      {ps_result.stdout.strip()}")
                 except:
                     pass
         else:
-            print(f"   ℹ️ No hay procesos del bot corriendo localmente")
+            print("   ℹ️ No hay procesos del bot corriendo localmente")
     except Exception as e:
         print(f"   ⚠️ No se pudo verificar procesos: {e}")
     print()
-    
+
     # 4. Verificar lockfile
     print("4️⃣ Verificando lockfile...")
     lockfile = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "migpal_bot.lock")
@@ -113,7 +113,7 @@ async def diagnose():
         with open(lockfile) as f:
             pid = f.read().strip()
         print(f"   Lockfile existe con PID: {pid}")
-        
+
         # Verificar si el proceso existe
         try:
             os.kill(int(pid), 0)
@@ -121,35 +121,34 @@ async def diagnose():
         except ProcessLookupError:
             print(f"   ⚠️ Proceso {pid} NO está corriendo (lockfile obsoleto)")
         except ValueError:
-            print(f"   ⚠️ PID inválido en lockfile")
+            print("   ⚠️ PID inválido en lockfile")
     else:
-        print(f"   ℹ️ No hay lockfile")
+        print("   ℹ️ No hay lockfile")
     print()
-    
+
     # 5. Probar envío de mensaje
     print("5️⃣ Probando conectividad...")
     try:
         async with httpx.AsyncClient() as client:
             # Intentar obtener updates (esto fallará si hay otra instancia)
             response = await client.post(
-                f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates",
-                json={"timeout": 1, "limit": 1}
+                f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates", json={"timeout": 1, "limit": 1}
             )
             data = response.json()
-            
+
             if data.get("ok"):
-                print(f"   ✅ Conectividad OK")
+                print("   ✅ Conectividad OK")
                 updates = data.get("result", [])
                 if updates:
                     print(f"   Último update: {updates[-1].get('update_id')}")
             else:
                 error = data.get("description", "Unknown error")
                 if "Conflict" in error:
-                    print(f"   ❌ CONFLICTO: Otra instancia del bot está corriendo")
-                    print(f"   Esto puede ser:")
-                    print(f"      - Otra instancia en este servidor")
-                    print(f"      - Una instancia en producción/otro servidor")
-                    print(f"      - Un proceso zombie")
+                    print("   ❌ CONFLICTO: Otra instancia del bot está corriendo")
+                    print("   Esto puede ser:")
+                    print("      - Otra instancia en este servidor")
+                    print("      - Una instancia en producción/otro servidor")
+                    print("      - Un proceso zombie")
                     issues.append("Conflicto: otra instancia corriendo")
                 else:
                     print(f"   ❌ Error: {error}")
@@ -158,19 +157,19 @@ async def diagnose():
         print(f"   ❌ Error de conectividad: {e}")
         issues.append(f"Error de conectividad: {e}")
     print()
-    
+
     # Resumen
     print("=" * 60)
     print("📊 RESUMEN")
     print("=" * 60)
-    
+
     if not issues:
         print("✅ Todo OK - El bot debería poder iniciar")
     else:
         print("❌ Problemas encontrados:")
         for issue in issues:
             print(f"   • {issue}")
-        
+
         print()
         print("🔧 SOLUCIONES:")
         if any("Conflicto" in i for i in issues):
@@ -179,9 +178,9 @@ async def diagnose():
             print("   2. Si hay una instancia en producción, detenerla primero")
             print("   3. Esperar 30 segundos antes de reiniciar")
         if any("Webhook" in i for i in issues):
-            print(f"   • Desactivar webhook:")
+            print("   • Desactivar webhook:")
             print(f"     curl 'https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook'")
-    
+
     print()
     return len(issues) == 0
 

@@ -1,12 +1,14 @@
-from typing import Optional
-from sqlmodel import SQLModel, Field
 from datetime import datetime
+
+from sqlmodel import Field, SQLModel
+
 
 # Pydantic models for API requests and responses
 class UserCreate(SQLModel):
     email: str
     username: str
     password: str
+
 
 class UserRead(SQLModel):
     id: int
@@ -20,12 +22,12 @@ class UserRead(SQLModel):
 
 # Database model for the User
 class User(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)
     username: str = Field(index=True, unique=True)
     hashed_password: str
     role: str = Field(default="user", index=True)  # user, admin
     email_verified: bool = Field(default=False)
-    email_verification_token: Optional[str] = Field(default=None)
+    email_verification_token: str | None = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

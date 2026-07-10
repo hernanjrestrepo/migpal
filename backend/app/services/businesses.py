@@ -1,24 +1,23 @@
 from __future__ import annotations
 
 import json
-from typing import Optional, List
 
 import httpx
 from bs4 import BeautifulSoup
 from sqlmodel import Session, select
 
-from app.models.data_source import DataSource, ScrapeJob
 from app.models.business_listing import BusinessListing
+from app.models.data_source import DataSource, ScrapeJob
 
 BIZBUYSELL_SLUG = "bizbuysell"
 BFS_SLUG = "businessesforsale"
 
 
-def _get_source(session: Session, slug: str) -> Optional[DataSource]:
+def _get_source(session: Session, slug: str) -> DataSource | None:
     return session.exec(select(DataSource).where(DataSource.slug == slug)).first()
 
 
-def _extract_cards(html: str, selector: str) -> List[dict]:
+def _extract_cards(html: str, selector: str) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
     cards = []
     for card in soup.select(selector):
@@ -28,16 +27,11 @@ def _extract_cards(html: str, selector: str) -> List[dict]:
         price_tag = card.find(class_="price")
         price = None
         if price_tag:
-            digits = ''.join(c for c in price_tag.text if c.isdigit())
+            digits = "".join(c for c in price_tag.text if c.isdigit())
             price = float(digits) if digits else None
         summary_tag = card.find("p")
         summary = summary_tag.get_text(strip=True) if summary_tag else None
-        cards.append({
-            "title": title,
-            "url": url,
-            "price": price,
-            "summary": summary
-        })
+        cards.append({"title": title, "url": url, "price": price, "summary": summary})
     return cards
 
 
@@ -77,7 +71,7 @@ def sync_businesses_for_sale(session: Session, job: ScrapeJob) -> ScrapeJob:
     return job
 
 
-def _persist_business_cards(session: Session, source: DataSource, cards: List[dict]):
+def _persist_business_cards(session: Session, source: DataSource, cards: list[dict]):
     for card in cards:
         listing_id = (card.get("url") or card.get("title") or "unknown").strip()
         existing = session.exec(
@@ -97,7 +91,7 @@ def _persist_business_cards(session: Session, source: DataSource, cards: List[di
             summary=card.get("summary"),
             state=card.get("state") or "US",
             city=card.get("city"),
-            metadata_blob=json.dumps(card)
+            metadata_blob=json.dumps(card),
         )
         session.add(listing)
     session.commit()

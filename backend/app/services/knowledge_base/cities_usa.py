@@ -16,16 +16,30 @@ ESTRUCTURA:
 - Datos demográficos, económicos, climáticos
 """
 
-from typing import Dict, List, Any, Optional
-from dataclasses import dataclass, field
-import json
-
 # ============== REGIONES ==============
 
 REGIONS = {
     "costa_este": {
         "name": "Costa Este",
-        "states": ["FL", "GA", "SC", "NC", "VA", "MD", "DE", "NJ", "NY", "CT", "RI", "MA", "NH", "ME", "VT", "PA", "DC"],
+        "states": [
+            "FL",
+            "GA",
+            "SC",
+            "NC",
+            "VA",
+            "MD",
+            "DE",
+            "NJ",
+            "NY",
+            "CT",
+            "RI",
+            "MA",
+            "NH",
+            "ME",
+            "VT",
+            "PA",
+            "DC",
+        ],
         "description": "Desde Florida hasta Maine, incluye las principales metrópolis del país",
     },
     "costa_oeste": {
@@ -66,7 +80,25 @@ CLIMATES = {
     "frio": {
         "name": "Frío",
         "description": "Inviernos con nieve, veranos moderados",
-        "states": ["NY", "MA", "CT", "PA", "OH", "MI", "IL", "WI", "MN", "CO", "MT", "WY", "ND", "SD", "ME", "VT", "NH"],
+        "states": [
+            "NY",
+            "MA",
+            "CT",
+            "PA",
+            "OH",
+            "MI",
+            "IL",
+            "WI",
+            "MN",
+            "CO",
+            "MT",
+            "WY",
+            "ND",
+            "SD",
+            "ME",
+            "VT",
+            "NH",
+        ],
     },
 }
 
@@ -90,7 +122,6 @@ STATES_DATA = {
         "pros": ["Sin impuesto estatal", "Clima cálido", "Playas", "Gran comunidad latina"],
         "cons": ["Huracanes", "Calor extremo", "Costo de vida en aumento"],
     },
-    
     # TEXAS
     "TX": {
         "name": "Texas",
@@ -108,7 +139,6 @@ STATES_DATA = {
         "pros": ["Sin impuesto estatal", "Bajo costo de vida", "Economía fuerte", "Gran comunidad latina"],
         "cons": ["Calor extremo", "Transporte público limitado", "Tornados"],
     },
-    
     # CALIFORNIA
     "CA": {
         "name": "California",
@@ -126,7 +156,6 @@ STATES_DATA = {
         "pros": ["Clima perfecto", "Oportunidades tech", "Diversidad", "Playas y montañas"],
         "cons": ["Muy caro", "Impuestos altos", "Tráfico", "Incendios forestales"],
     },
-    
     # NEW YORK
     "NY": {
         "name": "New York",
@@ -144,7 +173,6 @@ STATES_DATA = {
         "pros": ["Máximas oportunidades", "Transporte público", "Cultura", "Diversidad"],
         "cons": ["Muy caro", "Inviernos fríos", "Apartamentos pequeños"],
     },
-    
     # GEORGIA
     "GA": {
         "name": "Georgia",
@@ -162,7 +190,6 @@ STATES_DATA = {
         "pros": ["Bajo costo de vida", "Hub de aerolíneas", "Crecimiento económico"],
         "cons": ["Tráfico en Atlanta", "Humedad", "Transporte público limitado"],
     },
-    
     # NORTH CAROLINA
     "NC": {
         "name": "North Carolina",
@@ -180,7 +207,6 @@ STATES_DATA = {
         "pros": ["Research Triangle", "Bajo costo de vida", "Montañas y playas"],
         "cons": ["Huracanes", "Transporte público limitado"],
     },
-    
     # COLORADO
     "CO": {
         "name": "Colorado",
@@ -198,7 +224,6 @@ STATES_DATA = {
         "pros": ["Calidad de vida", "Outdoor lifestyle", "Tech hub", "300 días de sol"],
         "cons": ["Costo de vivienda alto", "Altitud", "Inviernos fríos"],
     },
-    
     # ARIZONA
     "AZ": {
         "name": "Arizona",
@@ -216,7 +241,6 @@ STATES_DATA = {
         "pros": ["Bajo costo de vida", "Sol todo el año", "Crecimiento económico"],
         "cons": ["Calor extremo en verano", "Escasez de agua", "Transporte limitado"],
     },
-    
     # ILLINOIS
     "IL": {
         "name": "Illinois",
@@ -234,7 +258,6 @@ STATES_DATA = {
         "pros": ["Chicago es hub cultural", "Transporte público", "Diversidad"],
         "cons": ["Inviernos muy fríos", "Impuestos altos", "Criminalidad en algunas áreas"],
     },
-    
     # WASHINGTON
     "WA": {
         "name": "Washington",
@@ -252,7 +275,6 @@ STATES_DATA = {
         "pros": ["Sin impuesto estatal", "Tech hub (Amazon, Microsoft)", "Naturaleza"],
         "cons": ["Lluvia frecuente", "Costo de vida alto en Seattle", "Gris en invierno"],
     },
-    
     # MASSACHUSETTS
     "MA": {
         "name": "Massachusetts",
@@ -270,7 +292,6 @@ STATES_DATA = {
         "pros": ["Mejores universidades", "Hub de biotech", "Historia", "Transporte público"],
         "cons": ["Muy caro", "Inviernos duros", "Tráfico"],
     },
-    
     # NEVADA
     "NV": {
         "name": "Nevada",
@@ -288,7 +309,6 @@ STATES_DATA = {
         "pros": ["Sin impuesto estatal", "Entretenimiento", "Crecimiento tech"],
         "cons": ["Calor extremo", "Economía dependiente del turismo", "Escasez de agua"],
     },
-    
     # TENNESSEE
     "TN": {
         "name": "Tennessee",
@@ -306,7 +326,6 @@ STATES_DATA = {
         "pros": ["Sin impuesto estatal", "Bajo costo de vida", "Música y cultura"],
         "cons": ["Tornados", "Transporte público limitado", "Humedad"],
     },
-    
     # NEW JERSEY
     "NJ": {
         "name": "New Jersey",
@@ -324,7 +343,6 @@ STATES_DATA = {
         "pros": ["Cercanía a NYC", "Playas", "Buenas escuelas", "Diversidad"],
         "cons": ["Impuestos muy altos", "Tráfico", "Costo de vida alto"],
     },
-    
     # VIRGINIA
     "VA": {
         "name": "Virginia",
@@ -342,7 +360,6 @@ STATES_DATA = {
         "pros": ["Cercanía a DC", "Empleos gobierno/defensa", "Historia", "Buenas escuelas"],
         "cons": ["Tráfico en NoVA", "Costo de vida en NoVA", "Humedad"],
     },
-    
     # OHIO
     "OH": {
         "name": "Ohio",
@@ -360,7 +377,6 @@ STATES_DATA = {
         "pros": ["Muy bajo costo de vida", "Buenas universidades", "Crecimiento tech"],
         "cons": ["Inviernos fríos", "Economía en transición", "Menos diversidad"],
     },
-    
     # MICHIGAN
     "MI": {
         "name": "Michigan",
@@ -378,7 +394,6 @@ STATES_DATA = {
         "pros": ["Muy bajo costo de vida", "Lagos", "Renacimiento de Detroit"],
         "cons": ["Inviernos muy fríos", "Economía en recuperación"],
     },
-    
     # MARYLAND
     "MD": {
         "name": "Maryland",
@@ -396,7 +411,6 @@ STATES_DATA = {
         "pros": ["Cercanía a DC", "Empleos gobierno", "Buenas escuelas", "Diversidad"],
         "cons": ["Costo de vida alto", "Tráfico", "Impuestos"],
     },
-    
     # MINNESOTA
     "MN": {
         "name": "Minnesota",
@@ -414,7 +428,6 @@ STATES_DATA = {
         "pros": ["Alta calidad de vida", "Buenas escuelas", "Fortune 500 companies"],
         "cons": ["Inviernos extremadamente fríos", "Menos diversidad latina"],
     },
-    
     # OREGON
     "OR": {
         "name": "Oregon",
@@ -432,7 +445,6 @@ STATES_DATA = {
         "pros": ["Sin sales tax", "Naturaleza", "Cultura progresista"],
         "cons": ["Lluvia frecuente", "Costo de vivienda en Portland", "Homeless"],
     },
-    
     # UTAH
     "UT": {
         "name": "Utah",
@@ -450,7 +462,6 @@ STATES_DATA = {
         "pros": ["Economía fuerte", "Outdoor lifestyle", "Silicon Slopes tech hub"],
         "cons": ["Cultura conservadora", "Calidad del aire", "Inviernos fríos"],
     },
-    
     # INDIANA
     "IN": {
         "name": "Indiana",
@@ -468,7 +479,6 @@ STATES_DATA = {
         "pros": ["Muy bajo costo de vida", "Impuestos bajos", "Crecimiento económico"],
         "cons": ["Inviernos fríos", "Menos diversidad", "Transporte limitado"],
     },
-    
     # LOUISIANA
     "LA": {
         "name": "Louisiana",
@@ -486,7 +496,6 @@ STATES_DATA = {
         "pros": ["Cultura única", "Comida", "Bajo costo de vida", "Música"],
         "cons": ["Huracanes", "Criminalidad", "Pobreza", "Humedad extrema"],
     },
-    
     # SOUTH CAROLINA
     "SC": {
         "name": "South Carolina",
@@ -504,7 +513,6 @@ STATES_DATA = {
         "pros": ["Bajo costo de vida", "Playas", "Crecimiento económico"],
         "cons": ["Huracanes", "Humedad", "Transporte limitado"],
     },
-    
     # ALABAMA
     "AL": {
         "name": "Alabama",
@@ -522,7 +530,6 @@ STATES_DATA = {
         "pros": ["Muy bajo costo de vida", "Crecimiento en Huntsville", "Amabilidad"],
         "cons": ["Menos diversidad", "Transporte limitado", "Tornados"],
     },
-    
     # KENTUCKY
     "KY": {
         "name": "Kentucky",
@@ -540,7 +547,6 @@ STATES_DATA = {
         "pros": ["Muy bajo costo de vida", "Bourbon country", "Caballos"],
         "cons": ["Menos diversidad", "Oportunidades limitadas", "Transporte limitado"],
     },
-    
     # OKLAHOMA
     "OK": {
         "name": "Oklahoma",
@@ -558,7 +564,6 @@ STATES_DATA = {
         "pros": ["Muy bajo costo de vida", "Amabilidad", "Crecimiento económico"],
         "cons": ["Tornados", "Calor extremo", "Transporte limitado"],
     },
-    
     # CONNECTICUT
     "CT": {
         "name": "Connecticut",
@@ -576,7 +581,6 @@ STATES_DATA = {
         "pros": ["Cercanía a NYC", "Buenas escuelas", "Seguridad"],
         "cons": ["Costo de vida alto", "Impuestos altos", "Inviernos fríos"],
     },
-    
     # IOWA
     "IA": {
         "name": "Iowa",
@@ -594,7 +598,6 @@ STATES_DATA = {
         "pros": ["Muy bajo costo de vida", "Buenas escuelas", "Seguridad"],
         "cons": ["Inviernos muy fríos", "Menos diversidad", "Aislamiento"],
     },
-    
     # ARKANSAS
     "AR": {
         "name": "Arkansas",
@@ -612,7 +615,6 @@ STATES_DATA = {
         "pros": ["Muy bajo costo de vida", "Naturaleza", "Walmart HQ"],
         "cons": ["Menos oportunidades", "Transporte limitado", "Tornados"],
     },
-    
     # KANSAS
     "KS": {
         "name": "Kansas",
@@ -630,7 +632,6 @@ STATES_DATA = {
         "pros": ["Muy bajo costo de vida", "Amabilidad", "Seguridad"],
         "cons": ["Tornados", "Aislamiento", "Menos diversidad"],
     },
-    
     # MISSISSIPPI
     "MS": {
         "name": "Mississippi",
@@ -648,7 +649,6 @@ STATES_DATA = {
         "pros": ["El más bajo costo de vida", "Amabilidad", "Playas del Golfo"],
         "cons": ["Pobreza", "Menos oportunidades", "Huracanes"],
     },
-    
     # NEBRASKA
     "NE": {
         "name": "Nebraska",
@@ -666,7 +666,6 @@ STATES_DATA = {
         "pros": ["Bajo costo de vida", "Bajo desempleo", "Seguridad"],
         "cons": ["Inviernos fríos", "Aislamiento", "Tornados"],
     },
-    
     # NEW MEXICO
     "NM": {
         "name": "New Mexico",
@@ -684,7 +683,6 @@ STATES_DATA = {
         "pros": ["Gran comunidad latina", "Cultura única", "Bajo costo de vida"],
         "cons": ["Menos oportunidades", "Pobreza", "Aislamiento"],
     },
-    
     # IDAHO
     "ID": {
         "name": "Idaho",
@@ -702,7 +700,6 @@ STATES_DATA = {
         "pros": ["Crecimiento económico", "Naturaleza", "Seguridad"],
         "cons": ["Inviernos fríos", "Menos diversidad", "Crecimiento rápido"],
     },
-    
     # WEST VIRGINIA
     "WV": {
         "name": "West Virginia",
@@ -720,7 +717,6 @@ STATES_DATA = {
         "pros": ["Muy bajo costo de vida", "Naturaleza", "Montañas"],
         "cons": ["Menos oportunidades", "Economía en declive", "Aislamiento"],
     },
-    
     # HAWAII
     "HI": {
         "name": "Hawaii",
@@ -738,7 +734,6 @@ STATES_DATA = {
         "pros": ["Paraíso tropical", "Diversidad", "Calidad de vida"],
         "cons": ["Extremadamente caro", "Aislamiento", "Lejos de todo"],
     },
-    
     # NEW HAMPSHIRE
     "NH": {
         "name": "New Hampshire",
@@ -756,7 +751,6 @@ STATES_DATA = {
         "pros": ["Sin impuesto estatal", "Seguridad", "Naturaleza"],
         "cons": ["Inviernos fríos", "Menos diversidad", "Costo de vivienda"],
     },
-    
     # MAINE
     "ME": {
         "name": "Maine",
@@ -774,7 +768,6 @@ STATES_DATA = {
         "pros": ["Naturaleza", "Mariscos", "Seguridad", "Calidad de vida"],
         "cons": ["Inviernos muy fríos", "Aislamiento", "Menos oportunidades"],
     },
-    
     # MONTANA
     "MT": {
         "name": "Montana",
@@ -792,7 +785,6 @@ STATES_DATA = {
         "pros": ["Naturaleza espectacular", "Seguridad", "Calidad de vida"],
         "cons": ["Inviernos muy fríos", "Aislamiento", "Menos oportunidades"],
     },
-    
     # RHODE ISLAND
     "RI": {
         "name": "Rhode Island",
@@ -810,7 +802,6 @@ STATES_DATA = {
         "pros": ["Cercanía a Boston/NYC", "Playas", "Historia"],
         "cons": ["Pequeño", "Inviernos fríos", "Impuestos"],
     },
-    
     # DELAWARE
     "DE": {
         "name": "Delaware",
@@ -828,7 +819,6 @@ STATES_DATA = {
         "pros": ["Sin sales tax", "Cercanía a Philly/NYC", "Playas"],
         "cons": ["Pequeño", "Menos oportunidades", "Tráfico I-95"],
     },
-    
     # SOUTH DAKOTA
     "SD": {
         "name": "South Dakota",
@@ -846,7 +836,6 @@ STATES_DATA = {
         "pros": ["Sin impuesto estatal", "Bajo costo de vida", "Seguridad"],
         "cons": ["Inviernos extremos", "Aislamiento", "Menos diversidad"],
     },
-    
     # NORTH DAKOTA
     "ND": {
         "name": "North Dakota",
@@ -864,7 +853,6 @@ STATES_DATA = {
         "pros": ["Bajo desempleo", "Bajo costo de vida", "Seguridad"],
         "cons": ["Inviernos extremadamente fríos", "Aislamiento", "Menos diversidad"],
     },
-    
     # ALASKA
     "AK": {
         "name": "Alaska",
@@ -882,7 +870,6 @@ STATES_DATA = {
         "pros": ["Sin impuesto estatal", "Naturaleza única", "Aventura"],
         "cons": ["Muy aislado", "Inviernos extremos", "Caro"],
     },
-    
     # VERMONT
     "VT": {
         "name": "Vermont",
@@ -900,7 +887,6 @@ STATES_DATA = {
         "pros": ["Naturaleza", "Calidad de vida", "Seguridad"],
         "cons": ["Inviernos fríos", "Aislamiento", "Menos oportunidades"],
     },
-    
     # WYOMING
     "WY": {
         "name": "Wyoming",
@@ -918,7 +904,6 @@ STATES_DATA = {
         "pros": ["Sin impuesto estatal", "Naturaleza", "Yellowstone"],
         "cons": ["Muy aislado", "Inviernos fríos", "Pocas oportunidades"],
     },
-    
     # DISTRICT OF COLUMBIA
     "DC": {
         "name": "Washington D.C.",
@@ -941,83 +926,81 @@ STATES_DATA = {
 
 # ============== FUNCIONES DE UTILIDAD ==============
 
-def get_states_by_region(region: str) -> List[str]:
+
+def get_states_by_region(region: str) -> list[str]:
     """Obtiene estados por región"""
     if region in REGIONS:
         return REGIONS[region]["states"]
     return []
 
 
-def get_states_by_climate(climate: str) -> List[str]:
+def get_states_by_climate(climate: str) -> list[str]:
     """Obtiene estados por clima"""
     if climate in CLIMATES:
         return CLIMATES[climate]["states"]
     return []
 
 
-def get_states_without_income_tax() -> List[str]:
+def get_states_without_income_tax() -> list[str]:
     """Obtiene estados sin impuesto estatal sobre la renta"""
     return [code for code, data in STATES_DATA.items() if data["state_tax"] == 0]
 
 
-def get_states_by_latino_population(min_pct: float = 10.0) -> List[str]:
+def get_states_by_latino_population(min_pct: float = 10.0) -> list[str]:
     """Obtiene estados con alta población latina"""
     return [code for code, data in STATES_DATA.items() if data["latino_pct"] >= min_pct]
 
 
-def get_state_data(state_code: str) -> Optional[Dict]:
+def get_state_data(state_code: str) -> dict | None:
     """Obtiene datos de un estado"""
     return STATES_DATA.get(state_code.upper())
 
 
 def search_states(
-    regions: List[str] = None,
-    climates: List[str] = None,
+    regions: list[str] = None,
+    climates: list[str] = None,
     max_cost_index: int = None,
     min_latino_pct: float = None,
     no_state_tax: bool = False,
-) -> List[Dict]:
+) -> list[dict]:
     """
     Busca estados según criterios
-    
+
     Returns:
         Lista de estados que cumplen los criterios
     """
     results = []
-    
+
     for code, data in STATES_DATA.items():
         # Filtrar por región
         if regions and data["region"] not in regions:
             continue
-        
+
         # Filtrar por clima
         if climates and data["climate"] not in climates:
             continue
-        
+
         # Filtrar por costo de vida
         if max_cost_index and data["cost_of_living_index"] > max_cost_index:
             continue
-        
+
         # Filtrar por población latina
         if min_latino_pct and data["latino_pct"] < min_latino_pct:
             continue
-        
+
         # Filtrar por impuesto estatal
         if no_state_tax and data["state_tax"] > 0:
             continue
-        
-        results.append({
-            "code": code,
-            **data
-        })
-    
+
+        results.append({"code": code, **data})
+
     return results
 
 
 # Exportar todo
 __all__ = [
     "REGIONS",
-    "CLIMATES", 
+    "CLIMATES",
     "STATES_DATA",
     "get_states_by_region",
     "get_states_by_climate",

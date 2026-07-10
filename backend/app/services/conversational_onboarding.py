@@ -25,25 +25,26 @@ NO HAY:
 - Estados rígidos tipo "name" → "birth_date" → "nationality"
 """
 
-import re
 import logging
-from typing import Dict, Any, Optional, Tuple, List
+import re
 from dataclasses import dataclass, field
-from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ============== CAMPOS DEL PERFIL ==============
 
+
 @dataclass
 class ProfileField:
     """Campo del perfil con su estado"""
+
     name: str
-    value: Optional[str] = None
+    value: str | None = None
     confidence: float = 0.0
     source: str = ""  # "extracted", "asked", "inferred"
-    
+
     @property
     def is_filled(self) -> bool:
         return self.value is not None and self.confidence >= 0.5
@@ -52,46 +53,55 @@ class ProfileField:
 @dataclass
 class UserProfile:
     """Perfil del usuario extraído de la conversación"""
+
     # Datos personales (opcionales para empezar)
     name: ProfileField = field(default_factory=lambda: ProfileField("name"))
     nationality: ProfileField = field(default_factory=lambda: ProfileField("nationality"))
     current_country: ProfileField = field(default_factory=lambda: ProfileField("current_country"))
     current_city: ProfileField = field(default_factory=lambda: ProfileField("current_city"))
-    
+
     # Datos profesionales
     profession: ProfileField = field(default_factory=lambda: ProfileField("profession"))
     experience_years: ProfileField = field(default_factory=lambda: ProfileField("experience_years"))
     education_level: ProfileField = field(default_factory=lambda: ProfileField("education_level"))
     english_level: ProfileField = field(default_factory=lambda: ProfileField("english_level"))
-    
+
     # Objetivos de migración
     destination_country: ProfileField = field(default_factory=lambda: ProfileField("destination_country"))
     migration_reason: ProfileField = field(default_factory=lambda: ProfileField("migration_reason"))
     timeline: ProfileField = field(default_factory=lambda: ProfileField("timeline"))
     budget: ProfileField = field(default_factory=lambda: ProfileField("budget"))
-    
+
     # Familia
     has_family: ProfileField = field(default_factory=lambda: ProfileField("has_family"))
     travels_alone: ProfileField = field(default_factory=lambda: ProfileField("travels_alone"))
     family_size: ProfileField = field(default_factory=lambda: ProfileField("family_size"))
-    
+
     def get_filled_count(self) -> int:
         """Cuenta campos llenos"""
         fields = [
-            self.name, self.nationality, self.current_country, self.profession,
-            self.experience_years, self.education_level, self.english_level,
-            self.destination_country, self.migration_reason, self.timeline,
-            self.budget, self.has_family
+            self.name,
+            self.nationality,
+            self.current_country,
+            self.profession,
+            self.experience_years,
+            self.education_level,
+            self.english_level,
+            self.destination_country,
+            self.migration_reason,
+            self.timeline,
+            self.budget,
+            self.has_family,
         ]
         return sum(1 for f in fields if f.is_filled)
-    
+
     def get_completion_percentage(self) -> float:
         """Porcentaje de completitud"""
         total = 12  # Campos principales
         filled = self.get_filled_count()
         return (filled / total) * 100
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convierte a diccionario para guardar"""
         return {
             "personal": {
@@ -123,15 +133,16 @@ class UserProfile:
             "_meta": {
                 "completion": self.get_completion_percentage(),
                 "filled_count": self.get_filled_count(),
-            }
+            },
         }
 
 
 # ============== EXTRACTOR DE INFORMACIÓN ==============
 
+
 class InfoExtractor:
     """Extrae información del texto del usuario de forma natural"""
-    
+
     # Patrones para extraer información
     PATTERNS = {
         "profession": [
@@ -219,7 +230,7 @@ class InfoExtractor:
             # NO usar "soy" solo porque puede ser "soy ingeniero"
         ],
     }
-    
+
     # Normalización de países
     COUNTRY_NORMALIZE = {
         "estados unidos": "USA",
@@ -247,27 +258,27 @@ class InfoExtractor:
         "nueva zelanda": "Nueva Zelanda",
         "new zealand": "Nueva Zelanda",
     }
-    
+
     @classmethod
-    def extract_all(cls, text: str) -> Dict[str, Tuple[str, float]]:
+    def extract_all(cls, text: str) -> dict[str, tuple[str, float]]:
         """
         Extrae toda la información posible del texto.
         Returns: Dict[field_name, (value, confidence)]
         """
         text_lower = text.lower().strip()
         extracted = {}
-        
+
         for field_name, patterns in cls.PATTERNS.items():
             for pattern in patterns:
                 match = re.search(pattern, text_lower, re.IGNORECASE)
                 if match:
                     value = match.group(1) if match.groups() else match.group(0)
                     value = value.strip()
-                    
+
                     # Normalizar países
                     if field_name in ["destination_country", "current_country", "nationality"]:
                         value = cls.COUNTRY_NORMALIZE.get(value.lower(), value.title())
-                    
+
                     # Normalizar niveles de inglés
                     if field_name == "english_level":
                         value = cls._normalize_english_level(value)
@@ -278,12 +289,12 @@ class InfoExtractor:
 
                     # Calcular confianza basada en el patrón
                     confidence = 0.8 if len(match.group(0)) > 10 else 0.6
-                    
+
                     extracted[field_name] = (value, confidence)
                     break  # Solo tomar la primera coincidencia
-        
+
         return extracted
-    
+
     @classmethod
     def _normalize_english_level(cls, value: str) -> str:
         """Normaliza el nivel de inglés"""
@@ -311,8 +322,20 @@ class InfoExtractor:
         elif "pronto" in value_lower or "urgente" in value_lower:
             return "lo antes posible"
         # Si es un mes específico
-        meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
-                 "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+        meses = [
+            "enero",
+            "febrero",
+            "marzo",
+            "abril",
+            "mayo",
+            "junio",
+            "julio",
+            "agosto",
+            "septiembre",
+            "octubre",
+            "noviembre",
+            "diciembre",
+        ]
         for mes in meses:
             if mes in value_lower:
                 return f"en {mes}"
@@ -321,9 +344,10 @@ class InfoExtractor:
 
 # ============== GENERADOR DE PREGUNTAS ==============
 
+
 class QuestionGenerator:
     """Genera la siguiente pregunta natural basada en lo que falta"""
-    
+
     # Preguntas por campo (ordenadas por prioridad)
     QUESTIONS = {
         "es": {
@@ -419,36 +443,36 @@ class QuestionGenerator:
             "name": [
                 "By the way, what's your name? 😊",
             ],
-        }
+        },
     }
-    
+
     # Prioridad de campos (qué preguntar primero)
     PRIORITY = [
         "destination_country",  # Lo más importante: ¿a dónde quiere ir?
-        "profession",           # ¿Qué hace? (determina opciones de visa)
-        "experience_years",     # ¿Cuánta experiencia?
-        "english_level",        # Crítico para muchos países
-        "education_level",      # Nivel de estudios
-        "budget",               # Presupuesto disponible
-        "timeline",             # ¿Para cuándo?
-        "migration_reason",     # Motivación
-        "has_family",           # ¿Viaja con familia?
+        "profession",  # ¿Qué hace? (determina opciones de visa)
+        "experience_years",  # ¿Cuánta experiencia?
+        "english_level",  # Crítico para muchos países
+        "education_level",  # Nivel de estudios
+        "budget",  # Presupuesto disponible
+        "timeline",  # ¿Para cuándo?
+        "migration_reason",  # Motivación
+        "has_family",  # ¿Viaja con familia?
         # Estos son menos prioritarios - se pueden inferir o preguntar después
         "nationality",
         "current_country",
-        "name",                 # El nombre es lo MENOS importante para empezar
+        "name",  # El nombre es lo MENOS importante para empezar
     ]
-    
+
     @classmethod
-    def get_next_question(cls, profile: UserProfile, lang: str = "es") -> Optional[Tuple[str, str]]:
+    def get_next_question(cls, profile: UserProfile, lang: str = "es") -> tuple[str, str] | None:
         """
         Obtiene la siguiente pregunta natural basada en lo que falta.
         Returns: (field_name, question) o None si el perfil está completo
         """
         import random
-        
+
         questions = cls.QUESTIONS.get(lang, cls.QUESTIONS["es"])
-        
+
         # Revisar campos en orden de prioridad
         for field_name in cls.PRIORITY:
             field = getattr(profile, field_name, None)
@@ -456,15 +480,16 @@ class QuestionGenerator:
                 field_questions = questions.get(field_name, [])
                 if field_questions:
                     return (field_name, random.choice(field_questions))
-        
+
         return None  # Perfil suficientemente completo
 
 
 # ============== GENERADOR DE REFLEXIONES ==============
 
+
 class ReflectionGenerator:
     """Genera reflexiones empáticas sobre lo que el usuario dijo"""
-    
+
     TEMPLATES = {
         "es": {
             "profession": [
@@ -526,29 +551,30 @@ class ReflectionGenerator:
             "name": [
                 "Nice to meet you, {value}! 😊",
             ],
-        }
+        },
     }
-    
+
     @classmethod
-    def generate_reflection(cls, field_name: str, value: str, lang: str = "es") -> Optional[str]:
+    def generate_reflection(cls, field_name: str, value: str, lang: str = "es") -> str | None:
         """Genera una reflexión empática sobre la información extraída"""
         import random
-        
+
         templates = cls.TEMPLATES.get(lang, cls.TEMPLATES["es"])
         field_templates = templates.get(field_name, [])
-        
+
         if field_templates:
             template = random.choice(field_templates)
             return template.format(value=value)
-        
+
         return None
 
 
 # ============== MOTOR CONVERSACIONAL ==============
 
+
 class ConversationalEngine:
     """Motor principal del onboarding conversacional"""
-    
+
     def __init__(self):
         self.extractor = InfoExtractor()
         self.question_gen = QuestionGenerator()
@@ -560,17 +586,17 @@ class ConversationalEngine:
 
         # Patrones de preguntas comunes
         question_patterns = [
-            r'¿.*\?',  # Cualquier cosa entre ¿ y ?
-            r'.*\?$',   # Termina en ?
-            r'^(qué|que|cuál|cual|cómo|como|cuándo|cuando|dónde|donde|quién|quien|por qué|porque)\s+',
-            r'^(what|which|how|when|where|who|why)\s+',
-            r'(opciones?|alternativas?|posibilidades?|caminos?)\s+(tengo|hay|existen|tiene)',
-            r'(puedo|podría|debo|debería)\s+',
-            r'(recomiendas|sugieres|aconsejas)',
-            r'(ayuda|ayúdame|explica|explícame)',
-            r'(visa|visas)\s+(tengo|hay|existen|para)',
-            r'(requisitos?|documentos?|papeles?)\s+(necesito|requiero|piden)',
-            r'(cuánto|cuanto)\s+(cuesta|vale|necesito|tiempo|demora)',
+            r"¿.*\?",  # Cualquier cosa entre ¿ y ?
+            r".*\?$",  # Termina en ?
+            r"^(qué|que|cuál|cual|cómo|como|cuándo|cuando|dónde|donde|quién|quien|por qué|porque)\s+",
+            r"^(what|which|how|when|where|who|why)\s+",
+            r"(opciones?|alternativas?|posibilidades?|caminos?)\s+(tengo|hay|existen|tiene)",
+            r"(puedo|podría|debo|debería)\s+",
+            r"(recomiendas|sugieres|aconsejas)",
+            r"(ayuda|ayúdame|explica|explícame)",
+            r"(visa|visas)\s+(tengo|hay|existen|para)",
+            r"(requisitos?|documentos?|papeles?)\s+(necesito|requiero|piden)",
+            r"(cuánto|cuanto)\s+(cuesta|vale|necesito|tiempo|demora)",
         ]
 
         for pattern in question_patterns:
@@ -578,8 +604,10 @@ class ConversationalEngine:
                 return True
 
         return False
-    
-    def process_message(self, text: str, user_data: Dict[str, Any], lang: str = "es") -> Tuple[str, Dict[str, Any]]:
+
+    def process_message(
+        self, text: str, user_data: dict[str, Any], lang: str = "es"
+    ) -> tuple[str, dict[str, Any]]:
         """
         Procesa un mensaje del usuario y genera una respuesta conversacional.
 
@@ -624,8 +652,8 @@ class ConversationalEngine:
             # Por ahora, responder que estamos procesando la pregunta
             processing_msg = (
                 "Déjame pensar en tu pregunta... 🤔"
-                if lang == "es" else
-                "Let me think about your question... 🤔"
+                if lang == "es"
+                else "Let me think about your question... 🤔"
             )
 
             # Si hay reflexiones, incluirlas
@@ -666,14 +694,14 @@ class ConversationalEngine:
         if not response_parts:
             response_parts.append(
                 "Entiendo. Cuéntame más sobre tu situación y lo que buscas. 💭"
-                if lang == "es" else
-                "I understand. Tell me more about your situation and what you're looking for. 💭"
+                if lang == "es"
+                else "I understand. Tell me more about your situation and what you're looking for. 💭"
             )
 
         response = "\n\n".join(response_parts)
 
         return response, user_data
-    
+
     def get_welcome_message(self, lang: str = "es") -> str:
         """Mensaje de bienvenida conversacional"""
         if lang == "es":
@@ -688,11 +716,11 @@ class ConversationalEngine:
                 "I'm here to help you find the best path for your migration process. "
                 "Tell me, what brings you here today? 💭"
             )
-    
-    def _get_or_create_profile(self, user_data: Dict[str, Any]) -> UserProfile:
+
+    def _get_or_create_profile(self, user_data: dict[str, Any]) -> UserProfile:
         """Obtiene o crea el perfil conversacional"""
         profile = UserProfile()
-        
+
         # Cargar datos existentes si hay
         existing = user_data.get("conversational_profile", {})
         if existing:
@@ -702,7 +730,7 @@ class ConversationalEngine:
             languages = existing.get("languages", {})
             preferences = existing.get("preferences", {})
             family = existing.get("family", {})
-            
+
             if personal.get("name"):
                 profile.name.value = personal["name"]
                 profile.name.confidence = 0.9
@@ -712,22 +740,22 @@ class ConversationalEngine:
             if personal.get("current_country"):
                 profile.current_country.value = personal["current_country"]
                 profile.current_country.confidence = 0.9
-            
+
             if work.get("profession"):
                 profile.profession.value = work["profession"]
                 profile.profession.confidence = 0.9
             if work.get("experience"):
                 profile.experience_years.value = work["experience"]
                 profile.experience_years.confidence = 0.9
-            
+
             if education.get("level"):
                 profile.education_level.value = education["level"]
                 profile.education_level.confidence = 0.9
-            
+
             if languages.get("english"):
                 profile.english_level.value = languages["english"]
                 profile.english_level.confidence = 0.9
-            
+
             if preferences.get("destination"):
                 profile.destination_country.value = preferences["destination"]
                 profile.destination_country.confidence = 0.9
@@ -740,17 +768,17 @@ class ConversationalEngine:
             if preferences.get("budget"):
                 profile.budget.value = preferences["budget"]
                 profile.budget.confidence = 0.9
-            
+
             if family.get("has_family"):
                 profile.has_family.value = family["has_family"]
                 profile.has_family.confidence = 0.9
-        
+
         # También cargar del perfil tradicional si existe
         old_profile = user_data.get("profile", {})
         if old_profile:
             personal = old_profile.get("personal", {})
             work = old_profile.get("work", {})
-            
+
             if personal.get("name") and not profile.name.is_filled:
                 profile.name.value = personal["name"]
                 profile.name.confidence = 0.9
@@ -760,9 +788,9 @@ class ConversationalEngine:
             if work.get("profession") and not profile.profession.is_filled:
                 profile.profession.value = work["profession"]
                 profile.profession.confidence = 0.9
-        
+
         return profile
-    
+
     def _generate_summary(self, profile: UserProfile, lang: str = "es") -> str:
         """Genera un resumen del perfil para confirmar"""
         parts = []
@@ -784,7 +812,11 @@ class ConversationalEngine:
                 parts.append("")
 
             # Perfil profesional
-            if profile.profession.is_filled or profile.experience_years.is_filled or profile.education_level.is_filled:
+            if (
+                profile.profession.is_filled
+                or profile.experience_years.is_filled
+                or profile.education_level.is_filled
+            ):
                 parts.append("💼 *Perfil Profesional*")
                 if profile.profession.is_filled:
                     parts.append(f"   • Profesión: {profile.profession.value}")
@@ -797,7 +829,11 @@ class ConversationalEngine:
                 parts.append("")
 
             # Plan migratorio
-            if profile.destination_country.is_filled or profile.timeline.is_filled or profile.budget.is_filled:
+            if (
+                profile.destination_country.is_filled
+                or profile.timeline.is_filled
+                or profile.budget.is_filled
+            ):
                 parts.append("🎯 *Plan Migratorio*")
                 if profile.destination_country.is_filled:
                     parts.append(f"   • Destino: {profile.destination_country.value}")
@@ -813,9 +849,9 @@ class ConversationalEngine:
             if profile.has_family.is_filled or profile.travels_alone.is_filled:
                 parts.append("👨‍👩‍👧 *Situación Familiar*")
                 if profile.travels_alone.is_filled and profile.travels_alone.value:
-                    parts.append(f"   • Viaja solo")
+                    parts.append("   • Viaja solo")
                 elif profile.has_family.is_filled:
-                    parts.append(f"   • Viaja con familia")
+                    parts.append("   • Viaja con familia")
                     if profile.family_size.is_filled:
                         parts.append(f"   • Tamaño familia: {profile.family_size.value}")
                 parts.append("")
@@ -828,7 +864,9 @@ class ConversationalEngine:
                 parts.append("Basado en esta información, puedo darte recomendaciones específicas de visa.")
                 parts.append("\n¿Todo correcto? ¿O hay algo que quieras corregir o agregar? 🤔")
             else:
-                parts.append(f"\n💡 *Necesito un poco más de información para darte las mejores recomendaciones.*")
+                parts.append(
+                    "\n💡 *Necesito un poco más de información para darte las mejores recomendaciones.*"
+                )
                 parts.append("\n¿Es correcto lo que tengo hasta ahora? 😊")
 
         else:  # English
@@ -877,7 +915,7 @@ class ConversationalEngine:
                 parts.append("Based on this information, I can give you specific visa recommendations.")
                 parts.append("\n Is everything correct? Or is there something you'd like to fix or add? 🤔")
             else:
-                parts.append(f"\n💡 *I need a bit more information to give you the best recommendations.*")
+                parts.append("\n💡 *I need a bit more information to give you the best recommendations.*")
                 parts.append("\nIs what I have so far correct? 😊")
 
         return "\n".join(parts)
@@ -885,11 +923,12 @@ class ConversationalEngine:
 
 # ============== GENERADOR DE RECOMENDACIONES ==============
 
+
 class VisaRecommendationEngine:
     """Genera recomendaciones de visa basadas en el perfil"""
 
     @classmethod
-    def generate_recommendations(cls, profile: UserProfile, lang: str = "es") -> Optional[str]:
+    def generate_recommendations(cls, profile: UserProfile, lang: str = "es") -> str | None:
         """Genera recomendaciones de visa si el perfil está suficientemente completo"""
         if profile.get_completion_percentage() < 50:
             return None
@@ -897,7 +936,11 @@ class VisaRecommendationEngine:
         recommendations = []
 
         # Para USA con perfil de ingeniero de software
-        if profile.destination_country.value == "USA" and profile.profession.value and "ingenier" in profile.profession.value.lower():
+        if (
+            profile.destination_country.value == "USA"
+            and profile.profession.value
+            and "ingenier" in profile.profession.value.lower()
+        ):
             if lang == "es":
                 recommendations.append("🎯 *Opciones de visa para ti:*\n")
 
@@ -964,14 +1007,18 @@ class VisaRecommendationEngine:
         elif profile.destination_country.value and profile.profession.value:
             if lang == "es":
                 recommendations.append("🎯 *Basado en tu perfil, estas son tus opciones:*\n")
-                recommendations.append(f"Para {profile.destination_country.value} como {profile.profession.value}:")
+                recommendations.append(
+                    f"Para {profile.destination_country.value} como {profile.profession.value}:"
+                )
                 recommendations.append("• Visa de trabajo calificado")
                 recommendations.append("• Programas de nominación")
                 recommendations.append("• Visa de emprendedor (si aplica)")
                 recommendations.append("\n💡 ¿Te gustaría explorar alguna opción en particular?")
             else:
                 recommendations.append("🎯 *Based on your profile, these are your options:*\n")
-                recommendations.append(f"For {profile.destination_country.value} as {profile.profession.value}:")
+                recommendations.append(
+                    f"For {profile.destination_country.value} as {profile.profession.value}:"
+                )
                 recommendations.append("• Skilled worker visa")
                 recommendations.append("• Nomination programs")
                 recommendations.append("• Entrepreneur visa (if applicable)")
@@ -985,12 +1032,14 @@ class VisaRecommendationEngine:
 _engine = None
 _recommendation_engine = None
 
+
 def get_conversational_engine() -> ConversationalEngine:
     """Obtiene la instancia del motor conversacional"""
     global _engine
     if _engine is None:
         _engine = ConversationalEngine()
     return _engine
+
 
 def get_recommendation_engine() -> VisaRecommendationEngine:
     """Obtiene la instancia del motor de recomendaciones"""
@@ -1002,17 +1051,22 @@ def get_recommendation_engine() -> VisaRecommendationEngine:
 
 # ============== FUNCIONES DE CONVENIENCIA ==============
 
-def process_conversational_message(text: str, user_data: Dict[str, Any], lang: str = "es") -> Tuple[str, Dict[str, Any]]:
+
+def process_conversational_message(
+    text: str, user_data: dict[str, Any], lang: str = "es"
+) -> tuple[str, dict[str, Any]]:
     """Procesa un mensaje de forma conversacional"""
     engine = get_conversational_engine()
     return engine.process_message(text, user_data, lang)
+
 
 def get_conversational_welcome(lang: str = "es") -> str:
     """Obtiene el mensaje de bienvenida conversacional"""
     engine = get_conversational_engine()
     return engine.get_welcome_message(lang)
 
-def is_profile_sufficient(user_data: Dict[str, Any]) -> bool:
+
+def is_profile_sufficient(user_data: dict[str, Any]) -> bool:
     """Verifica si el perfil tiene suficiente información para dar recomendaciones"""
     profile_data = user_data.get("conversational_profile", {})
     meta = profile_data.get("_meta", {})

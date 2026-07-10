@@ -25,38 +25,24 @@ Detecta:
 - Falta de respuesta
 """
 
+import asyncio
+import json
+import logging
 import os
 import sys
-import json
-import asyncio
-import logging
-from datetime import datetime
-from typing import Dict, Any, List, Tuple, Optional
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from typing import Any
 
 # Agregar el path del proyecto
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.services.case_storage import (
-    save_user_data, load_user_data, delete_user_data
-)
-from app.services.profile_validator import (
-    PriorityIntentHandler, get_profile_based_intro
-)
-from app.services.flow_governor import (
-    InputInterpreter, interpret_user_input, InputType
-)
-from app.services.conversational_ai import ConversationalAI, UserIntent
-from app.services.profile_checklist import (
-    get_profile_checklist, check_profile_completeness
-)
-from app.services.test_time_reasoning import (
-    get_test_time_reasoner, reason_visa_analysis
-)
-from app.services.coherence_validator import (
-    validate_response, is_response_safe
-)
+from app.services.case_storage import delete_user_data, save_user_data
+from app.services.conversational_ai import ConversationalAI
+from app.services.flow_governor import InputInterpreter, interpret_user_input
+from app.services.profile_checklist import check_profile_completeness, get_profile_checklist
+from app.services.profile_validator import PriorityIntentHandler, get_profile_based_intro
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -64,6 +50,7 @@ logger = logging.getLogger(__name__)
 
 class SimulationPhase(Enum):
     """Fases de la simulación"""
+
     START = "start"
     PERSONAL_INFO = "personal_info"
     PROFESSIONAL_INFO = "professional_info"
@@ -79,10 +66,11 @@ class SimulationPhase(Enum):
 @dataclass
 class SimulationMessage:
     """Mensaje de simulación"""
+
     phase: SimulationPhase
     user_input: str
-    expected_state_after: Optional[str] = None
-    expected_data_saved: Dict[str, Any] = field(default_factory=dict)
+    expected_state_after: str | None = None
+    expected_data_saved: dict[str, Any] = field(default_factory=dict)
     is_question: bool = False
     is_confusion: bool = False
 
@@ -90,29 +78,31 @@ class SimulationMessage:
 @dataclass
 class SimulationIssue:
     """Problema detectado en la simulación"""
+
     severity: str  # "critical", "warning", "info"
     category: str  # "loop", "ghost_data", "topic_jump", "no_response", "state_mismatch"
     phase: SimulationPhase
     message: str
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class SimulationResult:
     """Resultado de una simulación"""
+
     simulation_id: int
     user_id: int
     persona_name: str
     success: bool
     phases_completed: int
     total_phases: int
-    issues: List[SimulationIssue] = field(default_factory=list)
+    issues: list[SimulationIssue] = field(default_factory=list)
     final_state: str = ""
-    final_profile: Dict[str, Any] = field(default_factory=dict)
+    final_profile: dict[str, Any] = field(default_factory=dict)
     duration_ms: float = 0.0
     responses_received: int = 0
     loops_detected: int = 0
-    ghost_data_found: List[str] = field(default_factory=list)
+    ghost_data_found: list[str] = field(default_factory=list)
 
 
 # ============== PERSONAS DE SIMULACIÓN ==============
@@ -140,7 +130,7 @@ SIMULATION_PERSONAS = [
             SimulationMessage(SimulationPhase.VISA_ANALYSIS, "¿Qué visa me recomiendas?", is_question=True),
             SimulationMessage(SimulationPhase.QUESTIONS, "¿Qué es una visa H-1B?", is_question=True),
             SimulationMessage(SimulationPhase.CLOSURE, "Gracias por la información"),
-        ]
+        ],
     },
     {
         "id": 2,
@@ -159,7 +149,7 @@ SIMULATION_PERSONAS = [
             SimulationMessage(SimulationPhase.USA_GOALS, "Quiero investigar en un hospital"),
             SimulationMessage(SimulationPhase.VISA_ANALYSIS, "¿Califico para O-1?", is_question=True),
             SimulationMessage(SimulationPhase.CLOSURE, "Perfecto, gracias"),
-        ]
+        ],
     },
     {
         "id": 3,
@@ -176,7 +166,7 @@ SIMULATION_PERSONAS = [
             SimulationMessage(SimulationPhase.PROFESSIONAL_INFO, "trabajo en ventas"),
             SimulationMessage(SimulationPhase.QUESTIONS, "cuánto cuesta todo?", is_question=True),
             SimulationMessage(SimulationPhase.CLOSURE, "ok, lo pienso"),
-        ]
+        ],
     },
     {
         "id": 4,
@@ -185,7 +175,9 @@ SIMULATION_PERSONAS = [
         "messages": [
             SimulationMessage(SimulationPhase.START, "Hola, necesito ayuda"),
             SimulationMessage(SimulationPhase.PERSONAL_INFO, "Me llamo Ana López"),
-            SimulationMessage(SimulationPhase.PERSONAL_INFO, "Ya te dije que me llamo Ana", is_confusion=True),
+            SimulationMessage(
+                SimulationPhase.PERSONAL_INFO, "Ya te dije que me llamo Ana", is_confusion=True
+            ),
             SimulationMessage(SimulationPhase.PERSONAL_INFO, "otra vez lo mismo?", is_confusion=True),
             SimulationMessage(SimulationPhase.PROFESSIONAL_INFO, "Soy contadora"),
             SimulationMessage(SimulationPhase.PROFESSIONAL_INFO, "te lo acabo de decir", is_confusion=True),
@@ -193,7 +185,7 @@ SIMULATION_PERSONAS = [
             SimulationMessage(SimulationPhase.MIGRATION_HISTORY, "No tengo visa"),
             SimulationMessage(SimulationPhase.USA_GOALS, "Quiero trabajar allá"),
             SimulationMessage(SimulationPhase.CLOSURE, "ok gracias"),
-        ]
+        ],
     },
     {
         "id": 5,
@@ -210,9 +202,11 @@ SIMULATION_PERSONAS = [
             SimulationMessage(SimulationPhase.FINANCIAL_INFO, "Inglés intermedio"),
             SimulationMessage(SimulationPhase.MIGRATION_HISTORY, "Tenemos visa de turista"),
             SimulationMessage(SimulationPhase.USA_GOALS, "Queremos establecernos permanentemente"),
-            SimulationMessage(SimulationPhase.VISA_ANALYSIS, "¿Qué opciones tenemos como familia?", is_question=True),
+            SimulationMessage(
+                SimulationPhase.VISA_ANALYSIS, "¿Qué opciones tenemos como familia?", is_question=True
+            ),
             SimulationMessage(SimulationPhase.CLOSURE, "Excelente, gracias"),
-        ]
+        ],
     },
     {
         "id": 6,
@@ -228,9 +222,11 @@ SIMULATION_PERSONAS = [
             SimulationMessage(SimulationPhase.FINANCIAL_INFO, "Mis padres pueden pagar $50,000"),
             SimulationMessage(SimulationPhase.MIGRATION_HISTORY, "Nunca he viajado a USA"),
             SimulationMessage(SimulationPhase.USA_GOALS, "Quiero hacer una maestría"),
-            SimulationMessage(SimulationPhase.VISA_ANALYSIS, "¿Cómo aplico para visa de estudiante?", is_question=True),
+            SimulationMessage(
+                SimulationPhase.VISA_ANALYSIS, "¿Cómo aplico para visa de estudiante?", is_question=True
+            ),
             SimulationMessage(SimulationPhase.CLOSURE, "Gracias!"),
-        ]
+        ],
     },
     {
         "id": 7,
@@ -247,7 +243,7 @@ SIMULATION_PERSONAS = [
             SimulationMessage(SimulationPhase.QUESTIONS, "¿Puedo volver a aplicar?", is_question=True),
             SimulationMessage(SimulationPhase.QUESTIONS, "¿Qué hago diferente esta vez?", is_question=True),
             SimulationMessage(SimulationPhase.CLOSURE, "Entendido, gracias"),
-        ]
+        ],
     },
     {
         "id": 8,
@@ -262,10 +258,12 @@ SIMULATION_PERSONAS = [
             SimulationMessage(SimulationPhase.FINANCIAL_INFO, "Inglés básico"),
             SimulationMessage(SimulationPhase.MIGRATION_HISTORY, "Visa de turista vigente"),
             SimulationMessage(SimulationPhase.USA_GOALS, "Quiero abrir restaurantes en Miami"),
-            SimulationMessage(SimulationPhase.VISA_ANALYSIS, "¿Qué visa necesito para invertir?", is_question=True),
+            SimulationMessage(
+                SimulationPhase.VISA_ANALYSIS, "¿Qué visa necesito para invertir?", is_question=True
+            ),
             SimulationMessage(SimulationPhase.QUESTIONS, "¿Cuánto tiempo toma el proceso?", is_question=True),
             SimulationMessage(SimulationPhase.CLOSURE, "Perfecto, seguimos en contacto"),
-        ]
+        ],
     },
     {
         "id": 9,
@@ -282,7 +280,7 @@ SIMULATION_PERSONAS = [
             SimulationMessage(SimulationPhase.USA_GOALS, "Quiero hacer una gira y quedarme"),
             SimulationMessage(SimulationPhase.VISA_ANALYSIS, "¿Existe visa para artistas?", is_question=True),
             SimulationMessage(SimulationPhase.CLOSURE, "Genial, gracias!"),
-        ]
+        ],
     },
     {
         "id": 10,
@@ -300,22 +298,22 @@ SIMULATION_PERSONAS = [
             SimulationMessage(SimulationPhase.QUESTIONS, "¿Hay algún perdón?", is_question=True),
             SimulationMessage(SimulationPhase.USA_GOALS, "Quiero trabajar legalmente"),
             SimulationMessage(SimulationPhase.CLOSURE, "Gracias por la honestidad"),
-        ]
+        ],
     },
 ]
 
 
 class MigrationCycleSimulator:
     """Simulador de ciclos completos de migración"""
-    
+
     def __init__(self):
         self.priority_handler = PriorityIntentHandler()
         self.input_interpreter = InputInterpreter()
         self.conversational_ai = ConversationalAI()
         self.checklist = get_profile_checklist()
-        self.results: List[SimulationResult] = []
-    
-    def _create_user_profile(self, user_id: int) -> Dict[str, Any]:
+        self.results: list[SimulationResult] = []
+
+    def _create_user_profile(self, user_id: int) -> dict[str, Any]:
         """Crea un perfil de usuario vacío"""
         return {
             "user_id": user_id,
@@ -328,7 +326,7 @@ class MigrationCycleSimulator:
                 "languages": {},
                 "financial": {},
                 "history": {},
-                "migration": {}
+                "migration": {},
             },
             "family_members": [],
             "current_family_index": 0,
@@ -336,48 +334,48 @@ class MigrationCycleSimulator:
             "selected_route": {},
             "documents": [],
             "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
+            "updated_at": datetime.now().isoformat(),
         }
-    
-    def _analyze_message(self, text: str, user_data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _analyze_message(self, text: str, user_data: dict[str, Any]) -> dict[str, Any]:
         """Analiza un mensaje y retorna el análisis"""
         state = user_data.get("state", "start")
-        lang = user_data.get("language", "es")
-        
+        user_data.get("language", "es")
+
         # Detectar intent prioritario
-        should_interrupt, intent_type, empathic_response = \
-            self.priority_handler.should_interrupt_flow(text)
-        
+        should_interrupt, intent_type, empathic_response = self.priority_handler.should_interrupt_flow(text)
+
         # Interpretar input
         interpreted = interpret_user_input(text, state)
-        
+
         # Detectar intent conversacional
         conv_intent = self.conversational_ai.detect_intent(text)
-        
+
         return {
             "text": text,
             "priority_intent": {
                 "should_interrupt": should_interrupt,
                 "type": intent_type,
-                "empathic_response": empathic_response
+                "empathic_response": empathic_response,
             },
             "interpreted": {
                 "type": interpreted.input_type.value,
                 "confidence": interpreted.confidence,
                 "extracted_data": interpreted.extracted_data,
-                "should_advance": interpreted.should_advance
+                "should_advance": interpreted.should_advance,
             },
-            "conversational_intent": conv_intent.value
+            "conversational_intent": conv_intent.value,
         }
-    
-    def _extract_and_save_data(self, text: str, user_data: Dict[str, Any]) -> List[str]:
+
+    def _extract_and_save_data(self, text: str, user_data: dict[str, Any]) -> list[str]:
         """Extrae datos del mensaje y los guarda en el perfil"""
         extracted = []
         text_lower = text.lower()
         profile = user_data.get("profile", {})
-        
+
         # Extraer nombre
         import re
+
         name_patterns = [
             r"(?:me llamo|soy|mi nombre es)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)?)",
             r"^([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)$",
@@ -390,7 +388,7 @@ class MigrationCycleSimulator:
                     profile.setdefault("personal", {})["name"] = name
                     extracted.append(f"name:{name}")
                     break
-        
+
         # Extraer edad
         age_match = re.search(r"(\d+)\s*años", text_lower)
         if age_match:
@@ -398,54 +396,80 @@ class MigrationCycleSimulator:
             if 18 <= age <= 80:
                 profile.setdefault("personal", {})["age"] = age
                 extracted.append(f"age:{age}")
-        
+
         # Extraer nacionalidad
         nationalities = {
-            "colombiano": "Colombiano", "colombiana": "Colombiana",
-            "mexicano": "Mexicano", "mexicana": "Mexicana",
-            "venezolano": "Venezolano", "venezolana": "Venezolana",
-            "argentino": "Argentino", "argentina": "Argentina",
-            "peruano": "Peruano", "peruana": "Peruana",
-            "chileno": "Chileno", "chilena": "Chilena",
-            "ecuatoriano": "Ecuatoriano", "ecuatoriana": "Ecuatoriana",
+            "colombiano": "Colombiano",
+            "colombiana": "Colombiana",
+            "mexicano": "Mexicano",
+            "mexicana": "Mexicana",
+            "venezolano": "Venezolano",
+            "venezolana": "Venezolana",
+            "argentino": "Argentino",
+            "argentina": "Argentina",
+            "peruano": "Peruano",
+            "peruana": "Peruana",
+            "chileno": "Chileno",
+            "chilena": "Chilena",
+            "ecuatoriano": "Ecuatoriano",
+            "ecuatoriana": "Ecuatoriana",
         }
         for key, value in nationalities.items():
             if key in text_lower:
                 profile.setdefault("personal", {})["nationality"] = value
                 extracted.append(f"nationality:{value}")
                 break
-        
+
         # Extraer profesión
         professions = [
-            "ingeniero", "médico", "médica", "doctor", "doctora", "abogado", "abogada",
-            "contador", "contadora", "profesor", "profesora", "enfermero", "enfermera",
-            "empresario", "empresaria", "músico", "artista", "diseñador", "diseñadora"
+            "ingeniero",
+            "médico",
+            "médica",
+            "doctor",
+            "doctora",
+            "abogado",
+            "abogada",
+            "contador",
+            "contadora",
+            "profesor",
+            "profesora",
+            "enfermero",
+            "enfermera",
+            "empresario",
+            "empresaria",
+            "músico",
+            "artista",
+            "diseñador",
+            "diseñadora",
         ]
         for prof in professions:
             if prof in text_lower:
                 profile.setdefault("work", {})["profession"] = prof.capitalize()
                 extracted.append(f"profession:{prof}")
                 break
-        
+
         # Extraer nivel de inglés
         english_levels = {
-            "inglés nativo": "Nativo", "inglés avanzado": "Avanzado",
-            "inglés intermedio": "Intermedio", "inglés básico": "Básico",
-            "english native": "Nativo", "english advanced": "Avanzado"
+            "inglés nativo": "Nativo",
+            "inglés avanzado": "Avanzado",
+            "inglés intermedio": "Intermedio",
+            "inglés básico": "Básico",
+            "english native": "Nativo",
+            "english advanced": "Avanzado",
         }
         for key, value in english_levels.items():
             if key in text_lower:
                 profile.setdefault("languages", {})["english"] = value
                 extracted.append(f"english:{value}")
                 break
-        
+
         # Extraer ahorros
         savings_match = re.search(r"\$?([\d,]+)\s*(?:ahorr|saved|dólares|usd)", text_lower)
         if savings_match:
             savings = savings_match.group(1).replace(",", "")
             profile.setdefault("financial", {})["savings"] = f"${savings}"
             extracted.append(f"savings:${savings}")
-        
+
         # Extraer historial de visa
         if "visa" in text_lower:
             if "b1" in text_lower or "b2" in text_lower or "turista" in text_lower:
@@ -457,128 +481,135 @@ class MigrationCycleSimulator:
             if "nunca" in text_lower and "visa" in text_lower:
                 profile.setdefault("history", {})["visa_history"] = "Ninguna"
                 extracted.append("visa_history:None")
-        
+
         # Extraer problemas legales
         if "sin problemas legales" in text_lower or "no tengo problemas" in text_lower:
             profile.setdefault("history", {})["legal_issues"] = False
             extracted.append("legal_issues:False")
-        
+
         user_data["profile"] = profile
         return extracted
-    
+
     def _detect_issues(
         self,
         message: SimulationMessage,
-        analysis: Dict[str, Any],
-        user_data: Dict[str, Any],
-        previous_responses: List[str]
-    ) -> List[SimulationIssue]:
+        analysis: dict[str, Any],
+        user_data: dict[str, Any],
+        previous_responses: list[str],
+    ) -> list[SimulationIssue]:
         """Detecta problemas en la simulación"""
         issues = []
-        
+
         # 1. Detectar loops (respuestas repetidas)
         # Simulamos que el bot respondería algo basado en el análisis
         simulated_response = analysis.get("priority_intent", {}).get("empathic_response", "")
         if simulated_response and previous_responses:
             if simulated_response in previous_responses[-3:]:
-                issues.append(SimulationIssue(
-                    severity="warning",
-                    category="loop",
-                    phase=message.phase,
-                    message="Posible loop de respuesta detectado",
-                    details={"repeated_response": simulated_response[:50]}
-                ))
-        
+                issues.append(
+                    SimulationIssue(
+                        severity="warning",
+                        category="loop",
+                        phase=message.phase,
+                        message="Posible loop de respuesta detectado",
+                        details={"repeated_response": simulated_response[:50]},
+                    )
+                )
+
         # 2. Detectar datos fantasma
         profile = user_data.get("profile", {})
         profile_intro = get_profile_based_intro(user_data.get("user_id", 0), user_data, "es")
         if "basado en" in profile_intro.lower():
             # Verificar si realmente hay datos confirmados
-            confirmed_count = sum(1 for section in profile.values() 
-                                 if isinstance(section, dict) and section)
+            confirmed_count = sum(1 for section in profile.values() if isinstance(section, dict) and section)
             if confirmed_count < 2:
-                issues.append(SimulationIssue(
-                    severity="critical",
-                    category="ghost_data",
-                    phase=message.phase,
-                    message="Se usaría 'basado en tu perfil' sin datos suficientes",
-                    details={"confirmed_sections": confirmed_count}
-                ))
-        
+                issues.append(
+                    SimulationIssue(
+                        severity="critical",
+                        category="ghost_data",
+                        phase=message.phase,
+                        message="Se usaría 'basado en tu perfil' sin datos suficientes",
+                        details={"confirmed_sections": confirmed_count},
+                    )
+                )
+
         # 3. Detectar saltos de tema
         if message.is_question and not analysis["priority_intent"]["should_interrupt"]:
-            issues.append(SimulationIssue(
-                severity="warning",
-                category="topic_jump",
-                phase=message.phase,
-                message="Pregunta del usuario no detectada como prioritaria",
-                details={"question": message.user_input[:50]}
-            ))
-        
+            issues.append(
+                SimulationIssue(
+                    severity="warning",
+                    category="topic_jump",
+                    phase=message.phase,
+                    message="Pregunta del usuario no detectada como prioritaria",
+                    details={"question": message.user_input[:50]},
+                )
+            )
+
         # 4. Detectar confusión no manejada
         if message.is_confusion and not analysis["priority_intent"]["should_interrupt"]:
-            issues.append(SimulationIssue(
-                severity="critical",
-                category="topic_jump",
-                phase=message.phase,
-                message="Confusión del usuario no detectada",
-                details={"confusion_text": message.user_input[:50]}
-            ))
-        
+            issues.append(
+                SimulationIssue(
+                    severity="critical",
+                    category="topic_jump",
+                    phase=message.phase,
+                    message="Confusión del usuario no detectada",
+                    details={"confusion_text": message.user_input[:50]},
+                )
+            )
+
         return issues
-    
-    async def run_simulation(self, persona: Dict[str, Any]) -> SimulationResult:
+
+    async def run_simulation(self, persona: dict[str, Any]) -> SimulationResult:
         """Ejecuta una simulación completa"""
         start_time = datetime.now()
         user_id = 9000000000 + persona["id"]
-        
+
         # Limpiar datos previos
         try:
             delete_user_data(user_id)
         except:
             pass
-        
+
         # Crear perfil vacío
         user_data = self._create_user_profile(user_id)
         save_user_data(user_id, user_data)
-        
+
         result = SimulationResult(
             simulation_id=persona["id"],
             user_id=user_id,
             persona_name=persona["name"],
             success=True,
             phases_completed=0,
-            total_phases=len(persona["messages"])
+            total_phases=len(persona["messages"]),
         )
-        
+
         previous_responses = []
-        
+
         for i, message in enumerate(persona["messages"]):
             # Analizar mensaje
             analysis = self._analyze_message(message.user_input, user_data)
-            
+
             # Extraer y guardar datos
-            extracted = self._extract_and_save_data(message.user_input, user_data)
+            self._extract_and_save_data(message.user_input, user_data)
             save_user_data(user_id, user_data)
-            
+
             # Detectar issues
             issues = self._detect_issues(message, analysis, user_data, previous_responses)
             result.issues.extend(issues)
-            
+
             # Simular respuesta
             if analysis["priority_intent"]["empathic_response"]:
                 previous_responses.append(analysis["priority_intent"]["empathic_response"])
-            
+
             result.phases_completed += 1
             result.responses_received += 1
-            
+
             # Contar loops
             if any(i.category == "loop" for i in issues):
                 result.loops_detected += 1
-        
+
         # Verificar checklist final
-        checklist_status = check_profile_completeness(user_id, user_data)
-        
+        check_profile_completeness(user_id, user_data)
+
         # Verificar datos fantasma en perfil final
         profile = user_data.get("profile", {})
         for section_name, section_data in profile.items():
@@ -587,69 +618,73 @@ class MigrationCycleSimulator:
                     if value and not any(key in msg.user_input.lower() for msg in persona["messages"]):
                         # Dato que no fue mencionado por el usuario
                         result.ghost_data_found.append(f"{section_name}.{key}={value}")
-        
+
         result.final_state = user_data.get("state", "unknown")
         result.final_profile = profile
         result.duration_ms = (datetime.now() - start_time).total_seconds() * 1000
-        
+
         # Determinar éxito
         critical_issues = [i for i in result.issues if i.severity == "critical"]
         if critical_issues or result.loops_detected > 2 or len(result.ghost_data_found) > 0:
             result.success = False
-        
+
         return result
-    
-    async def run_all_simulations(self) -> Dict[str, Any]:
+
+    async def run_all_simulations(self) -> dict[str, Any]:
         """Ejecuta todas las simulaciones"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("  MigPAL - SIMULACIÓN DE 10 CICLOS COMPLETOS DE MIGRACIÓN")
         print("  Fecha:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        print("="*70)
-        
+        print("=" * 70)
+
         all_results = []
-        
+
         for persona in SIMULATION_PERSONAS:
             print(f"\n--- Simulación {persona['id']}: {persona['name']} ---")
             print(f"    {persona['description']}")
-            
+
             result = await self.run_simulation(persona)
             all_results.append(result)
-            
+
             status = "✅ PASS" if result.success else "❌ FAIL"
             print(f"    {status} | Fases: {result.phases_completed}/{result.total_phases}")
-            print(f"    Issues: {len(result.issues)} | Loops: {result.loops_detected} | Ghost data: {len(result.ghost_data_found)}")
-            
+            print(
+                f"    Issues: {len(result.issues)} | Loops: {result.loops_detected} | Ghost data: {len(result.ghost_data_found)}"
+            )
+
             if result.issues:
                 for issue in result.issues[:3]:
                     print(f"    ⚠️ [{issue.severity}] {issue.category}: {issue.message}")
-        
+
         self.results = all_results
         return self._generate_report()
-    
-    def _generate_report(self) -> Dict[str, Any]:
+
+    def _generate_report(self) -> dict[str, Any]:
         """Genera el reporte final"""
         total = len(self.results)
         passed = sum(1 for r in self.results if r.success)
         failed = total - passed
-        
+
         # Agrupar issues por categoría
         issues_by_category = {}
         for result in self.results:
             for issue in result.issues:
                 if issue.category not in issues_by_category:
                     issues_by_category[issue.category] = []
-                issues_by_category[issue.category].append({
-                    "simulation": result.persona_name,
-                    "severity": issue.severity,
-                    "message": issue.message,
-                    "phase": issue.phase.value
-                })
-        
+                issues_by_category[issue.category].append(
+                    {
+                        "simulation": result.persona_name,
+                        "severity": issue.severity,
+                        "message": issue.message,
+                        "phase": issue.phase.value,
+                    }
+                )
+
         # Calcular métricas
         total_loops = sum(r.loops_detected for r in self.results)
         total_ghost_data = sum(len(r.ghost_data_found) for r in self.results)
         total_issues = sum(len(r.issues) for r in self.results)
-        
+
         report = {
             "summary": {
                 "total_simulations": total,
@@ -658,80 +693,90 @@ class MigrationCycleSimulator:
                 "success_rate": f"{passed/total*100:.1f}%",
                 "total_issues": total_issues,
                 "total_loops": total_loops,
-                "total_ghost_data": total_ghost_data
+                "total_ghost_data": total_ghost_data,
             },
             "issues_by_category": issues_by_category,
             "failed_simulations": [
                 {
                     "name": r.persona_name,
                     "issues": [{"category": i.category, "message": i.message} for i in r.issues],
-                    "ghost_data": r.ghost_data_found
+                    "ghost_data": r.ghost_data_found,
                 }
-                for r in self.results if not r.success
+                for r in self.results
+                if not r.success
             ],
-            "recommendations": self._generate_recommendations(issues_by_category, total_loops, total_ghost_data)
+            "recommendations": self._generate_recommendations(
+                issues_by_category, total_loops, total_ghost_data
+            ),
         }
-        
+
         return report
-    
+
     def _generate_recommendations(
-        self,
-        issues_by_category: Dict[str, List],
-        total_loops: int,
-        total_ghost_data: int
-    ) -> List[Dict[str, str]]:
+        self, issues_by_category: dict[str, list], total_loops: int, total_ghost_data: int
+    ) -> list[dict[str, str]]:
         """Genera recomendaciones basadas en los problemas encontrados"""
         recommendations = []
-        
+
         if "loop" in issues_by_category:
-            recommendations.append({
-                "priority": "HIGH",
-                "issue": "Loops de respuesta detectados",
-                "count": len(issues_by_category["loop"]),
-                "solution": "Implementar tracking de respuestas previas y variar mensajes empáticos"
-            })
-        
+            recommendations.append(
+                {
+                    "priority": "HIGH",
+                    "issue": "Loops de respuesta detectados",
+                    "count": len(issues_by_category["loop"]),
+                    "solution": "Implementar tracking de respuestas previas y variar mensajes empáticos",
+                }
+            )
+
         if "ghost_data" in issues_by_category:
-            recommendations.append({
-                "priority": "CRITICAL",
-                "issue": "Datos fantasma detectados",
-                "count": len(issues_by_category["ghost_data"]),
-                "solution": "Reforzar validación en profile_validator.py antes de usar 'basado en tu perfil'"
-            })
-        
+            recommendations.append(
+                {
+                    "priority": "CRITICAL",
+                    "issue": "Datos fantasma detectados",
+                    "count": len(issues_by_category["ghost_data"]),
+                    "solution": "Reforzar validación en profile_validator.py antes de usar 'basado en tu perfil'",
+                }
+            )
+
         if "topic_jump" in issues_by_category:
-            recommendations.append({
-                "priority": "HIGH",
-                "issue": "Preguntas/confusión no detectadas",
-                "count": len(issues_by_category["topic_jump"]),
-                "solution": "Ampliar patrones en PriorityIntentHandler para detectar más variaciones"
-            })
-        
+            recommendations.append(
+                {
+                    "priority": "HIGH",
+                    "issue": "Preguntas/confusión no detectadas",
+                    "count": len(issues_by_category["topic_jump"]),
+                    "solution": "Ampliar patrones en PriorityIntentHandler para detectar más variaciones",
+                }
+            )
+
         if total_loops > 5:
-            recommendations.append({
-                "priority": "MEDIUM",
-                "issue": f"Alto número de loops ({total_loops})",
-                "solution": "Implementar sistema de variación de respuestas empáticas"
-            })
-        
+            recommendations.append(
+                {
+                    "priority": "MEDIUM",
+                    "issue": f"Alto número de loops ({total_loops})",
+                    "solution": "Implementar sistema de variación de respuestas empáticas",
+                }
+            )
+
         if total_ghost_data > 0:
-            recommendations.append({
-                "priority": "CRITICAL",
-                "issue": f"Datos fantasma en perfiles ({total_ghost_data})",
-                "solution": "Revisar extracción de datos y validar contra input real del usuario"
-            })
-        
+            recommendations.append(
+                {
+                    "priority": "CRITICAL",
+                    "issue": f"Datos fantasma en perfiles ({total_ghost_data})",
+                    "solution": "Revisar extracción de datos y validar contra input real del usuario",
+                }
+            )
+
         return recommendations
 
 
-def print_report(report: Dict[str, Any]):
+def print_report(report: dict[str, Any]):
     """Imprime el reporte de forma legible"""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("  REPORTE DE SIMULACIÓN")
-    print("="*70)
-    
+    print("=" * 70)
+
     summary = report["summary"]
-    print(f"\n📊 RESUMEN:")
+    print("\n📊 RESUMEN:")
     print(f"   Total simulaciones: {summary['total_simulations']}")
     print(f"   Exitosas: {summary['passed']} ✅")
     print(f"   Fallidas: {summary['failed']} ❌")
@@ -739,45 +784,45 @@ def print_report(report: Dict[str, Any]):
     print(f"   Total issues: {summary['total_issues']}")
     print(f"   Total loops: {summary['total_loops']}")
     print(f"   Total datos fantasma: {summary['total_ghost_data']}")
-    
+
     if report["issues_by_category"]:
-        print(f"\n🔍 ISSUES POR CATEGORÍA:")
+        print("\n🔍 ISSUES POR CATEGORÍA:")
         for category, issues in report["issues_by_category"].items():
             print(f"   {category}: {len(issues)} issues")
             for issue in issues[:2]:
                 print(f"      - [{issue['severity']}] {issue['simulation']}: {issue['message'][:50]}")
-    
+
     if report["failed_simulations"]:
-        print(f"\n❌ SIMULACIONES FALLIDAS:")
+        print("\n❌ SIMULACIONES FALLIDAS:")
         for sim in report["failed_simulations"]:
             print(f"   {sim['name']}:")
             for issue in sim["issues"][:3]:
                 print(f"      - {issue['category']}: {issue['message'][:50]}")
             if sim["ghost_data"]:
                 print(f"      - Ghost data: {sim['ghost_data'][:3]}")
-    
+
     if report["recommendations"]:
-        print(f"\n💡 RECOMENDACIONES:")
+        print("\n💡 RECOMENDACIONES:")
         for rec in report["recommendations"]:
             print(f"   [{rec['priority']}] {rec['issue']}")
             print(f"      Solución: {rec['solution']}")
-    
-    print("\n" + "="*70)
+
+    print("\n" + "=" * 70)
 
 
 async def main():
     simulator = MigrationCycleSimulator()
     report = await simulator.run_all_simulations()
     print_report(report)
-    
+
     # Guardar reporte en archivo
     report_path = "/workspace/hjrm/migpal/backend/reports/simulation_report.json"
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False, default=str)
-    
+
     print(f"\n📄 Reporte guardado en: {report_path}")
-    
+
     return report
 
 

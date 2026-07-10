@@ -22,10 +22,10 @@ Este módulo implementa:
 
 import logging
 import re
-from typing import Dict, Any, Optional, List, Tuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ REQUIRED_PROFILE_FIELDS = {
     "work": ["profession", "work_experience"],
     "education": ["education_level"],
     "migration": ["migration_reason", "timeline"],
-    "financial": ["savings"]
+    "financial": ["savings"],
 }
 
 # Campos adicionales si tiene familia
@@ -50,27 +50,28 @@ LIFE_GOAL_FIELDS = {
     "dream": ["dream_in_usa", "life_goals", "priorities"],
     "location": ["preferred_climate", "city_size", "region_preference"],
     "work_life": ["work_or_business", "industry", "salary_expectation"],
-    "family_life": ["school_importance", "safety_importance", "community_importance"]
+    "family_life": ["school_importance", "safety_importance", "community_importance"],
 }
 
 
 # ============== DATA MEMORY ==============
+
 
 class DataMemory:
     """
     Guarda TODO lo que dice el usuario y lo reutiliza.
     Regla: Todo dato dicho por el usuario se guarda y se reutiliza.
     """
-    
+
     _instance = None
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._user_memory = {}
             cls._instance._extraction_history = {}
         return cls._instance
-    
+
     def store_raw_input(self, user_id: int, text: str, context: str = ""):
         """Guarda el input raw del usuario para análisis posterior"""
         if user_id not in self._user_memory:
@@ -78,115 +79,105 @@ class DataMemory:
                 "raw_inputs": [],
                 "extracted_data": {},
                 "corrections": [],
-                "confirmations": []
+                "confirmations": [],
             }
-        
-        self._user_memory[user_id]["raw_inputs"].append({
-            "timestamp": datetime.now().isoformat(),
-            "text": text,
-            "context": context
-        })
-        
+
+        self._user_memory[user_id]["raw_inputs"].append(
+            {"timestamp": datetime.now().isoformat(), "text": text, "context": context}
+        )
+
         # Mantener solo últimos 100 inputs
         if len(self._user_memory[user_id]["raw_inputs"]) > 100:
             self._user_memory[user_id]["raw_inputs"] = self._user_memory[user_id]["raw_inputs"][-100:]
-    
-    def extract_and_store(self, user_id: int, text: str, user_data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def extract_and_store(self, user_id: int, text: str, user_data: dict[str, Any]) -> dict[str, Any]:
         """
         Extrae datos del texto y los guarda en el perfil del usuario.
         Retorna los datos extraídos.
         """
         extracted = {}
         text_lower = text.lower()
-        
+
         # Patrones de extracción mejorados
         patterns = {
             # Información personal
             "name": [
                 r"(?:me llamo|mi nombre es|soy)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]+?)(?:\s*[,.]|$)",
-                r"(?:my name is|i'm|i am)\s+([A-Za-z\s]+?)(?:\s*[,.]|$)"
+                r"(?:my name is|i'm|i am)\s+([A-Za-z\s]+?)(?:\s*[,.]|$)",
             ],
             "age": [
                 r"tengo\s+(\d+)\s+años",
                 r"(\d+)\s+años",
                 r"i'm\s+(\d+)",
                 r"i am\s+(\d+)",
-                r"(\d+)\s+years\s+old"
+                r"(\d+)\s+years\s+old",
             ],
             "nationality": [
                 r"soy\s+(?:de\s+)?([A-Za-záéíóúñÁÉÍÓÚÑ]+)(?:no|na)?",
-                r"(?:from|i'm from)\s+([A-Za-z]+)"
+                r"(?:from|i'm from)\s+([A-Za-z]+)",
             ],
             "current_country": [
                 r"vivo\s+en\s+([A-Za-záéíóúñÁÉÍÓÚÑ]+)",
                 r"estoy\s+en\s+([A-Za-záéíóúñÁÉÍÓÚÑ]+)",
-                r"live\s+in\s+([A-Za-z]+)"
+                r"live\s+in\s+([A-Za-z]+)",
             ],
             "current_city": [
                 r"(?:vivo|estoy)\s+en\s+([A-Za-záéíóúñÁÉÍÓÚÑ]+),?\s*([A-Za-záéíóúñÁÉÍÓÚÑ]+)?",
             ],
-            
             # Familia
             "family_count": [
                 r"(\d+)\s+(?:hijos?|niños?|children|kids)",
-                r"(?:tengo|have)\s+(\d+)\s+(?:hijos?|children)"
+                r"(?:tengo|have)\s+(\d+)\s+(?:hijos?|children)",
             ],
             "spouse": [
                 r"(?:mi\s+)?(?:esposo|esposa|pareja|wife|husband|partner)",
             ],
-            
             # Trabajo
             "profession": [
                 r"(?:soy|trabajo como|work as)\s+(?:un\s+|una\s+|a\s+|an\s+)?([A-Za-záéíóúñÁÉÍÓÚÑ\s]+?)(?:\s*[,.]|$)",
-                r"(?:mi profesión es|my profession is)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]+?)(?:\s*[,.]|$)"
+                r"(?:mi profesión es|my profession is)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]+?)(?:\s*[,.]|$)",
             ],
             "work_experience": [
                 r"(\d+)\s+años?\s+(?:de\s+)?(?:experiencia|trabajando)",
-                r"(\d+)\s+years?\s+(?:of\s+)?(?:experience|working)"
+                r"(\d+)\s+years?\s+(?:of\s+)?(?:experience|working)",
             ],
             "salary": [
                 r"\$?\s*(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:usd|dólares|dolares|dollars)?",
-                r"(?:gano|earn|make)\s+\$?\s*(\d+(?:,\d{3})*)"
+                r"(?:gano|earn|make)\s+\$?\s*(\d+(?:,\d{3})*)",
             ],
-            
             # Educación
             "education_level": [
                 r"(?:soy|tengo)\s+(?:título de\s+)?(?:licenciado|ingeniero|doctor|maestría|bachiller)",
-                r"(?:bachelor|master|phd|doctorate|degree)"
+                r"(?:bachelor|master|phd|doctorate|degree)",
             ],
             "education_field": [
                 r"(?:estudié|estudiando|studied|studying)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]+?)(?:\s*[,.]|$)"
             ],
-            
             # Finanzas
             "savings": [
                 r"(?:tengo|ahorros?|savings?)\s+(?:de\s+)?\$?\s*(\d+(?:,\d{3})*(?:\.\d{2})?)",
-                r"\$?\s*(\d+(?:,\d{3})*)\s+(?:ahorrados?|saved)"
+                r"\$?\s*(\d+(?:,\d{3})*)\s+(?:ahorrados?|saved)",
             ],
-            
             # Migración
             "migration_reason": [
                 r"(?:quiero migrar|want to migrate)\s+(?:por|porque|for|because)\s+(.+?)(?:\.|$)",
-                r"(?:mi razón|my reason)\s+(?:es|is)\s+(.+?)(?:\.|$)"
+                r"(?:mi razón|my reason)\s+(?:es|is)\s+(.+?)(?:\.|$)",
             ],
             "timeline": [
                 r"(?:en|within)\s+(\d+)\s+(?:meses?|años?|months?|years?)",
-                r"(?:para|by|before)\s+(\d{4})"
+                r"(?:para|by|before)\s+(\d{4})",
             ],
-            
             # Vida deseada
             "dream_in_usa": [
                 r"(?:mi sueño|my dream)\s+(?:es|is)\s+(.+?)(?:\.|$)",
-                r"(?:quiero|want to)\s+(.+?)\s+(?:en usa|in usa|in the us)"
+                r"(?:quiero|want to)\s+(.+?)\s+(?:en usa|in usa|in the us)",
             ],
             "preferred_climate": [
                 r"(?:prefiero|prefer)\s+(?:clima\s+)?(?:cálido|frío|templado|warm|cold|temperate)"
             ],
-            "city_size": [
-                r"(?:ciudad|city)\s+(?:grande|pequeña|mediana|big|small|medium)"
-            ]
+            "city_size": [r"(?:ciudad|city)\s+(?:grande|pequeña|mediana|big|small|medium)"],
         }
-        
+
         # Extraer datos
         for field, field_patterns in patterns.items():
             for pattern in field_patterns:
@@ -195,33 +186,33 @@ class DataMemory:
                     value = match.group(1).strip() if match.groups() else True
                     extracted[field] = value
                     break
-        
+
         # Guardar en memoria
         if user_id not in self._user_memory:
             self._user_memory[user_id] = {
                 "raw_inputs": [],
                 "extracted_data": {},
                 "corrections": [],
-                "confirmations": []
+                "confirmations": [],
             }
-        
+
         # Actualizar datos extraídos
         for field, value in extracted.items():
             self._user_memory[user_id]["extracted_data"][field] = {
                 "value": value,
                 "timestamp": datetime.now().isoformat(),
-                "source_text": text[:100]
+                "source_text": text[:100],
             }
-        
+
         # Guardar en el perfil del usuario
         self._update_user_profile(user_data, extracted)
-        
+
         return extracted
-    
-    def _update_user_profile(self, user_data: Dict[str, Any], extracted: Dict[str, Any]):
+
+    def _update_user_profile(self, user_data: dict[str, Any], extracted: dict[str, Any]):
         """Actualiza el perfil del usuario con los datos extraídos"""
         profile = user_data.setdefault("profile", {})
-        
+
         # Mapeo de campos a secciones del perfil
         field_mapping = {
             "name": ("personal", "name"),
@@ -242,22 +233,22 @@ class DataMemory:
             "timeline": ("migration", "timeline"),
             "dream_in_usa": ("life_goals", "dream"),
             "preferred_climate": ("preferences", "climate"),
-            "city_size": ("preferences", "city_size")
+            "city_size": ("preferences", "city_size"),
         }
-        
+
         for field, value in extracted.items():
             if field in field_mapping:
                 section, key = field_mapping[field]
                 if section not in profile:
                     profile[section] = {}
                 profile[section][key] = value
-    
-    def get_all_known_data(self, user_id: int) -> Dict[str, Any]:
+
+    def get_all_known_data(self, user_id: int) -> dict[str, Any]:
         """Obtiene todos los datos conocidos del usuario"""
         if user_id not in self._user_memory:
             return {}
         return self._user_memory[user_id].get("extracted_data", {})
-    
+
     def record_correction(self, user_id: int, field: str, old_value: Any, new_value: Any):
         """Registra una corrección del usuario"""
         if user_id not in self._user_memory:
@@ -265,16 +256,18 @@ class DataMemory:
                 "raw_inputs": [],
                 "extracted_data": {},
                 "corrections": [],
-                "confirmations": []
+                "confirmations": [],
             }
-        
-        self._user_memory[user_id]["corrections"].append({
-            "timestamp": datetime.now().isoformat(),
-            "field": field,
-            "old_value": old_value,
-            "new_value": new_value
-        })
-    
+
+        self._user_memory[user_id]["corrections"].append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "field": field,
+                "old_value": old_value,
+                "new_value": new_value,
+            }
+        )
+
     def record_confirmation(self, user_id: int, summary_type: str, confirmed: bool):
         """Registra una confirmación del usuario"""
         if user_id not in self._user_memory:
@@ -282,20 +275,20 @@ class DataMemory:
                 "raw_inputs": [],
                 "extracted_data": {},
                 "corrections": [],
-                "confirmations": []
+                "confirmations": [],
             }
-        
-        self._user_memory[user_id]["confirmations"].append({
-            "timestamp": datetime.now().isoformat(),
-            "summary_type": summary_type,
-            "confirmed": confirmed
-        })
+
+        self._user_memory[user_id]["confirmations"].append(
+            {"timestamp": datetime.now().isoformat(), "summary_type": summary_type, "confirmed": confirmed}
+        )
 
 
 # ============== PROFILE VALIDATOR ==============
 
+
 class ProfileCompleteness(Enum):
     """Niveles de completitud del perfil"""
+
     EMPTY = "empty"
     MINIMAL = "minimal"
     BASIC = "basic"
@@ -306,10 +299,11 @@ class ProfileCompleteness(Enum):
 @dataclass
 class ProfileValidationResult:
     """Resultado de validación del perfil"""
+
     completeness: ProfileCompleteness
     percentage: float
-    missing_required: List[str]
-    missing_optional: List[str]
+    missing_required: list[str]
+    missing_optional: list[str]
     has_family_data: bool
     has_life_goals: bool
     is_ready_for_visa: bool
@@ -321,17 +315,17 @@ class ProfileValidator:
     Valida completitud del perfil antes de permitir decisiones.
     Regla: La visa engine solo puede activarse con perfil completo validado.
     """
-    
+
     @staticmethod
-    def validate(user_data: Dict[str, Any]) -> ProfileValidationResult:
+    def validate(user_data: dict[str, Any]) -> ProfileValidationResult:
         """Valida el perfil del usuario y retorna el resultado"""
         profile = user_data.get("profile", {})
-        
+
         missing_required = []
         missing_optional = []
         filled_count = 0
         total_required = 0
-        
+
         # Verificar campos requeridos
         for section, fields in REQUIRED_PROFILE_FIELDS.items():
             section_data = profile.get(section, {})
@@ -341,9 +335,13 @@ class ProfileValidator:
                     missing_required.append(f"{section}.{field}")
                 else:
                     filled_count += 1
-        
+
         # Si tiene familia, verificar campos adicionales
-        has_family = profile.get("family", {}).get("family_status") in ["married", "with_children", "with_family"]
+        has_family = profile.get("family", {}).get("family_status") in [
+            "married",
+            "with_children",
+            "with_family",
+        ]
         if has_family:
             family_data = profile.get("family", {})
             for field in FAMILY_REQUIRED_FIELDS:
@@ -352,23 +350,25 @@ class ProfileValidator:
                     missing_required.append(f"family.{field}")
                 else:
                     filled_count += 1
-        
+
         # Verificar campos de vida deseada
         has_life_goals = False
         life_goals_data = profile.get("life_goals", {})
         preferences_data = profile.get("preferences", {})
-        
+
         for section, fields in LIFE_GOAL_FIELDS.items():
-            section_data = life_goals_data if section in ["dream", "work_life", "family_life"] else preferences_data
+            section_data = (
+                life_goals_data if section in ["dream", "work_life", "family_life"] else preferences_data
+            )
             for field in fields:
                 if section_data.get(field):
                     has_life_goals = True
                 else:
                     missing_optional.append(f"{section}.{field}")
-        
+
         # Calcular porcentaje
         percentage = (filled_count / total_required * 100) if total_required > 0 else 0
-        
+
         # Determinar nivel de completitud
         if percentage == 0:
             completeness = ProfileCompleteness.EMPTY
@@ -385,18 +385,18 @@ class ProfileValidator:
                 completeness = ProfileCompleteness.VALIDATED
             else:
                 completeness = ProfileCompleteness.COMPLETE
-        
+
         # Determinar si está listo para visa
         is_ready_for_visa = (
-            completeness in [ProfileCompleteness.COMPLETE, ProfileCompleteness.VALIDATED] and
-            len(missing_required) == 0
+            completeness in [ProfileCompleteness.COMPLETE, ProfileCompleteness.VALIDATED]
+            and len(missing_required) == 0
         )
-        
+
         # Generar resumen
         summary = ProfileValidator._generate_summary(
             completeness, percentage, missing_required, has_life_goals
         )
-        
+
         return ProfileValidationResult(
             completeness=completeness,
             percentage=percentage,
@@ -405,12 +405,13 @@ class ProfileValidator:
             has_family_data=has_family,
             has_life_goals=has_life_goals,
             is_ready_for_visa=is_ready_for_visa,
-            summary=summary
+            summary=summary,
         )
-    
+
     @staticmethod
-    def _generate_summary(completeness: ProfileCompleteness, percentage: float,
-                          missing: List[str], has_life_goals: bool) -> str:
+    def _generate_summary(
+        completeness: ProfileCompleteness, percentage: float, missing: list[str], has_life_goals: bool
+    ) -> str:
         """Genera un resumen del estado del perfil"""
         if completeness == ProfileCompleteness.EMPTY:
             return "Aún no tengo información sobre ti."
@@ -422,21 +423,24 @@ class ProfileValidator:
             if has_life_goals:
                 return f"Perfil completo ({percentage:.0f}%). Listo para confirmar."
             else:
-                return f"Perfil casi completo ({percentage:.0f}%). Me gustaría entender mejor tus metas de vida."
+                return (
+                    f"Perfil casi completo ({percentage:.0f}%). Me gustaría entender mejor tus metas de vida."
+                )
         else:
             return f"Perfil validado ({percentage:.0f}%). ¡Listo para recomendaciones!"
 
 
 # ============== UNDERSTANDING SUMMARIZER ==============
 
+
 class UnderstandingSummarizer:
     """
     Resume lo entendido y pide confirmación explícita.
     Regla: Antes de sugerir opciones, MigPAL debe resumir lo entendido + pedir confirmación.
     """
-    
+
     @staticmethod
-    def generate_summary(user_data: Dict[str, Any], lang: str = "es") -> Tuple[str, List[Tuple[str, str]]]:
+    def generate_summary(user_data: dict[str, Any], lang: str = "es") -> tuple[str, list[tuple[str, str]]]:
         """
         Genera un resumen de lo entendido y botones de confirmación.
         Returns: (summary_text, [(button_text, callback_data), ...])
@@ -449,10 +453,10 @@ class UnderstandingSummarizer:
         migration = profile.get("migration", {})
         life_goals = profile.get("life_goals", {})
         financial = profile.get("financial", {})
-        
+
         if lang == "es":
             summary_parts = ["📋 *RESUMEN DE LO QUE ENTENDÍ*\n"]
-            
+
             # Personal
             if personal.get("name"):
                 summary_parts.append(f"👤 *Nombre:* {personal['name']}")
@@ -463,55 +467,57 @@ class UnderstandingSummarizer:
                 summary_parts.append(f"🌍 *Nacionalidad:* {personal['nationality']}")
             if personal.get("current_country"):
                 city = personal.get("current_city", "")
-                location = f"{city}, {personal['current_country']}" if city else personal['current_country']
+                location = f"{city}, {personal['current_country']}" if city else personal["current_country"]
                 summary_parts.append(f"📍 *Ubicación actual:* {location}")
-            
+
             # Familia
             if family.get("family_status"):
                 status_map = {
                     "single": "Soltero/a",
                     "married": "Casado/a",
                     "with_children": "Con hijos",
-                    "with_family": "Con familia"
+                    "with_family": "Con familia",
                 }
-                summary_parts.append(f"👨‍👩‍👧 *Familia:* {status_map.get(family['family_status'], family['family_status'])}")
+                summary_parts.append(
+                    f"👨‍👩‍👧 *Familia:* {status_map.get(family['family_status'], family['family_status'])}"
+                )
                 if family.get("count"):
                     summary_parts.append(f"   └ {family['count']} miembro(s)")
-            
+
             # Trabajo
             if work.get("profession"):
                 summary_parts.append(f"💼 *Profesión:* {work['profession']}")
             if work.get("experience_years"):
                 summary_parts.append(f"   └ {work['experience_years']} años de experiencia")
-            
+
             # Educación
             if education.get("level"):
                 summary_parts.append(f"🎓 *Educación:* {education['level']}")
-            
+
             # Finanzas
             if financial.get("savings"):
                 summary_parts.append(f"💰 *Ahorros:* ${financial['savings']}")
-            
+
             # Migración
             if migration.get("reason"):
                 summary_parts.append(f"✈️ *Razón de migrar:* {migration['reason']}")
             if migration.get("timeline"):
                 summary_parts.append(f"📅 *Plazo:* {migration['timeline']}")
-            
+
             # Vida deseada
             if life_goals.get("dream"):
                 summary_parts.append(f"\n🌟 *Tu sueño:* {life_goals['dream']}")
-            
+
             summary_parts.append("\n\n*¿Es correcta esta información?*")
-            
+
             buttons = [
                 ("✅ Sí, todo correcto", "confirm_summary_yes"),
                 ("✏️ Necesito corregir algo", "confirm_summary_no"),
-                ("➕ Quiero agregar más", "confirm_summary_add")
+                ("➕ Quiero agregar más", "confirm_summary_add"),
             ]
         else:
             summary_parts = ["📋 *SUMMARY OF WHAT I UNDERSTOOD*\n"]
-            
+
             if personal.get("name"):
                 summary_parts.append(f"👤 *Name:* {personal['name']}")
             if personal.get("age"):
@@ -520,32 +526,32 @@ class UnderstandingSummarizer:
                 summary_parts.append(f"🌍 *Nationality:* {personal['nationality']}")
             if personal.get("current_country"):
                 summary_parts.append(f"📍 *Current location:* {personal['current_country']}")
-            
+
             if work.get("profession"):
                 summary_parts.append(f"💼 *Profession:* {work['profession']}")
-            
+
             if migration.get("reason"):
                 summary_parts.append(f"✈️ *Reason to migrate:* {migration['reason']}")
-            
+
             if life_goals.get("dream"):
                 summary_parts.append(f"\n🌟 *Your dream:* {life_goals['dream']}")
-            
+
             summary_parts.append("\n\n*Is this information correct?*")
-            
+
             buttons = [
                 ("✅ Yes, all correct", "confirm_summary_yes"),
                 ("✏️ I need to correct something", "confirm_summary_no"),
-                ("➕ I want to add more", "confirm_summary_add")
+                ("➕ I want to add more", "confirm_summary_add"),
             ]
-        
+
         return "\n".join(summary_parts), buttons
-    
+
     @staticmethod
     def get_missing_info_prompt(validation: ProfileValidationResult, lang: str = "es") -> str:
         """Genera prompt para pedir información faltante"""
         if not validation.missing_required:
             return ""
-        
+
         # Mapeo de campos a preguntas amigables
         field_questions = {
             "es": {
@@ -561,7 +567,7 @@ class UnderstandingSummarizer:
                 "education.level": "¿Cuál es tu nivel de estudios?",
                 "migration.reason": "¿Por qué quieres migrar?",
                 "migration.timeline": "¿En cuánto tiempo planeas migrar?",
-                "financial.savings": "¿Con cuánto dinero cuentas para el proceso?"
+                "financial.savings": "¿Con cuánto dinero cuentas para el proceso?",
             },
             "en": {
                 "personal.name": "What's your name?",
@@ -576,37 +582,38 @@ class UnderstandingSummarizer:
                 "education.level": "What's your education level?",
                 "migration.reason": "Why do you want to migrate?",
                 "migration.timeline": "When do you plan to migrate?",
-                "financial.savings": "How much money do you have for the process?"
-            }
+                "financial.savings": "How much money do you have for the process?",
+            },
         }
-        
+
         questions = field_questions.get(lang, field_questions["es"])
-        
+
         # Obtener la primera pregunta faltante
         for field in validation.missing_required:
             if field in questions:
                 return questions[field]
-        
+
         return questions.get(validation.missing_required[0], "Cuéntame más sobre ti.")
 
 
 # ============== CORRECTION TRACKER ==============
+
 
 class CorrectionTracker:
     """
     Detecta correcciones y bloquea avance de fase.
     Regla: Si el usuario corrige algo → no avanzar de fase.
     """
-    
+
     _instance = None
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._pending_corrections = {}
             cls._instance._correction_history = {}
         return cls._instance
-    
+
     # Patrones para detectar correcciones
     CORRECTION_PATTERNS = [
         r"(?:no,?\s+)?(?:en realidad|actually)",
@@ -623,23 +630,23 @@ class CorrectionTracker:
         r"(?:debería|should)\s+(?:ser|be)",
         r"(?:es|is)\s+(?:incorrecto|incorrect|wrong)",
     ]
-    
-    def detect_correction(self, text: str) -> Tuple[bool, Optional[str]]:
+
+    def detect_correction(self, text: str) -> tuple[bool, str | None]:
         """
         Detecta si el texto es una corrección.
         Returns: (is_correction, corrected_field)
         """
         text_lower = text.lower().strip()
-        
+
         for pattern in self.CORRECTION_PATTERNS:
             if re.search(pattern, text_lower, re.IGNORECASE):
                 # Intentar detectar qué campo se está corrigiendo
                 field = self._detect_corrected_field(text_lower)
                 return True, field
-        
+
         return False, None
-    
-    def _detect_corrected_field(self, text: str) -> Optional[str]:
+
+    def _detect_corrected_field(self, text: str) -> str | None:
         """Detecta qué campo se está corrigiendo"""
         field_keywords = {
             "name": ["nombre", "name", "llamo", "call me"],
@@ -648,49 +655,49 @@ class CorrectionTracker:
             "email": ["correo", "email", "mail"],
             "phone": ["teléfono", "phone", "número", "number"],
             "country": ["país", "country", "nacionalidad", "nationality"],
-            "family": ["familia", "family", "hijos", "children", "esposo", "esposa"]
+            "family": ["familia", "family", "hijos", "children", "esposo", "esposa"],
         }
-        
+
         for field, keywords in field_keywords.items():
             for keyword in keywords:
                 if keyword in text:
                     return field
-        
+
         return None
-    
+
     def register_correction(self, user_id: int, field: str, old_value: Any, new_value: Any):
         """Registra una corrección pendiente"""
         if user_id not in self._pending_corrections:
             self._pending_corrections[user_id] = []
-        
+
         correction = {
             "timestamp": datetime.now().isoformat(),
             "field": field,
             "old_value": old_value,
             "new_value": new_value,
-            "confirmed": False
+            "confirmed": False,
         }
-        
+
         self._pending_corrections[user_id].append(correction)
-        
+
         # Guardar en historial
         if user_id not in self._correction_history:
             self._correction_history[user_id] = []
         self._correction_history[user_id].append(correction)
-    
+
     def has_pending_corrections(self, user_id: int) -> bool:
         """Verifica si hay correcciones pendientes de confirmar"""
         if user_id not in self._pending_corrections:
             return False
         return len([c for c in self._pending_corrections[user_id] if not c["confirmed"]]) > 0
-    
+
     def confirm_corrections(self, user_id: int):
         """Confirma todas las correcciones pendientes"""
         if user_id in self._pending_corrections:
             for correction in self._pending_corrections[user_id]:
                 correction["confirmed"] = True
-    
-    def can_advance_phase(self, user_id: int) -> Tuple[bool, str]:
+
+    def can_advance_phase(self, user_id: int) -> tuple[bool, str]:
         """
         Verifica si se puede avanzar de fase.
         Regla: Si hay correcciones pendientes, no avanzar.
@@ -702,12 +709,13 @@ class CorrectionTracker:
 
 # ============== LIFE GOAL EXTRACTOR ==============
 
+
 class LifeGoalExtractor:
     """
     Extrae la vida deseada, no solo la visa.
     Regla: Prioridad: entender la vida deseada, no la visa.
     """
-    
+
     # Preguntas para entender la vida deseada
     LIFE_GOAL_QUESTIONS = {
         "es": {
@@ -716,7 +724,7 @@ class LifeGoalExtractor:
             "lifestyle": "¿Prefieres una vida en ciudad grande con más oportunidades, o una ciudad más tranquila con mejor calidad de vida?",
             "work_life": "¿Quieres trabajar para una empresa, emprender tu propio negocio, o trabajar remoto?",
             "family_life": "¿Qué tipo de comunidad buscas para tu familia? ¿Es importante la comunidad latina?",
-            "timeline": "¿Cuándo te gustaría estar establecido en USA? ¿Tienes alguna fecha límite?"
+            "timeline": "¿Cuándo te gustaría estar establecido en USA? ¿Tienes alguna fecha límite?",
         },
         "en": {
             "dream": "What's your dream in the United States? How do you imagine your life there?",
@@ -724,18 +732,20 @@ class LifeGoalExtractor:
             "lifestyle": "Do you prefer life in a big city with more opportunities, or a quieter city with better quality of life?",
             "work_life": "Do you want to work for a company, start your own business, or work remotely?",
             "family_life": "What kind of community are you looking for your family? Is the Latino community important?",
-            "timeline": "When would you like to be settled in the USA? Do you have any deadline?"
-        }
+            "timeline": "When would you like to be settled in the USA? Do you have any deadline?",
+        },
     }
-    
+
     @staticmethod
-    def get_next_life_goal_question(user_data: Dict[str, Any], lang: str = "es") -> Optional[str]:
+    def get_next_life_goal_question(user_data: dict[str, Any], lang: str = "es") -> str | None:
         """Obtiene la siguiente pregunta sobre vida deseada que no ha sido respondida"""
         life_goals = user_data.get("profile", {}).get("life_goals", {})
         preferences = user_data.get("profile", {}).get("preferences", {})
-        
-        questions = LifeGoalExtractor.LIFE_GOAL_QUESTIONS.get(lang, LifeGoalExtractor.LIFE_GOAL_QUESTIONS["es"])
-        
+
+        questions = LifeGoalExtractor.LIFE_GOAL_QUESTIONS.get(
+            lang, LifeGoalExtractor.LIFE_GOAL_QUESTIONS["es"]
+        )
+
         # Verificar qué preguntas ya fueron respondidas
         answered = set()
         if life_goals.get("dream"):
@@ -750,29 +760,33 @@ class LifeGoalExtractor:
             answered.add("family_life")
         if user_data.get("profile", {}).get("migration", {}).get("timeline"):
             answered.add("timeline")
-        
+
         # Retornar la primera pregunta no respondida
         priority_order = ["dream", "priorities", "work_life", "lifestyle", "family_life", "timeline"]
         for question_key in priority_order:
             if question_key not in answered:
                 return questions.get(question_key)
-        
+
         return None
-    
+
     @staticmethod
-    def extract_life_goals(text: str, user_data: Dict[str, Any]) -> Dict[str, Any]:
+    def extract_life_goals(text: str, user_data: dict[str, Any]) -> dict[str, Any]:
         """Extrae metas de vida del texto"""
         extracted = {}
         text_lower = text.lower()
-        
+
         # Detectar prioridades
-        if any(word in text_lower for word in ["dinero", "money", "económic", "economic", "salario", "salary"]):
+        if any(
+            word in text_lower for word in ["dinero", "money", "económic", "economic", "salario", "salary"]
+        ):
             extracted["priority_economic"] = True
-        if any(word in text_lower for word in ["familia", "family", "hijos", "children", "seguridad", "safety"]):
+        if any(
+            word in text_lower for word in ["familia", "family", "hijos", "children", "seguridad", "safety"]
+        ):
             extracted["priority_family"] = True
         if any(word in text_lower for word in ["calidad", "quality", "tranquil", "peace", "vida", "life"]):
             extracted["priority_quality"] = True
-        
+
         # Detectar preferencia de ciudad
         if any(word in text_lower for word in ["grande", "big", "metrópoli", "metropolis", "oportunidades"]):
             extracted["city_preference"] = "large"
@@ -780,7 +794,7 @@ class LifeGoalExtractor:
             extracted["city_preference"] = "small"
         elif any(word in text_lower for word in ["mediana", "medium", "balance"]):
             extracted["city_preference"] = "medium"
-        
+
         # Detectar preferencia de trabajo
         if any(word in text_lower for word in ["negocio", "business", "emprender", "entrepreneur"]):
             extracted["work_preference"] = "business"
@@ -788,48 +802,49 @@ class LifeGoalExtractor:
             extracted["work_preference"] = "remote"
         elif any(word in text_lower for word in ["empresa", "company", "empleado", "employee"]):
             extracted["work_preference"] = "employee"
-        
+
         return extracted
 
 
 # ============== DECISION GATE ==============
+
 
 class DecisionGate:
     """
     Solo permite decisiones con perfil validado.
     Regla: La visa engine solo puede activarse con perfil completo validado.
     """
-    
+
     @staticmethod
-    def can_make_decision(user_data: Dict[str, Any], decision_type: str) -> Tuple[bool, str, Optional[str]]:
+    def can_make_decision(user_data: dict[str, Any], decision_type: str) -> tuple[bool, str, str | None]:
         """
         Verifica si se puede tomar una decisión.
         Returns: (can_decide, reason, next_action)
         """
         validation = ProfileValidator.validate(user_data)
-        
+
         # Decisiones que requieren perfil completo
         high_stakes_decisions = ["visa_recommendation", "city_selection", "payment", "diagnosis"]
-        
+
         if decision_type in high_stakes_decisions:
             if not validation.is_ready_for_visa:
                 missing_prompt = UnderstandingSummarizer.get_missing_info_prompt(validation)
                 return False, f"Necesito más información antes de {decision_type}.", missing_prompt
-            
+
             # Verificar si el perfil está validado (confirmado)
             if validation.completeness != ProfileCompleteness.VALIDATED:
                 return False, "Necesito que confirmes la información antes de continuar.", "show_summary"
-        
+
         # Verificar correcciones pendientes
         tracker = CorrectionTracker()
         can_advance, correction_msg = tracker.can_advance_phase(user_data.get("user_id", 0))
         if not can_advance:
             return False, correction_msg, "confirm_corrections"
-        
+
         return True, "", None
-    
+
     @staticmethod
-    def get_decision_requirements(decision_type: str, lang: str = "es") -> List[str]:
+    def get_decision_requirements(decision_type: str, lang: str = "es") -> list[str]:
         """Obtiene los requisitos para tomar una decisión"""
         requirements = {
             "es": {
@@ -841,19 +856,19 @@ class DecisionGate:
                     "Profesión y experiencia",
                     "Razón de migración",
                     "Ahorros disponibles",
-                    "Confirmación del resumen"
+                    "Confirmación del resumen",
                 ],
                 "city_selection": [
                     "Preferencias de clima",
                     "Tamaño de ciudad preferido",
                     "Prioridades (costo, seguridad, etc.)",
-                    "Presupuesto mensual"
+                    "Presupuesto mensual",
                 ],
                 "payment": [
                     "Perfil completo validado",
                     "Entendimiento del servicio",
-                    "Confirmación de precio"
-                ]
+                    "Confirmación de precio",
+                ],
             },
             "en": {
                 "visa_recommendation": [
@@ -864,42 +879,44 @@ class DecisionGate:
                     "Profession and experience",
                     "Reason for migration",
                     "Available savings",
-                    "Summary confirmation"
+                    "Summary confirmation",
                 ],
                 "city_selection": [
                     "Climate preferences",
                     "Preferred city size",
                     "Priorities (cost, safety, etc.)",
-                    "Monthly budget"
+                    "Monthly budget",
                 ],
-                "payment": [
-                    "Validated complete profile",
-                    "Understanding of service",
-                    "Price confirmation"
-                ]
-            }
+                "payment": ["Validated complete profile", "Understanding of service", "Price confirmation"],
+            },
         }
-        
+
         lang_reqs = requirements.get(lang, requirements["es"])
         return lang_reqs.get(decision_type, [])
 
 
 # ============== SINGLETON GETTERS ==============
 
+
 def get_data_memory() -> DataMemory:
     return DataMemory()
+
 
 def get_profile_validator() -> ProfileValidator:
     return ProfileValidator()
 
+
 def get_understanding_summarizer() -> UnderstandingSummarizer:
     return UnderstandingSummarizer()
+
 
 def get_correction_tracker() -> CorrectionTracker:
     return CorrectionTracker()
 
+
 def get_life_goal_extractor() -> LifeGoalExtractor:
     return LifeGoalExtractor()
+
 
 def get_decision_gate() -> DecisionGate:
     return DecisionGate()
@@ -907,71 +924,75 @@ def get_decision_gate() -> DecisionGate:
 
 # ============== INTEGRATION HELPERS ==============
 
-def store_user_input(user_id: int, text: str, user_data: Dict[str, Any]) -> Dict[str, Any]:
+
+def store_user_input(user_id: int, text: str, user_data: dict[str, Any]) -> dict[str, Any]:
     """Helper para guardar input del usuario y extraer datos"""
     memory = get_data_memory()
     memory.store_raw_input(user_id, text)
     return memory.extract_and_store(user_id, text, user_data)
 
-def validate_profile(user_data: Dict[str, Any]) -> ProfileValidationResult:
+
+def validate_profile(user_data: dict[str, Any]) -> ProfileValidationResult:
     """Helper para validar perfil"""
     return ProfileValidator.validate(user_data)
 
-def generate_understanding_summary(user_data: Dict[str, Any], lang: str = "es") -> Tuple[str, List[Tuple[str, str]]]:
+
+def generate_understanding_summary(
+    user_data: dict[str, Any], lang: str = "es"
+) -> tuple[str, list[tuple[str, str]]]:
     """Helper para generar resumen de entendimiento"""
     return UnderstandingSummarizer.generate_summary(user_data, lang)
 
-def detect_correction(text: str) -> Tuple[bool, Optional[str]]:
+
+def detect_correction(text: str) -> tuple[bool, str | None]:
     """Helper para detectar correcciones"""
     tracker = get_correction_tracker()
     return tracker.detect_correction(text)
 
-def can_make_decision(user_data: Dict[str, Any], decision_type: str) -> Tuple[bool, str, Optional[str]]:
+
+def can_make_decision(user_data: dict[str, Any], decision_type: str) -> tuple[bool, str, str | None]:
     """Helper para verificar si se puede tomar decisión"""
     return DecisionGate.can_make_decision(user_data, decision_type)
 
-def get_next_life_question(user_data: Dict[str, Any], lang: str = "es") -> Optional[str]:
+
+def get_next_life_question(user_data: dict[str, Any], lang: str = "es") -> str | None:
     """Helper para obtener siguiente pregunta de vida deseada"""
     return LifeGoalExtractor.get_next_life_goal_question(user_data, lang)
 
 
 # V4.2 FIX: Guard clause for profile minimum completion
-def is_profile_min_complete(user_data: Dict[str, Any]) -> Tuple[bool, str]:
+def is_profile_min_complete(user_data: dict[str, Any]) -> tuple[bool, str]:
     """
     Verifica si el perfil tiene los campos mínimos requeridos para transiciones.
-    
+
     Campos mínimos requeridos:
     - name (nombre)
     - nationality (nacionalidad)
     - current_country (país actual)
-    
+
     Returns:
         (is_complete, blocking_message)
     """
     profile = user_data.get("profile", {})
     personal = profile.get("personal", {})
-    
+
     # Campos mínimos requeridos
     min_required = {
         "name": personal.get("name"),
         "nationality": personal.get("nationality"),
-        "current_country": personal.get("current_country")
+        "current_country": personal.get("current_country"),
     }
-    
+
     missing = [field for field, value in min_required.items() if not value]
-    
+
     if missing:
         # Generar mensaje de bloqueo
-        field_names_es = {
-            "name": "nombre",
-            "nationality": "nacionalidad",
-            "current_country": "país actual"
-        }
+        field_names_es = {"name": "nombre", "nationality": "nacionalidad", "current_country": "país actual"}
         missing_names = [field_names_es.get(f, f) for f in missing]
         blocking_msg = (
             f"🚫 Antes de continuar, necesito saber tu {', '.join(missing_names)}.\n\n"
             "Esto me ayuda a darte información personalizada."
         )
         return False, blocking_msg
-    
+
     return True, ""

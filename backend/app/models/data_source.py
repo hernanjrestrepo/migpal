@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
-from sqlmodel import SQLModel, Field
+from sqlmodel import Field, SQLModel
 
 
 class DataSourceBase(SQLModel):
@@ -14,9 +13,9 @@ class DataSourceBase(SQLModel):
     category: str = Field(min_length=3, max_length=100, description="legal, housing, education, etc")
     source_type: str = Field(default="website", description="website, api, dataset")
     base_url: str = Field(description="Entry URL or endpoint")
-    description: Optional[str] = Field(default=None, max_length=2000)
+    description: str | None = Field(default=None, max_length=2000)
     access_type: str = Field(default="public", description="public, api_key, oauth, scraping")
-    access_config: Optional[str] = Field(default=None, description="JSON blob with auth params")
+    access_config: str | None = Field(default=None, description="JSON blob with auth params")
     default_frequency_hours: int = Field(default=24, ge=1, le=168)
     priority: int = Field(default=3, ge=1, le=5)
     enabled: bool = Field(default=True)
@@ -27,12 +26,12 @@ class DataSource(DataSourceBase, table=True):
 
     __tablename__ = "data_sources"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    last_status: Optional[str] = Field(default=None)
-    last_success_at: Optional[datetime] = Field(default=None)
-    last_error_at: Optional[datetime] = Field(default=None)
-    last_error: Optional[str] = Field(default=None, max_length=2000)
-    metadata_blob: Optional[str] = Field(default=None, description="JSON with extra info")
+    id: int | None = Field(default=None, primary_key=True)
+    last_status: str | None = Field(default=None)
+    last_success_at: datetime | None = Field(default=None)
+    last_error_at: datetime | None = Field(default=None)
+    last_error: str | None = Field(default=None, max_length=2000)
+    metadata_blob: str | None = Field(default=None, description="JSON with extra info")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -44,27 +43,27 @@ class DataSourceCreate(DataSourceBase):
 class DataSourceUpdate(SQLModel):
     """Editable fields for a source."""
 
-    name: Optional[str] = None
-    category: Optional[str] = None
-    source_type: Optional[str] = None
-    base_url: Optional[str] = None
-    description: Optional[str] = None
-    access_type: Optional[str] = None
-    access_config: Optional[str] = None
-    default_frequency_hours: Optional[int] = Field(default=None, ge=1, le=168)
-    priority: Optional[int] = Field(default=None, ge=1, le=5)
-    enabled: Optional[bool] = None
+    name: str | None = None
+    category: str | None = None
+    source_type: str | None = None
+    base_url: str | None = None
+    description: str | None = None
+    access_type: str | None = None
+    access_config: str | None = None
+    default_frequency_hours: int | None = Field(default=None, ge=1, le=168)
+    priority: int | None = Field(default=None, ge=1, le=5)
+    enabled: bool | None = None
 
 
 class DataSourceRead(DataSourceBase):
     """API response schema for a source."""
 
     id: int
-    last_status: Optional[str]
-    last_success_at: Optional[datetime]
-    last_error_at: Optional[datetime]
-    last_error: Optional[str]
-    metadata_blob: Optional[str]
+    last_status: str | None
+    last_success_at: datetime | None
+    last_error_at: datetime | None
+    last_error: str | None
+    metadata_blob: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -77,27 +76,27 @@ class ScrapeJob(SQLModel, table=True):
 
     __tablename__ = "scrape_jobs"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     source_id: int = Field(foreign_key="data_sources.id")
     status: str = Field(default="pending", description="pending|running|success|failed")
-    run_by_user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    run_by_user_id: int | None = Field(default=None, foreign_key="user.id")
     started_at: datetime = Field(default_factory=datetime.utcnow)
-    finished_at: Optional[datetime] = None
+    finished_at: datetime | None = None
     records_ingested: int = Field(default=0)
-    error_message: Optional[str] = Field(default=None, max_length=2000)
-    metadata_blob: Optional[str] = None
+    error_message: str | None = Field(default=None, max_length=2000)
+    metadata_blob: str | None = None
 
 
 class ScrapeJobRead(SQLModel):
     id: int
     source_id: int
     status: str
-    run_by_user_id: Optional[int]
+    run_by_user_id: int | None
     started_at: datetime
-    finished_at: Optional[datetime]
+    finished_at: datetime | None
     records_ingested: int
-    error_message: Optional[str]
-    metadata_blob: Optional[str]
+    error_message: str | None
+    metadata_blob: str | None
 
     class Config:
         from_attributes = True
@@ -108,14 +107,14 @@ class ScrapedDocument(SQLModel, table=True):
 
     __tablename__ = "scraped_documents"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     source_id: int = Field(foreign_key="data_sources.id", index=True)
     title: str = Field(max_length=500)
     content: str
     content_hash: str = Field(index=True, unique=True)
-    language: Optional[str] = Field(default=None, max_length=10)
-    published_at: Optional[datetime] = None
-    metadata_blob: Optional[str] = None
+    language: str | None = Field(default=None, max_length=10)
+    published_at: datetime | None = None
+    metadata_blob: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -123,9 +122,9 @@ class ScrapedDocumentRead(SQLModel):
     id: int
     source_id: int
     title: str
-    language: Optional[str]
-    published_at: Optional[datetime]
-    metadata_blob: Optional[str]
+    language: str | None
+    published_at: datetime | None
+    metadata_blob: str | None
     created_at: datetime
 
     class Config:
