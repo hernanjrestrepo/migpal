@@ -128,14 +128,21 @@ venv.bak/
 /backend/data/
 /backend/backups/
 
-# Deploy env files (SECURITY-001: production.env leaked a live Telegram token — never commit real env files again)
-/backend/deploy/
+# Real deploy env files (SECURITY-001: production.env leaked a live Telegram token).
+# backend/deploy/ itself IS versioned (Dockerfiles, nginx, systemd, PM2, k8s manifests, *.env.example)
+# — only actual secret-bearing env files are excluded, never the directory.
+*.env
+!*.env.example
+*.pem
+*.key
+*.crt
+*.p12
 .venv_old/
 .env.corrected
 .env.docker.corrected
 .env.port-corrected
 .env.infra
 
-# Ad-hoc generated reports/logs from manual testing iterations (superseded by the formal pytest suite)
+# Ad-hoc generated reports/logs from manual testing and audit iterations
+# (superseded by the formal pytest suite; same genre kept out of backend/docs/, see backend/docs/README.md)
 /backend/reports/
-/backend/docs/
