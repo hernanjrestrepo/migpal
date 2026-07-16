@@ -11,6 +11,7 @@ from __future__ import annotations
 from sqlmodel import Session, select
 
 from core.case_engine.domain.aggregates import CaseFamilyMember, MigrationCase
+from core.shared.event_log import persist_event
 
 
 class CaseRepository:
@@ -24,6 +25,12 @@ class CaseRepository:
         self._session.add(case)
         self._session.commit()
         self._session.refresh(case)
+        # Event Log persistido (Hito 2, regla 5) -- CaseCreated es uno de los
+        # tres eventos que este hito exige guardar en base de datos, no solo
+        # en el EventBus en memoria.
+        persist_event(
+            self._session, name="CaseCreated", payload={"case_id": case.id, "user_id": case.user_id}
+        )
         return case
 
     def save(self, case: MigrationCase) -> MigrationCase:

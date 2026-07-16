@@ -26,6 +26,10 @@ from app.models.zillow_listing import ZillowListing  # noqa: F401
 # primero: MigrationCase, el aggregate que no existía como código.
 from core.case_engine.domain.aggregates import CaseFamilyMember, MigrationCase  # noqa: F401
 
+# Hito 2: Decision Engine (Assessment) + Event Log persistido.
+from core.decision_engine.domain.aggregates import Assessment  # noqa: F401
+from core.shared.event_log import PersistedDomainEvent  # noqa: F401
+
 # Resuelve las referencias circulares (forward references) entre los modelos
 User.model_rebuild()
 MigrationProcess.model_rebuild()

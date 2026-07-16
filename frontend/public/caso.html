@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MigPAL — Mi Caso</title>
+<style>
+  body{font-family:-apple-system,'Segoe UI',sans-serif;margin:0;min-height:100vh;background:#f1efe6;color:#20242a;}
+  header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:20px 24px;}
+  header h1{margin:0;font-size:18px;}
+  .wrap{max-width:640px;margin:0 auto;padding:20px;}
+  .card{background:#fff;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:20px;margin-bottom:16px;}
+  .card h2{margin:0 0 12px;font-size:15px;color:#667eea;}
+
+  #loginBox input{width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;box-sizing:border-box;font-size:13px;}
+  #loginBox button, .actionBtn{background:#667eea;color:#fff;border:none;padding:10px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;}
+  #loginBox button:hover, .actionBtn:hover{background:#5a6fd8;}
+
+  #chatLog{border:1px solid #eee;border-radius:8px;padding:12px;height:220px;overflow-y:auto;margin-bottom:10px;background:#fafafa;}
+  .msg{margin-bottom:10px;font-size:13px;line-height:1.5;}
+  .msg.user{text-align:right;}
+  .msg .bubble{display:inline-block;padding:8px 12px;border-radius:12px;max-width:85%;}
+  .msg.user .bubble{background:#667eea;color:#fff;}
+  .msg.ai .bubble{background:#e9e9f0;color:#333;}
+  #chatInput{display:flex;gap:8px;}
+  #chatInput input{flex:1;padding:9px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;}
+
+  #assessmentBox{white-space:pre-wrap;font-size:13px;background:#f8f9fa;padding:12px;border-radius:8px;display:none;}
+  .score{font-size:26px;font-weight:700;color:#3f7d54;}
+  .tag{display:inline-block;font-family:ui-monospace,monospace;font-size:10.5px;background:#ece2f2;color:#7a4f9e;padding:2px 8px;border-radius:10px;margin:2px 4px 2px 0;}
+  #status{font-size:12px;color:#888;margin-top:8px;}
+  textarea{width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box;min-height:70px;font-family:inherit;}
+</style>
+</head>
+<body>
+<header><h1>🌍 MigPAL — Mi Caso (Hito 2: conversar → Assessment → recordar)</h1></header>
+<div class="wrap">
+
+  <div class="card" id="loginBox">
+    <h2>1. Iniciar sesión</h2>
+    <input id="loginUser" placeholder="usuario (el que usaste en /registro.html)">
+    <input id="loginPass" type="password" placeholder="contraseña">
+    <button onclick="login()">Entrar</button>
+    <div id="loginMsg" style="font-size:12px;margin-top:6px;"></div>
+  </div>
+
+  <div class="card" id="chatCard" style="display:none;">
+    <h2>2. Habla con MigPAL</h2>
+    <div id="chatLog"></div>
+    <div id="chatInput">
+      <input id="chatText" placeholder="Ej: Soy ingeniero con 6 años de experiencia, quiero migrar a Canadá...">
+      <button class="actionBtn" onclick="sendMessage()">Enviar</button>
+    </div>
+  </div>
+
+  <div class="card" id="assessCard" style="display:none;">
+    <h2>3. Generar mi Assessment</h2>
+    <p style="font-size:12px;color:#666;margin:0 0 8px;">Describe tu perfil (o copia lo que ya conversaste) y MigPAL calculará tu evaluación.</p>
+    <textarea id="profileText" placeholder="Soy ingeniero de software, 6 años de experiencia, maestría, quiero migrar a Canadá con mi familia..."></textarea>
+    <div style="margin-top:8px;">
+      <button class="actionBtn" onclick="requestAssessment()">Generar Assessment</button>
+      <button class="actionBtn" style="background:#3f7d54;" onclick="loadAssessment()">Ver mi último Assessment</button>
+    </div>
+    <div id="assessmentBox"></div>
+  </div>
+
+  <div id="status"></div>
+</div>
+
+<script>
+const API_BASE = 'http://localhost:8010';
+let TOKEN = null;
+
+function setStatus(t){ document.getElementById('status').textContent = t; }
+
+async function login(){
+  const username = document.getElementById('loginUser').value;
+  const password = document.getElementById('loginPass').value;
+  const res = await fetch(`${API_BASE}/api/v1/auth/token`, {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:`username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+  });
+  const data = await res.json();
+  if(res.status === 200){
+    TOKEN = data.access_token;
+    document.getElementById('loginMsg').textContent = '✅ Sesión iniciada';
+    document.getElementById('chatCard').style.display = 'block';
+    document.getElementById('assessCard').style.display = 'block';
+    await fetch(`${API_BASE}/v1/case`, {method:'POST', headers:{Authorization:`Bearer ${TOKEN}`}});
+    setStatus('Caso abierto. Puedes conversar y generar tu Assessment.');
+  } else {
+    document.getElementById('loginMsg').textContent = '❌ ' + (data.detail || 'Error de login');
+  }
+}
+
+function addMsg(role, text){
+  const log = document.getElementById('chatLog');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = `<span class="bubble"></span>`;
+  div.querySelector('.bubble').textContent = text;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function sendMessage(){
+  const input = document.getElementById('chatText');
+  const message = input.value.trim();
+  if(!message) return;
+  addMsg('user', message);
+  input.value = '';
+  setStatus('MigPAL está pensando...');
+  const res = await fetch(`${API_BASE}/v1/messages`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json', Authorization:`Bearer ${TOKEN}`},
+    body: JSON.stringify({message})
+  });
+  const data = await res.json();
+  if(res.status === 200){
+    addMsg('ai', data.reply);
+    setStatus('Listo.');
+  } else {
+    addMsg('ai', 'Error: ' + (data.detail || res.status));
+    setStatus('Error al conversar.');
+  }
+}
+
+function renderAssessment(a){
+  const box = document.getElementById('assessmentBox');
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div class="score">${a.score.toFixed(0)} / 100</div>
+    <div>Confianza: ${(a.confidence*100).toFixed(0)}%</div>
+    <div style="margin:10px 0 4px;"><b>Hallazgos:</b></div>
+    <ul>${a.findings.map(f=>`<li>${f}</li>`).join('')}</ul>
+    <div style="margin:10px 0 4px;"><b>Recomendaciones:</b></div>
+    <ul>${a.recommendations.map(f=>`<li>${f}</li>`).join('')}</ul>
+    ${a.ai_reflection ? `<div style="margin:10px 0 4px;"><b>MigPAL entendió:</b></div><div>${a.ai_reflection}</div>` : ''}
+    <div style="margin-top:10px;">
+      <span class="tag">Decision Engine v${a.decision_engine_version}</span>
+      <span class="tag">Policy v${a.policy_version}</span>
+      <span class="tag">Knowledge v${a.knowledge_version}</span>
+    </div>
+  `;
+}
+
+async function requestAssessment(){
+  const profile_text = document.getElementById('profileText').value.trim();
+  if(!profile_text) return;
+  setStatus('Generando Assessment (MigPAL está analizando)...');
+  const res = await fetch(`${API_BASE}/v1/assessment`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json', Authorization:`Bearer ${TOKEN}`},
+    body: JSON.stringify({profile_text})
+  });
+  const data = await res.json();
+  if(res.status === 200){
+    renderAssessment(data);
+    setStatus('Assessment generado y guardado en tu Case.');
+  } else {
+    setStatus('Error: ' + (data.detail || res.status));
+  }
+}
+
+async function loadAssessment(){
+  setStatus('Buscando tu último Assessment...');
+  const res = await fetch(`${API_BASE}/v1/assessment`, { headers:{Authorization:`Bearer ${TOKEN}`} });
+  const data = await res.json();
+  if(res.status === 200){
+    renderAssessment(data);
+    setStatus('Assessment recuperado -- así se ve "volver otro día y verlo".');
+  } else {
+    setStatus('Todavía no tienes un Assessment (' + res.status + ').');
+  }
+}
+</script>
+</body>
+</html>
