@@ -1,5 +1,21 @@
 # 🌍 MigPAL V5.0 - Global Migration Assistant
 
+---
+
+## 📌 Estado actual del proyecto (Julio 2026)
+
+> ⚠️ El resto de este documento (v5.0, bot de Telegram, 864+ ciudades) describe la **generación anterior** del proyecto (hasta enero 2026). Se conserva como referencia histórica de producto, pero **no refleja la arquitectura ni el estado de ejecución vigentes**. Esta sección sí.
+
+**Arquitectura vigente:** plataforma web con backend en arquitectura DDD/hexagonal (`backend/core/`: bounded contexts `identity`, `case_engine`, `conversation`, `decision_engine`, cada uno con capas `domain/application/infrastructure/adapters`), Postgres + Redis vía Docker Compose (`docker compose up`, un solo comando), frontend estático (`frontend/public/*.html`, Next.js pospuesto hasta que haya más superficie). El bot de Telegram original (`backend/app/services/`) sigue existiendo como motor de IA conversacional, consumido por `core/conversation` únicamente a través de un adapter delgado (`ai_adapter.py`) — nunca importado directamente por el resto del dominio.
+
+**Estado de ejecución:** Recovery ✅ · Foundation ✅ · Sprint 1 – Hito 1 (Registro/Login/Case) ✅ · Sprint 1 – Hito 2 (Conversación + Assessment) ✅ verificado con evidencia reproducible el 2026-07-30 (ver reporte de estado).
+
+**Último hito completado:** Hito 2 — un usuario conversa con MigPAL (IA real vía Ollama), MigPAL genera y persiste su Assessment (score determinístico, nunca calculado por el LLM), y el usuario puede recuperarlo tras iniciar una sesión nueva.
+
+**Próximo hito:** Hito 3 — `Recommendation` como aggregate real del Decision Engine y evento `RecommendationIssued` (hoy solo se emiten `CaseCreated` y `AssessmentCompleted`).
+
+---
+
 > **Tu consultor personal de migración**
 > Bot de Telegram con Onboarding Conversacional que elimina los "2 años de dolor" de los migrantes
 

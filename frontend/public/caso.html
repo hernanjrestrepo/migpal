@@ -5,35 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MigPAL — Mi Caso</title>
 <style>
-  body{font-family:-apple-system,'Segoe UI',sans-serif;margin:0;min-height:100vh;background:#f1efe6;color:#20242a;}
-  header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:20px 24px;}
-  header h1{margin:0;font-size:18px;}
+  :root{--ink:#0f172a;--ink-soft:#475569;--accent:#2454eb;--accent-dark:#1a3fc4;--border:#e2e6ee;}
+  body{font-family:-apple-system,'Segoe UI',sans-serif;margin:0;min-height:100vh;background:#f7f8fb;color:var(--ink);}
+  header{background:var(--ink);color:#fff;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;}
+  header h1{margin:0;font-size:16px;font-weight:700;}
+  header a{color:#cbd5f5;font-size:13px;text-decoration:none;}
+  header a:hover{color:#fff;}
   .wrap{max-width:640px;margin:0 auto;padding:20px;}
-  .card{background:#fff;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:20px;margin-bottom:16px;}
-  .card h2{margin:0 0 12px;font-size:15px;color:#667eea;}
+  .card{background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 2px 10px rgba(15,23,42,.05);padding:20px;margin-bottom:16px;}
+  .card h2{margin:0 0 12px;font-size:15px;color:var(--accent);}
 
   #loginBox input{width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;box-sizing:border-box;font-size:13px;}
-  #loginBox button, .actionBtn{background:#667eea;color:#fff;border:none;padding:10px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;}
-  #loginBox button:hover, .actionBtn:hover{background:#5a6fd8;}
+  #loginBox button, .actionBtn{background:var(--accent);color:#fff;border:none;padding:10px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;}
+  #loginBox button:hover, .actionBtn:hover{background:var(--accent-dark);}
 
   #chatLog{border:1px solid #eee;border-radius:8px;padding:12px;height:220px;overflow-y:auto;margin-bottom:10px;background:#fafafa;}
   .msg{margin-bottom:10px;font-size:13px;line-height:1.5;}
   .msg.user{text-align:right;}
   .msg .bubble{display:inline-block;padding:8px 12px;border-radius:12px;max-width:85%;}
-  .msg.user .bubble{background:#667eea;color:#fff;}
+  .msg.user .bubble{background:var(--accent);color:#fff;}
   .msg.ai .bubble{background:#e9e9f0;color:#333;}
   #chatInput{display:flex;gap:8px;}
   #chatInput input{flex:1;padding:9px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;}
 
   #assessmentBox{white-space:pre-wrap;font-size:13px;background:#f8f9fa;padding:12px;border-radius:8px;display:none;}
   .score{font-size:26px;font-weight:700;color:#3f7d54;}
-  .tag{display:inline-block;font-family:ui-monospace,monospace;font-size:10.5px;background:#ece2f2;color:#7a4f9e;padding:2px 8px;border-radius:10px;margin:2px 4px 2px 0;}
+  .tag{display:inline-block;font-family:ui-monospace,monospace;font-size:10.5px;background:#eaf0ff;color:var(--accent-dark);padding:2px 8px;border-radius:10px;margin:2px 4px 2px 0;}
   #status{font-size:12px;color:#888;margin-top:8px;}
   textarea{width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box;min-height:70px;font-family:inherit;}
 </style>
 </head>
 <body>
-<header><h1>🌍 MigPAL — Mi Caso (Hito 2: conversar → Assessment → recordar)</h1></header>
+<header><h1>MigPAL — Mi caso</h1><a href="/">← Volver</a></header>
 <div class="wrap">
 
   <div class="card" id="loginBox">

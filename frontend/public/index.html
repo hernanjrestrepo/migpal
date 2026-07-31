@@ -1,121 +1,192 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MigPAL - Asistente de Migración Global</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: #333;
-        }
-        .container {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            padding: 40px;
-            text-align: center;
-            max-width: 600px;
-            width: 90%;
-        }
-        h1 {
-            color: #667eea;
-            margin-bottom: 20px;
-        }
-        p {
-            font-size: 18px;
-            line-height: 1.6;
-            margin-bottom: 30px;
-        }
-        .bot-link {
-            display: inline-block;
-            background: #667eea;
-            color: white;
-            padding: 15px 30px;
-            text-decoration: none;
-            border-radius: 50px;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            margin: 10px;
-        }
-        .bot-link:hover {
-            background: #764ba2;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        .api-link {
-            display: inline-block;
-            background: #28a745;
-            color: white;
-            padding: 15px 30px;
-            text-decoration: none;
-            border-radius: 50px;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            margin: 10px;
-        }
-        .api-link:hover {
-            background: #218838;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        .features {
-            text-align: left;
-            margin: 30px 0;
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-        }
-        .features h2 {
-            color: #667eea;
-            text-align: center;
-        }
-        .features ul {
-            padding-left: 20px;
-        }
-        .features li {
-            margin-bottom: 10px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MigPAL — Planifica tu proyecto migratorio con inteligencia artificial</title>
+<style>
+  :root{
+    --ink:#0f172a;
+    --ink-soft:#475569;
+    --muted:#64748b;
+    --accent:#2454eb;
+    --accent-dark:#1a3fc4;
+    --bg:#f7f8fb;
+    --surface:#ffffff;
+    --border:#e2e6ee;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.5;
+  }
+  a{color:inherit;text-decoration:none;}
+
+  nav{
+    display:flex;align-items:center;justify-content:space-between;
+    max-width:1080px;margin:0 auto;padding:22px 24px;
+  }
+  .logo{font-size:19px;font-weight:700;letter-spacing:-0.02em;color:var(--ink);}
+  .nav-links{display:flex;align-items:center;gap:28px;font-size:14px;color:var(--ink-soft);}
+  .nav-links a:hover{color:var(--ink);}
+  .nav-cta{
+    background:var(--ink);color:#fff;padding:9px 18px;border-radius:7px;
+    font-weight:600;font-size:14px;
+  }
+  .nav-cta:hover{background:var(--accent-dark);}
+
+  header.hero{
+    max-width:760px;margin:0 auto;padding:64px 24px 56px;text-align:center;
+  }
+  .eyebrow{
+    display:inline-block;font-size:12.5px;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--accent);background:#eaf0ff;
+    padding:6px 14px;border-radius:20px;margin-bottom:22px;
+  }
+  h1{
+    font-size:44px;font-weight:800;letter-spacing:-0.02em;margin:0 0 18px;
+    color:var(--ink);
+  }
+  .hero p.lead{
+    font-size:18px;color:var(--ink-soft);margin:0 auto 34px;max-width:560px;
+  }
+  .cta-row{display:flex;flex-direction:column;align-items:center;gap:14px;}
+  .cta-primary{
+    background:var(--accent);color:#fff;padding:15px 32px;border-radius:8px;
+    font-weight:700;font-size:16px;box-shadow:0 8px 20px rgba(36,84,235,.25);
+  }
+  .cta-primary:hover{background:var(--accent-dark);}
+  .cta-secondary{font-size:14px;color:var(--ink-soft);}
+  .cta-secondary a{color:var(--accent);font-weight:600;}
+  .cta-secondary a:hover{text-decoration:underline;}
+
+  section{max-width:1080px;margin:0 auto;padding:56px 24px;}
+  section.alt{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+  .section-head{text-align:center;max-width:520px;margin:0 auto 44px;}
+  .section-head h2{font-size:28px;font-weight:800;margin:0 0 12px;letter-spacing:-0.01em;}
+  .section-head p{color:var(--ink-soft);font-size:15.5px;margin:0;}
+
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:26px;}
+  .step .num{
+    width:30px;height:30px;border-radius:8px;background:var(--ink);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;
+    margin-bottom:16px;
+  }
+  .step h3{font-size:16px;margin:0 0 8px;}
+  .step p{font-size:14px;color:var(--ink-soft);margin:0;}
+
+  .benefits{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  .benefit h3{font-size:16px;margin:0 0 8px;}
+  .benefit p{font-size:14px;color:var(--ink-soft);margin:0;}
+  .benefit .mark{
+    width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;
+    margin-bottom:14px;
+  }
+
+  footer{
+    max-width:1080px;margin:0 auto;padding:36px 24px 48px;
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;
+    font-size:13px;color:var(--muted);border-top:1px solid var(--border);
+  }
+  footer .channels a{color:var(--muted);margin-left:18px;}
+  footer .channels a:hover{color:var(--ink-soft);}
+
+  @media (max-width:720px){
+    h1{font-size:32px;}
+    .steps,.benefits{grid-template-columns:1fr;}
+    nav .nav-links{display:none;}
+    footer{flex-direction:column;align-items:flex-start;}
+    footer .channels a{margin-left:0;margin-right:18px;}
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>🌍 MigPAL V5.0</h1>
-        <p><strong>Tu consultor personal de migración</strong></p>
-        <p>Bot de Telegram con Onboarding Conversacional que elimina los "2 años de dolor" de los migrantes</p>
 
-        <a href="/registro.html" class="api-link">
-            ✍️ Crear cuenta (Web)
-        </a>
+<nav>
+  <div class="logo">MigPAL</div>
+  <div class="nav-links">
+    <a href="#como-funciona">Cómo funciona</a>
+    <a href="#que-obtienes">Qué obtienes</a>
+    <a href="/caso.html">Iniciar sesión</a>
+  </div>
+  <a href="/registro.html" class="nav-cta">Comenzar evaluación</a>
+</nav>
 
-        <a href="https://t.me/MigPAL_Bot" class="bot-link" target="_blank">
-            🤖 Acceder al Bot de Telegram
-        </a>
-
-        <a href="http://localhost:8010/docs" class="api-link" target="_blank">
-            📚 Documentación de la API
-        </a>
-
-        <div class="features">
-            <h2>🎯 Características Principales</h2>
-            <ul>
-                <li>🗣️ <strong>Onboarding Conversacional</strong> - Conversación natural y empática</li>
-                <li>🧠 <strong>AI Brain V8</strong> - Asistente inteligente basado en Llama 3</li>
-                <li>🗺️ <strong>864+ Ciudades</strong> - Base de datos completa con información real</li>
-                <li>💼 <strong>Búsqueda de Empleos</strong> - Integración con LinkedIn y otras plataformas</li>
-                <li>💰 <strong>Sistema de Precios</strong> - Planes desde $50 USD hasta $400 USD</li>
-                <li>🔒 <strong>Seguridad</strong> - Encriptación de datos y rate limiting</li>
-            </ul>
-        </div>
-
-        <p><strong>La visa es el VEHÍCULO, no el DESTINO. Primero define el destino (plan de vida), luego el vehículo (visa).</strong></p>
+<header class="hero">
+  <span class="eyebrow">Inteligencia migratoria, no un formulario más</span>
+  <h1>Planifica tu proyecto migratorio con inteligencia artificial</h1>
+  <p class="lead">
+    Descubre las rutas migratorias que mejor se ajustan a tu perfil y construye
+    un plan claro antes de invertir tiempo y dinero.
+  </p>
+  <div class="cta-row">
+    <a href="/registro.html" class="cta-primary">Comenzar evaluación gratuita</a>
+    <div class="cta-secondary">
+      <a href="/caso.html">Iniciar sesión</a> · <a href="#como-funciona">Conocer cómo funciona</a>
     </div>
+  </div>
+</header>
+
+<section id="como-funciona" class="alt">
+  <div class="section-head">
+    <h2>Cómo funciona</h2>
+    <p>Tres pasos, sin jerga legal ni promesas vacías.</p>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="num">1</div>
+      <h3>Contás tu perfil</h3>
+      <p>Conversás con MigPAL en lenguaje natural: experiencia, educación, familia, destino, situación financiera.</p>
+    </div>
+    <div class="step">
+      <div class="num">2</div>
+      <h3>MigPAL genera tu Assessment</h3>
+      <p>IA para entender tu caso, reglas determinísticas para calcular tu puntaje — el resultado nunca depende de una opinión del modelo.</p>
+    </div>
+    <div class="step">
+      <div class="num">3</div>
+      <h3>Recibís tu plan</h3>
+      <p>Hallazgos, recomendaciones y próximos pasos guardados en tu caso — accesibles cuando quieras volver.</p>
+    </div>
+  </div>
+</section>
+
+<section id="que-obtienes">
+  <div class="section-head">
+    <h2>Qué obtienes</h2>
+    <p>Claridad antes de comprometer tiempo y dinero en un proceso de años.</p>
+  </div>
+  <div class="benefits">
+    <div class="benefit">
+      <div class="mark">✓</div>
+      <h3>Un puntaje objetivo</h3>
+      <p>Calculado con reglas explícitas y versionadas, no una impresión genérica de un chatbot.</p>
+    </div>
+    <div class="benefit">
+      <div class="mark">✓</div>
+      <h3>Tu caso, siempre disponible</h3>
+      <p>Volvé cuando quieras: tu Assessment queda guardado y lo recuperás en cualquier sesión nueva.</p>
+    </div>
+    <div class="benefit">
+      <div class="mark">✓</div>
+      <h3>Un siguiente paso concreto</h3>
+      <p>Recomendaciones accionables, no una lista de opciones para que investigues por tu cuenta.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>© 2026 MigPAL</div>
+  <div class="channels">
+    <a href="https://t.me/MigPAL_Bot" target="_blank">Telegram</a>
+    <a href="http://localhost:8010/docs" target="_blank">API para desarrolladores</a>
+  </div>
+</footer>
+
 </body>
 </html>

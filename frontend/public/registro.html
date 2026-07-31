@@ -5,25 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MigPAL — Registro</title>
 <style>
-  body{font-family:-apple-system,'Segoe UI',sans-serif;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);}
-  .card{background:#fff;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:40px;max-width:400px;width:90%;}
-  h1{color:#667eea;margin:0 0 6px;font-size:22px;}
-  p.sub{color:#666;margin:0 0 24px;font-size:14px;}
+  :root{--ink:#0f172a;--ink-soft:#475569;--accent:#2454eb;--accent-dark:#1a3fc4;--bg:#f7f8fb;--border:#e2e6ee;}
+  body{font-family:-apple-system,'Segoe UI',sans-serif;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);}
+  .card{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(15,23,42,.06);padding:40px;max-width:400px;width:90%;}
+  .brand{font-size:14px;font-weight:700;color:var(--accent);margin:0 0 18px;}
+  .brand a{color:var(--accent);text-decoration:none;}
+  h1{color:var(--ink);margin:0 0 6px;font-size:22px;font-weight:800;letter-spacing:-0.01em;}
+  p.sub{color:var(--ink-soft);margin:0 0 24px;font-size:14px;}
   label{display:block;font-size:13px;font-weight:600;color:#333;margin:14px 0 4px;}
   input{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;}
-  button{width:100%;margin-top:22px;padding:12px;background:#667eea;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;}
-  button:hover{background:#5a6fd8;}
+  button{width:100%;margin-top:22px;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:15px;font-weight:700;cursor:pointer;}
+  button:hover{background:var(--accent-dark);}
   button:disabled{background:#aaa;cursor:not-allowed;}
   #msg{margin-top:16px;font-size:13px;padding:10px;border-radius:6px;display:none;}
   #msg.ok{display:block;background:#e6efe3;color:#3f7d54;}
   #msg.err{display:block;background:#f4e2df;color:#a3423a;}
-  a{color:#667eea;}
+  a{color:var(--accent);}
 </style>
 </head>
 <body>
 <div class="card">
-  <h1>Crear cuenta en MigPAL</h1>
-  <p class="sub">Landing → Registro → Migration Case (Sprint 1, primer vertical conectado)</p>
+  <p class="brand"><a href="/">← MigPAL</a></p>
+  <h1>Comenzá tu evaluación gratuita</h1>
+  <p class="sub">Creá tu cuenta para conversar con MigPAL y generar tu Assessment.</p>
 
   <form id="registerForm">
     <label for="email">Email</label>
