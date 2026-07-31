@@ -4,17 +4,17 @@
 
 ## 📌 Estado actual del proyecto (Julio 2026)
 
-> ⚠️ Todas las entradas debajo de esta sección (v4.x, v3.x) pertenecen a la generación anterior del proyecto (bot de Telegram monolítico, hasta enero 2026). Desde julio 2026 el proyecto se reconstruyó como plataforma web con arquitectura DDD (`backend/core/`) — ese trabajo aún no tiene entradas propias en este changelog; su historia vive en los commits `b7a922c` (Fase 0 Recovery), `94cb8d3` (Sprint 0 Foundation), `c22f917`/`7d3897c` (Sprint 1 Hito 1) y `afc31a6` (Sprint 1 Hito 2).
+> ⚠️ Todas las entradas debajo de esta sección (v4.x, v3.x) pertenecen a la generación anterior del proyecto (bot de Telegram monolítico, hasta enero 2026). Desde julio 2026 el proyecto se reconstruyó como plataforma web con arquitectura DDD (`backend/core/`) — ese trabajo aún no tiene entradas propias en este changelog; su historia vive en los commits `b7a922c` (Fase 0 Recovery), `94cb8d3` (Sprint 0 Foundation), `c22f917`/`7d3897c` (Sprint 1 Hito 1), `afc31a6` (Sprint 1 Hito 2) y `2e456fc`…`ff7569f` (Sprint 1 Hito 3, ver [docs/HITO_3_PROGRESS.md](docs/HITO_3_PROGRESS.md)).
 
-**Arquitectura vigente:** DDD/hexagonal en `backend/core/` (identity, case_engine, conversation, decision_engine), Postgres + Redis vía `docker compose up`.
+**Arquitectura vigente:** DDD/hexagonal en `backend/core/` (identity, case_engine, conversation, decision_engine, policy_engine, recommendation), Postgres + Redis vía `docker compose up`.
 
-**Estado de ejecución:** Recovery ✅ · Foundation ✅ · Sprint 1 – Hito 1 ✅ · Sprint 1 – Hito 2 ✅ (verificado con evidencia reproducible 2026-07-30).
+**Estado de ejecución:** Recovery ✅ · Foundation ✅ · Sprint 1 – Hito 1 ✅ · Sprint 1 – Hito 2 ✅ · Sprint 1 – Hito 3 ✅ (verificado con evidencia reproducible 2026-07-31).
 
-**Último hito completado:** Hito 2 — Conversación (IA real) → Assessment generado, persistido en Postgres y recuperable en una sesión nueva. Incluye [A-ADR-006](adr/A-ADR-006-separar-casos-de-uso-llm.md): `ai_reflection` dejó de reutilizar `process_message()` (máquina de estados de onboarding, ignoraba el perfil enviado) y ahora usa `ai_assessment.summarize_profile()`, un servicio propio sin estado. Verificado en vivo: la reflexión ya refleja el perfil real en vez del saludo genérico.
+**Último hito completado:** Hito 3 — Assessment → Recommendation. Decision Engine calcula el ajuste de cada ruta candidata, Policy Engine filtra/enriquece con el catálogo (placeholder, no asesoría real), el orquestador arma una Recommendation 100% determinística y reproducible (mismo Assessment + mismas versiones → misma Recommendation), y `narrative_summary` se redacta aparte por IA (`ai_recommendation.py`, adapter propio) sin decidir la ruta ni el score. API completa (`POST`/`GET`/`accept`/`discard`), frontend extendido en `caso.html`. Recorrido completo verificado en navegador real: Landing → Registro → Login → Assessment → Recommendation → Accept → persistencia confirmada con `SELECT` directo y cadena de 4 eventos de dominio (`CaseCreated → AssessmentCompleted → RecommendationIssued → RecommendationAccepted`).
 
-**Pendiente conocido:** bug de doble codificación UTF-8 en las respuestas JSON (`"Señal"` sale como `"SeÃ±al"`) — no corregido en esta sesión, ver Hallazgos en el reporte de estado.
+**Pendiente conocido:** bug de doble codificación UTF-8 en las respuestas JSON (`"Señal"` sale como `"SeÃ±al"`) — sigue sin corregir, no bloqueó Hito 3.
 
-**Próximo hito:** Hito 3 — Recommendation aggregate + evento `RecommendationIssued`.
+**Próximo hito:** sin definir todavía.
 
 ---
 

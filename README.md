@@ -6,13 +6,13 @@
 
 > ⚠️ El resto de este documento (v5.0, bot de Telegram, 864+ ciudades) describe la **generación anterior** del proyecto (hasta enero 2026). Se conserva como referencia histórica de producto, pero **no refleja la arquitectura ni el estado de ejecución vigentes**. Esta sección sí.
 
-**Arquitectura vigente:** plataforma web con backend en arquitectura DDD/hexagonal (`backend/core/`: bounded contexts `identity`, `case_engine`, `conversation`, `decision_engine`, cada uno con capas `domain/application/infrastructure/adapters`), Postgres + Redis vía Docker Compose (`docker compose up`, un solo comando), frontend estático (`frontend/public/*.html`, Next.js pospuesto hasta que haya más superficie). El bot de Telegram original (`backend/app/services/`) sigue existiendo como motor de IA conversacional, consumido por `core/conversation` únicamente a través de un adapter delgado (`ai_adapter.py`) — nunca importado directamente por el resto del dominio.
+**Arquitectura vigente:** plataforma web con backend en arquitectura DDD/hexagonal (`backend/core/`: bounded contexts `identity`, `case_engine`, `conversation`, `decision_engine`, `policy_engine`, `recommendation`, cada uno con capas `domain/application/infrastructure/adapters`), Postgres + Redis vía Docker Compose (`docker compose up`, un solo comando), frontend estático (`frontend/public/*.html`, Next.js pospuesto hasta que haya más superficie). El bot de Telegram original (`backend/app/services/`) sigue existiendo como motor de IA conversacional; cada bounded context que necesita LLM tiene su propio adapter delgado (`ai_adapter.py`), nunca compartido entre bounded contexts (A-ADR-006).
 
-**Estado de ejecución:** Recovery ✅ · Foundation ✅ · Sprint 1 – Hito 1 (Registro/Login/Case) ✅ · Sprint 1 – Hito 2 (Conversación + Assessment) ✅ verificado con evidencia reproducible el 2026-07-30 (ver reporte de estado).
+**Estado de ejecución:** Recovery ✅ · Foundation ✅ · Sprint 1 – Hito 1 (Registro/Login/Case) ✅ · Sprint 1 – Hito 2 (Conversación + Assessment) ✅ · Sprint 1 – Hito 3 (Recommendation) ✅ verificado con evidencia reproducible el 2026-07-31 (ver [docs/HITO_3_PROGRESS.md](docs/HITO_3_PROGRESS.md)).
 
-**Último hito completado:** Hito 2 — un usuario conversa con MigPAL (IA real vía Ollama), MigPAL genera y persiste su Assessment (score determinístico, nunca calculado por el LLM), y el usuario puede recuperarlo tras iniciar una sesión nueva.
+**Último hito completado:** Hito 3 — Assessment se convierte en una `Recommendation` real (ruta migratoria, por qué, alternativas, próximo paso), generada por Decision Engine + Policy Engine de forma 100% determinística y reproducible, con `narrative_summary` redactado por IA por separado (nunca decide negocio) y resiliente a fallas del LLM. Aceptar/descartar persisten y emiten `RecommendationIssued`/`RecommendationAccepted`/`RecommendationDiscarded`.
 
-**Próximo hito:** Hito 3 — `Recommendation` como aggregate real del Decision Engine y evento `RecommendationIssued` (hoy solo se emiten `CaseCreated` y `AssessmentCompleted`).
+**Próximo hito:** sin definir todavía — no se documenta contenido de Hito 4/5 hasta que haya una sesión de diseño para ellos (mismo criterio aplicado a Hito 3 antes de implementarlo).
 
 ---
 

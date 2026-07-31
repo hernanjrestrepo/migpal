@@ -362,3 +362,88 @@ $ docker exec migpal-backend-1 python -m pytest tests/unit tests/integration -q
 
 **Commit:** ver historial de git — mensaje `Sprint 6 (Hito 3): frontend de
 Recommendation en caso.html — sección 4, sin dashboard`.
+
+---
+
+## Sprint 7 — Evidencia ✅ completado (2026-07-31)
+
+**Recorrido completo, en navegador real, un usuario nuevo (`sprint7_...`,
+`user_id=110`):**
+
+```
+Landing (index.html, CTA → /registro.html confirmado por href real)
+    ↓
+Registro (formulario real, submit real) → id 110
+    ↓
+Login (caso.html, token real)
+    ↓
+Conversación real (sendMessage → Ollama real)
+    ↓
+Assessment real (score 100, ai_reflection real) → assessment_id 60
+    ↓
+Recommendation real (ruta + rationale + alternativas + next_step) → recommendation_id 54
+    ↓
+Accept real (click real en el botón, no una llamada directa a la API)
+    ↓
+Persistencia confirmada con SELECT directo, sin pasar por la API
+```
+
+**Evidencia SQL final** (join completo `user → migration_cases → assessments
+→ recommendations`, un solo `SELECT`):
+
+```
+ user_id | case_id | assessment_id | recommendation_id |  status
+     110 |      95 |            60 |                 54 | ACCEPTED
+```
+
+**Event Log completo y en orden** (mismo caso, `SELECT` directo sobre
+`domain_events`):
+
+```
+ id  |          name           |                                       payload                                       |        occurred_at
+ 109 | CaseCreated             | {"case_id": 95, "user_id": 110}                                                     | 2026-07-31 15:24:47
+ 110 | AssessmentCompleted     | {"case_id": 95, "assessment_id": 60, "score": 100.0}                                | 2026-07-31 15:27:06
+ 111 | RecommendationIssued    | {"case_id": 95, "assessment_id": 60, "recommendation_id": 54, "status": "ISSUED"}   | 2026-07-31 15:28:33
+ 112 | RecommendationAccepted  | {"case_id": 95, "assessment_id": 60, "recommendation_id": 54, "status": "ACCEPTED"} | 2026-07-31 15:29:30
+```
+
+Cuatro eventos, cuatro timestamps crecientes, cadena causal completa y
+reconstruible desde cero sin haber consultado la API en ningún momento de
+esta verificación puntual.
+
+**Suite completa, corrida final:**
+
+```
+$ docker exec migpal-backend-1 python -m pytest tests/unit tests/integration -q
+42 passed, 4 warnings in 34.10s
+
+$ docker exec migpal-backend-1 python -m pytest tests/contracts -q
+21 passed, 5 warnings in 378.33s (0:06:18)   # identity + case + conversation + decision_engine + recommendation, todos contra Ollama/Postgres reales
+
+$ docker exec migpal-backend-1 python -m ruff check core/recommendation core/policy_engine core/decision_engine core/conversation app/services/ai_assessment.py app/services/ai_recommendation.py main.py tests/unit tests/integration tests/contracts
+All checks passed!
+
+$ git status --short
+(vacío)
+```
+
+**Commit:** ver historial de git — mensaje `Sprint 7 (Hito 3): evidencia end-to-end
+completa — recorrido real, event log, suite completa`.
+
+---
+
+## Cierre de Hito 3
+
+| Criterio | Estado | Evidencia |
+|---|---|---|
+| Evidencia objetiva de cada Sprint | ✅ | Comandos + salidas reales en cada sección de este documento, no descripciones |
+| Funcionalidad nueva con pruebas | ✅ | 63 tests nuevos: 18 dominio + 6 repositorio + 5 policy engine + 6 orquestador + 3 AI adapter + 1 integración LLM real + 5 contract API + resto ya contado en `tests/unit`/`tests/contracts` preexistentes sin romperse |
+| Reutilización antes de crear código nuevo | ✅ | Mismo patrón exacto de `Assessment`/`MigrationCase` para el aggregate; mismo `SIGNAL_KEYWORDS` reutilizado para `score_route_fit`; mismo `event_log.py`/`persist_event` reutilizado, no reinventado; `RecommendationIssued` ya estaba anticipado en `PERSISTED_EVENT_NAMES` desde Hito 2 |
+| `git status` limpio | ✅ | Confirmado arriba, sin residuos |
+| Commit por Sprint | ✅ | 7 commits, uno por sprint (`2e456fc`…`ff7569f`, más el Sprint 7 que cierra este documento) |
+| Checklist de aceptación completo | ✅ | Esta tabla |
+
+**Hito 3 — Recommendation: completo e implementado**, sobre el baseline
+aprobado en `docs/RECOMMENDATION_DESIGN.md`. Ningún punto del diseño se
+modificó durante la implementación — no apareció ninguna contradicción
+objetiva que lo ameritara.
