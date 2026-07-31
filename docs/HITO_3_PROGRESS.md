@@ -214,3 +214,57 @@ $ docker exec migpal-backend-1 grep -rn "ai_brain\|AIAdapter\|ai_assessment" cor
 
 **Commit:** ver historial de git — mensaje `Sprint 3 (Hito 3): Policy Engine
 + orquestador de Recommendation — 100% determinístico`.
+
+---
+
+## Sprint 4 — AI ✅ completado (2026-07-31)
+
+**Alcance:** únicamente `ai_recommendation.py` — genera `narrative_summary`,
+no decide rutas, no modifica score/confidence. Si el LLM falla, la
+Recommendation sigue siendo válida.
+
+**Archivos creados/modificados:**
+- `backend/app/services/ai_recommendation.py` — `generate_narrative_summary(text)`,
+  mismo patrón que `ai_assessment.py` (Hito 2): prompt propio, sin estado,
+  fallback de texto si Ollama falla.
+- `backend/core/recommendation/infrastructure/ai_adapter.py` —
+  `RecommendationAIAdapter` (adapter **propio**, no el de Conversation —
+  decisión explícita del diseño §9 para no crear dependencia cruzada entre
+  bounded contexts hermanos).
+- `backend/core/recommendation/application/orchestrator.py` — nueva función
+  `attach_narrative(recommendation, ai_adapter)`, separada de
+  `generate_recommendation()` (Sprint 3): la primera es 100% determinística
+  y testeable sin red, la segunda es la única que toca el LLM.
+- `backend/tests/unit/test_recommendation_ai_adapter.py` — 3 tests (stub,
+  sin red): `attach_narrative` solo toca `narrative_summary`, sobrevive a un
+  fallo simulado del LLM, y un test de aislamiento arquitectónico (AST:
+  ningún archivo de `core/recommendation` importa `ai_recommendation`
+  excepto `infrastructure/ai_adapter.py`).
+- `backend/tests/integration/test_recommendation_narrative_real_llm.py` — 1
+  test contra Ollama real.
+
+**Evidencia de ejecución:**
+
+```
+$ docker exec migpal-backend-1 python -m pytest tests/unit/test_recommendation_ai_adapter.py -v
+3 passed, 3 warnings in 0.90s
+
+$ docker exec migpal-backend-1 python -m pytest tests/integration/test_recommendation_narrative_real_llm.py -v
+1 passed, 3 warnings in 57.53s    # latencia real de Ollama, no un mock
+
+$ docker exec migpal-backend-1 python -m pytest tests/unit tests/integration -q
+42 passed, 4 warnings in 38.29s
+
+$ docker exec migpal-backend-1 python -m ruff check core/recommendation app/services/ai_recommendation.py tests/unit tests/integration
+All checks passed!
+```
+
+**Aislamiento verificado, no solo declarado:** el test
+`test_recommendation_ai_adapter_is_the_only_importer_of_ai_recommendation_in_this_context`
+parsea el AST de cada archivo de `core/recommendation/` y falla si alguno
+distinto de `infrastructure/ai_adapter.py` importa `ai_recommendation` — no
+es una convención de comentario, es una regla que rompe el build si se
+viola.
+
+**Commit:** ver historial de git — mensaje `Sprint 4 (Hito 3): AI Adapter de
+Recommendation — narrative_summary, sin decidir negocio`.

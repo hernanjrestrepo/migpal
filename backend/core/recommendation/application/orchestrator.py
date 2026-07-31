@@ -1,18 +1,26 @@
 """
-Recommendation — application: orquestador (Sprint 3, Hito 3).
+Recommendation — application: orquestador (Sprint 3 + Sprint 4, Hito 3).
 
-Compone Decision Engine (vía Policy Engine, que ya calcula el fit) + Policy
-Engine + Knowledge (catálogo) en una Recommendation completa. 100%
-determinístico -- NO llama al AI Adapter ni a ningún LLM (eso es Sprint 4,
-`ai_recommendation.py`, y solo toca `narrative_summary`). Mismo Assessment +
-mismas versiones -> misma Recommendation (invariante 7, §2 del diseño).
+`generate_recommendation()` (Sprint 3) compone Decision Engine (vía Policy
+Engine, que ya calcula el fit) + Policy Engine + Knowledge (catálogo) en una
+Recommendation completa. 100% determinístico -- NO llama al AI Adapter ni a
+ningún LLM. Mismo Assessment + mismas versiones -> misma Recommendation
+(invariante 7, §2 del diseño).
+
+`attach_narrative()` (Sprint 4) es la única función de este módulo que toca
+el LLM -- redacta `narrative_summary` sobre una Recommendation ya decidida,
+sin modificar ningún campo determinístico. Separarlas en dos funciones deja
+`generate_recommendation()` testeable sin red (ver
+tests/unit/test_recommendation_orchestrator.py) y dice explícitamente en la
+firma cuál de las dos partes del proceso es no-determinística.
 
 Entradas: Assessment ya persistido (no texto crudo -- ver nota en
 `decision_engine.infrastructure.scoring.matched_signals_from_findings`) y el
 MigrationCase del que depende (para `objective_country`, entrada legítima
 según §3 del diseño). `recommendation` puede depender de `decision_engine`
-(vía Policy Engine) y de `policy_engine` -- dirección de dependencia
-declarada en el diseño ("Ubicación del bounded context").
+(vía Policy Engine), de `policy_engine` y de su propio AI Adapter --
+dirección de dependencia declarada en el diseño ("Ubicación del bounded
+context").
 """
 
 from __future__ import annotations
@@ -24,6 +32,7 @@ from core.policy_engine.rules import evaluate_candidate_routes
 from core.recommendation.domain.aggregates import Recommendation
 from core.recommendation.domain.rules import build_recommendation, issue
 from core.recommendation.domain.value_objects import NextStep
+from core.recommendation.infrastructure.ai_adapter import RecommendationAIAdapter
 
 MAX_ALTERNATIVE_ROUTES = 3
 DECISION_ENGINE_VERSION = "1.0"
@@ -83,3 +92,19 @@ def generate_recommendation(*, case: MigrationCase, assessment: Assessment) -> R
         recommendation_version=RECOMMENDATION_VERSION,
     )
     return issue(recommendation)
+
+
+async def attach_narrative(
+    recommendation: Recommendation, ai_adapter: RecommendationAIAdapter
+) -> Recommendation:
+    """Sprint 4: redacta `narrative_summary` sobre una Recommendation YA
+    decidida (Sprint 3) -- no toca `primary_evaluation`, `rationale`,
+    `confidence` ni ningún campo determinístico. Si el LLM falla,
+    `generate_narrative_summary` devuelve su propio fallback -- la
+    Recommendation sigue siendo válida y accionable de cualquier forma."""
+
+    primary = recommendation.primary_route_evaluation()
+    recommendation.narrative_summary = await ai_adapter.narrate(
+        primary=primary, rationale=recommendation.rationale
+    )
+    return recommendation
