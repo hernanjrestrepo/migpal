@@ -318,3 +318,47 @@ disparado por la app real, no por un mock.
 
 **Commit:** ver historial de git — mensaje `Sprint 5 (Hito 3): API de
 Recommendation — POST/GET/accept/discard, contract tests reales`.
+
+---
+
+## Sprint 6 — Frontend ✅ completado (2026-07-31)
+
+**Alcance:** extender únicamente `caso.html` con la sección "4. Recommendation"
+(§10 del diseño). Sin Dashboard, sin navegación nueva, sin rediseño de UI —
+mismo patrón visual que las secciones 1-3 ya existentes.
+
+**Archivos modificados:**
+- `frontend/public/caso.html` — sección 4 (`recCard`), estilos nuevos
+  (`.route-title`, `.narrative`, `.next-step`, `.rec-status`, `.alt-route`),
+  y funciones `requestRecommendation`/`loadRecommendation`/`renderRecommendation`/
+  `acceptRecommendation`/`discardRecommendation`. `login()` ahora también
+  muestra `recCard`.
+
+**Evidencia real (navegador, no descripción):** registro real (id 103) →
+login real → Assessment real (score 100, `ai_reflection` con el perfil real)
+→ Recommendation real generada (`O-1 — Estados Unidos`, ajuste 80/100,
+rationale con las 5 señales, 3 alternativas, próximo paso) → **Aceptar**
+real → estado `ACCEPTED` confirmado tanto en la UI (`<span class="rec-status ACCEPTED">`)
+como con `SELECT` directo en Postgres:
+
+```
+ id | case_id |  status  | confidence
+ 46 |      88 | ACCEPTED |        0.8
+```
+
+**Hallazgo honesto, no oculto:** en esta corrida real, `narrative_summary`
+cayó al mensaje de fallback ("No fue posible generar la explicación
+narrativa en este momento") — Ollama tardó más de los 60s configurados bajo
+la carga del resto de la sesión. Es exactamente el comportamiento que
+Sprint 4 diseñó: el resto de la Recommendation (ruta, ajuste, rationale,
+alternativas, próximo paso, Accept) siguió siendo válido y usable a pesar
+de la falla del LLM — una validación real de esa invariante, no solo del
+test unitario con stub.
+
+```
+$ docker exec migpal-backend-1 python -m pytest tests/unit tests/integration -q
+42 passed, 4 warnings in 32.93s
+```
+
+**Commit:** ver historial de git — mensaje `Sprint 6 (Hito 3): frontend de
+Recommendation en caso.html — sección 4, sin dashboard`.

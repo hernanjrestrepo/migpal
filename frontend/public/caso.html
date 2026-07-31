@@ -33,6 +33,20 @@
   .tag{display:inline-block;font-family:ui-monospace,monospace;font-size:10.5px;background:#eaf0ff;color:var(--accent-dark);padding:2px 8px;border-radius:10px;margin:2px 4px 2px 0;}
   #status{font-size:12px;color:#888;margin-top:8px;}
   textarea{width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box;min-height:70px;font-family:inherit;}
+
+  #recommendationBox{font-size:13px;background:#f8f9fa;padding:14px;border-radius:8px;display:none;margin-top:10px;}
+  .route-title{font-size:18px;font-weight:700;color:var(--ink);}
+  .fit-score{font-size:13px;color:var(--ink-soft);margin-bottom:10px;}
+  .rec-section{margin:12px 0;}
+  .rec-section b{display:block;margin-bottom:4px;}
+  .narrative{background:#eaf0ff;border-radius:6px;padding:10px;color:var(--ink);}
+  .next-step{background:var(--ink);color:#fff;border-radius:8px;padding:12px;margin-top:12px;}
+  .next-step b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#cbd5f5;margin-bottom:4px;}
+  .rec-status{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle;}
+  .rec-status.ISSUED{background:#eaf0ff;color:var(--accent-dark);}
+  .rec-status.ACCEPTED{background:#e6efe3;color:#3f7d54;}
+  .rec-status.DISCARDED{background:#f4e2df;color:#a3423a;}
+  .alt-route{border-top:1px solid var(--border);padding:8px 0;font-size:12.5px;}
 </style>
 </head>
 <body>
@@ -67,6 +81,16 @@
     <div id="assessmentBox"></div>
   </div>
 
+  <div class="card" id="recCard" style="display:none;">
+    <h2>4. Recommendation</h2>
+    <p style="font-size:12px;color:#666;margin:0 0 8px;">Con tu Assessment ya generado, pedile a MigPAL tu recomendación.</p>
+    <div>
+      <button class="actionBtn" onclick="requestRecommendation()">Ver mi recomendación</button>
+      <button class="actionBtn" style="background:#3f7d54;" onclick="loadRecommendation()">Ver la última</button>
+    </div>
+    <div id="recommendationBox"></div>
+  </div>
+
   <div id="status"></div>
 </div>
 
@@ -90,6 +114,7 @@ async function login(){
     document.getElementById('loginMsg').textContent = '✅ Sesión iniciada';
     document.getElementById('chatCard').style.display = 'block';
     document.getElementById('assessCard').style.display = 'block';
+    document.getElementById('recCard').style.display = 'block';
     await fetch(`${API_BASE}/v1/case`, {method:'POST', headers:{Authorization:`Bearer ${TOKEN}`}});
     setStatus('Caso abierto. Puedes conversar y generar tu Assessment.');
   } else {
@@ -175,6 +200,106 @@ async function loadAssessment(){
     setStatus('Assessment recuperado -- así se ve "volver otro día y verlo".');
   } else {
     setStatus('Todavía no tienes un Assessment (' + res.status + ').');
+  }
+}
+
+function renderRecommendation(r){
+  const box = document.getElementById('recommendationBox');
+  box.style.display = 'block';
+  const primary = r.primary_evaluation;
+  const alternatives = r.alternative_evaluations || [];
+
+  const acceptBtn = r.status === 'ISSUED'
+    ? `<button class="actionBtn" onclick="acceptRecommendation(${r.id})">Aceptar esta ruta</button>
+       <button class="actionBtn" style="background:#a3423a;" onclick="discardRecommendation(${r.id})">Descartar</button>`
+    : '';
+
+  box.innerHTML = `
+    <div class="route-title">${primary.route.visa_type} — ${primary.route.country}<span class="rec-status ${r.status}">${r.status}</span></div>
+    <div class="fit-score">Ajuste: ${primary.route.fit_score.toFixed(0)}/100 · Confianza: ${(r.confidence*100).toFixed(0)}%</div>
+
+    <div class="rec-section">
+      <b>Por qué esta ruta</b>
+      <ul>${r.rationale.map(x=>`<li>${x}</li>`).join('')}</ul>
+    </div>
+
+    ${r.narrative_summary ? `<div class="rec-section"><b>MigPAL en tus palabras</b><div class="narrative">${r.narrative_summary}</div></div>` : ''}
+
+    <div class="next-step">
+      <b>Próximo paso</b>
+      ${r.next_step.title} — ${r.next_step.description}
+    </div>
+
+    <div style="margin-top:12px;">${acceptBtn}</div>
+
+    ${alternatives.length ? `
+      <div class="rec-section" style="margin-top:14px;">
+        <b>Alternativas</b>
+        ${alternatives.map(a => `<div class="alt-route">${a.route.visa_type} — ${a.route.country} (ajuste ${a.route.fit_score.toFixed(0)}/100)</div>`).join('')}
+      </div>` : ''}
+
+    <div style="margin-top:10px;">
+      <span class="tag">Decision Engine v${r.decision_engine_version}</span>
+      <span class="tag">Policy v${r.policy_version}</span>
+      <span class="tag">Knowledge v${r.knowledge_version}</span>
+    </div>
+  `;
+}
+
+async function requestRecommendation(){
+  setStatus('Generando tu Recommendation (MigPAL está decidiendo tu mejor ruta)...');
+  const res = await fetch(`${API_BASE}/v1/recommendation`, {
+    method:'POST',
+    headers:{Authorization:`Bearer ${TOKEN}`}
+  });
+  const data = await res.json();
+  if(res.status === 200){
+    renderRecommendation(data);
+    setStatus('Recommendation generada y guardada en tu Case.');
+  } else {
+    setStatus('Error: ' + (data.detail || res.status));
+  }
+}
+
+async function loadRecommendation(){
+  setStatus('Buscando tu última Recommendation...');
+  const res = await fetch(`${API_BASE}/v1/recommendation`, { headers:{Authorization:`Bearer ${TOKEN}`} });
+  const data = await res.json();
+  if(res.status === 200){
+    renderRecommendation(data);
+    setStatus('Recommendation recuperada.');
+  } else {
+    setStatus('Todavía no tienes una Recommendation (' + res.status + ').');
+  }
+}
+
+async function acceptRecommendation(id){
+  setStatus('Aceptando ruta...');
+  const res = await fetch(`${API_BASE}/v1/recommendation/${id}/accept`, {
+    method:'POST',
+    headers:{Authorization:`Bearer ${TOKEN}`}
+  });
+  const data = await res.json();
+  if(res.status === 200){
+    renderRecommendation(data);
+    setStatus('Ruta aceptada.');
+  } else {
+    setStatus('Error: ' + (data.detail || res.status));
+  }
+}
+
+async function discardRecommendation(id){
+  setStatus('Descartando recomendación...');
+  const res = await fetch(`${API_BASE}/v1/recommendation/${id}/discard`, {
+    method:'POST',
+    headers:{Authorization:`Bearer ${TOKEN}`}
+  });
+  const data = await res.json();
+  if(res.status === 200){
+    renderRecommendation(data);
+    setStatus('Recommendation descartada.');
+  } else {
+    setStatus('Error: ' + (data.detail || res.status));
   }
 }
 </script>
