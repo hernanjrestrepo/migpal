@@ -5,9 +5,10 @@ from app.api import router as api_router
 from app.config import settings
 from app.utils.logging_config import get_api_logger, setup_logging
 from core.case_engine.adapters.api import router as case_router
-from core.identity.adapters.api import router as identity_router
 from core.conversation.adapters.api import router as conversation_router
 from core.decision_engine.adapters.api import router as decision_engine_router
+from core.identity.adapters.api import router as identity_router
+from core.recommendation.adapters.api import router as recommendation_router
 
 setup_logging(
     level=settings.LOG_LEVEL,
@@ -43,6 +44,9 @@ app.include_router(identity_router)
 # Hito 2: un usuario conversa, MigPAL genera un Assessment, queda persistido.
 app.include_router(conversation_router)
 app.include_router(decision_engine_router)
+
+# Hito 3: Assessment -> Recommendation (ruta, por qué, próximo paso).
+app.include_router(recommendation_router)
 
 
 @app.get("/")

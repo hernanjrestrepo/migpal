@@ -268,3 +268,53 @@ viola.
 
 **Commit:** ver historial de git — mensaje `Sprint 4 (Hito 3): AI Adapter de
 Recommendation — narrative_summary, sin decidir negocio`.
+
+---
+
+## Sprint 5 — API ✅ completado (2026-07-31)
+
+**Alcance:** `POST /v1/recommendation`, `GET /v1/recommendation`,
+`POST /v1/recommendation/{id}/accept`, `POST /v1/recommendation/{id}/discard`.
+Contract tests con HTTP real (FastAPI `TestClient`, sin mocks), verificados
+también en el OpenAPI generado por la app real.
+
+**Archivos creados/modificados:**
+- `backend/core/recommendation/adapters/api.py` — router completo. `POST`
+  orquesta `generate_recommendation` (Sprint 3, determinístico) +
+  `attach_narrative` (Sprint 4, LLM) + `RecommendationRepository.save()`
+  (Sprint 2). `accept`/`discard` devuelven 409 ante una transición inválida
+  (`RecommendationTransitionError`) y `accept` además devuelve 409 si ya
+  existe otra Recommendation `ACCEPTED` para el caso (invariante 6, validada
+  acá con `get_accepted_for_case` porque es la primera capa con acceso al
+  repositorio Y al request del usuario).
+- `backend/main.py` — `recommendation_router` registrado.
+- `backend/tests/contracts/test_recommendation_contract.py` — 5 contract
+  tests reales (auth requerida, 404 sin Assessment previo, flujo completo
+  generar→leer→aceptar con conflicto 409 al intentar una segunda ACCEPTED,
+  descartar con conflicto 409 al descartar dos veces, 404 antes de generar).
+
+**Evidencia de ejecución:**
+
+```
+$ curl -s http://localhost:8010/openapi.json | ... rutas con "recommendation":
+/v1/recommendation                              ['get', 'post']
+/v1/recommendation/{recommendation_id}/accept   ['post']
+/v1/recommendation/{recommendation_id}/discard  ['post']
+
+$ docker exec migpal-backend-1 python -m pytest tests/contracts/test_recommendation_contract.py -v
+5 passed, 5 warnings in 226.60s (0:03:46)   # HTTP real + Ollama real, ~6-8 llamadas
+
+$ docker exec migpal-backend-1 python -m pytest tests/unit tests/integration -q
+42 passed, 4 warnings in 38.79s
+
+$ docker exec migpal-backend-1 python -m ruff check core/recommendation main.py app/services/ai_recommendation.py
+All checks passed!
+```
+
+**Invariante 6 verificada por HTTP real:** en
+`test_full_flow_generate_read_and_accept`, aceptar una Recommendation,
+regenerar una nueva (queda `ISSUED`) y aceptarla también → `409` real,
+disparado por la app real, no por un mock.
+
+**Commit:** ver historial de git — mensaje `Sprint 5 (Hito 3): API de
+Recommendation — POST/GET/accept/discard, contract tests reales`.
