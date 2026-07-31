@@ -151,3 +151,66 @@ es responsabilidad del orquestador de aplicación — Sprint 3.
 **Commit:** ver historial de git — mensaje `Sprint 2 (Hito 3): persistencia
 de Recommendation — tabla, repositorio, migración Alembic, verificado contra
 Postgres real`.
+
+---
+
+## Sprint 3 — Motores ✅ completado (2026-07-31)
+
+**Alcance:** Policy Engine, Recommendation Orchestrator, integración con
+Decision Engine y Knowledge (catálogo). Sin LLM — 100% determinístico.
+
+**Archivos creados/modificados:**
+- `backend/core/decision_engine/infrastructure/scoring.py` — agrega
+  `matched_signals_from_findings` (reconstruye señales desde
+  `Assessment.findings`, ya que Assessment no persiste `profile_text` crudo
+  — nota de diseño §3) y `score_route_fit` (fit determinístico de una ruta:
+  proporción de señales requeridas presentes × 80 + bonus de 20 si el país
+  objetivo del caso coincide con el país de la ruta).
+- `backend/core/policy_engine/catalog.py` — catálogo placeholder de 4 rutas
+  (O-1/EEUU, Express Entry/Canadá, Trabajador Cualificado/España, Skilled
+  189/Australia), explícitamente marcado como no-autoritativo (mismo
+  criterio que `SIGNAL_KEYWORDS` de Hito 2).
+- `backend/core/policy_engine/rules.py` — `evaluate_candidate_routes`:
+  calcula fit de cada ruta, excluye las que no tienen ninguna señal
+  requerida presente (regla de negocio), nunca deja la lista vacía.
+- `backend/core/recommendation/application/orchestrator.py` —
+  `generate_recommendation(case, assessment)`: compone Policy Engine +
+  Decision Engine, arma `rationale`/`next_step`/`confidence`
+  (`confidence = min(assessment.confidence, primary.fit_score/100)` —
+  garantiza la invariante 3 por construcción, no por validación externa),
+  construye y emite (`issue()`) la Recommendation. Pura, sin sesión de DB.
+- `backend/tests/unit/test_policy_engine.py` — 5 tests.
+- `backend/tests/unit/test_recommendation_orchestrator.py` — 6 tests,
+  incluida la prueba explícita de la invariante 7 (reproducibilidad).
+
+**Evidencia de ejecución:**
+
+```
+$ docker exec migpal-backend-1 python -m pytest tests/unit/test_policy_engine.py tests/unit/test_recommendation_orchestrator.py -v
+10 passed, 3 warnings in 0.38s
+
+$ docker exec migpal-backend-1 python -m pytest tests/unit tests/integration -q
+38 passed, 4 warnings in 2.60s
+
+$ docker exec migpal-backend-1 python -m ruff check core/recommendation core/policy_engine core/decision_engine tests/unit
+All checks passed!
+```
+
+**Reproducibilidad demostrada** (`test_same_assessment_and_case_produce_the_same_recommendation`):
+mismo `Assessment` + mismo `MigrationCase` → mismos `primary_evaluation`,
+`alternative_evaluations`, `rationale`, `confidence`, `next_step` y las
+cuatro versiones, en dos llamadas independientes a `generate_recommendation`.
+Se compara todo excepto `created_at` (no determinístico por diseño — es
+auditoría, no decisión).
+
+**Prohibiciones respetadas:** ningún import de `app.services.ai_brain` ni de
+`AIAdapter` en `orchestrator.py`/`policy_engine`/`decision_engine` — cero
+dependencia del LLM en esta capa (verificable por grep, ver comando abajo).
+
+```
+$ docker exec migpal-backend-1 grep -rn "ai_brain\|AIAdapter\|ai_assessment" core/recommendation core/policy_engine core/decision_engine
+(sin resultados)
+```
+
+**Commit:** ver historial de git — mensaje `Sprint 3 (Hito 3): Policy Engine
++ orquestador de Recommendation — 100% determinístico`.

@@ -85,3 +85,35 @@ def recommend_from_score(score: float) -> list[str]:
     return [
         "Necesitamos más información para una evaluación confiable: experiencia, educación y destino deseado."
     ]
+
+
+def matched_signals_from_findings(findings: list[str]) -> set[str]:
+    """Recommendation (Sprint 3, Hito 3) no tiene acceso al `profile_text`
+    crudo -- Assessment no lo persiste (regla del diseño §3: "Conversation
+    no entra directamente" a Recommendation). Se reconstruyen las señales ya
+    detectadas a partir de `Assessment.findings` (formato "Señal detectada:
+    {categoría}", ver `score_profile_text`), sin volver a tocar texto libre."""
+    return {f.split(":", 1)[1].strip() for f in findings if f.startswith("Señal detectada:")}
+
+
+DESTINATION_BONUS = 20.0
+FIT_SCORE_PER_SIGNAL_RATIO = 80.0
+
+
+def score_route_fit(
+    *, matched_signals: set[str], required_signals: list[str], route_country: str, objective_country: str | None
+) -> float:
+    """Fit determinístico de UNA ruta candidata contra las señales ya
+    detectadas del Assessment + el país objetivo declarado en el
+    MigrationCase (§3 del diseño -- ambos son entradas legítimas; el texto
+    crudo de Conversation no lo es). Mismo input, siempre el mismo output
+    (regla obligatoria 08)."""
+
+    signal_hits = sum(1 for signal in required_signals if signal in matched_signals)
+    signal_ratio = (signal_hits / len(required_signals)) if required_signals else 1.0
+
+    destination_bonus = 0.0
+    if objective_country and objective_country.strip().lower() == route_country.strip().lower():
+        destination_bonus = DESTINATION_BONUS
+
+    return min(100.0, signal_ratio * FIT_SCORE_PER_SIGNAL_RATIO + destination_bonus)
