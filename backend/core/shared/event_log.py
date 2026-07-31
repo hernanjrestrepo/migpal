@@ -6,7 +6,8 @@ memoria de un proceso -- útil para desacoplar publishers de subscribers,
 inútil para auditoría real (se pierde al reiniciar). Este módulo agrega una
 tabla real. No reemplaza EventBus -- se suscribe a él y persiste cada
 evento que decide guardar (hoy: CaseCreated, AssessmentCompleted,
-RecommendationIssued -- Anexo B completo se conecta progresivamente).
+RecommendationIssued, RecommendationAccepted, RecommendationDiscarded --
+Anexo B completo se conecta progresivamente).
 
 Regla 10 (Constitución): un evento nunca se modifica, solo se agrega uno
 nuevo. Esta tabla es append-only por diseño -- no hay UPDATE ni DELETE en
@@ -19,7 +20,13 @@ from datetime import UTC, datetime
 
 from sqlmodel import Field, Session, SQLModel, select
 
-PERSISTED_EVENT_NAMES = {"CaseCreated", "AssessmentCompleted", "RecommendationIssued"}
+PERSISTED_EVENT_NAMES = {
+    "CaseCreated",
+    "AssessmentCompleted",
+    "RecommendationIssued",
+    "RecommendationAccepted",
+    "RecommendationDiscarded",
+}
 
 
 class PersistedDomainEvent(SQLModel, table=True):

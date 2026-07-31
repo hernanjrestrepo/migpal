@@ -30,6 +30,9 @@ from core.case_engine.domain.aggregates import CaseFamilyMember, MigrationCase  
 from core.decision_engine.domain.aggregates import Assessment  # noqa: F401
 from core.shared.event_log import PersistedDomainEvent  # noqa: F401
 
+# Hito 3, Sprint 2: Recommendation (baseline docs/RECOMMENDATION_DESIGN.md).
+from core.recommendation.domain.aggregates import Recommendation  # noqa: F401
+
 # Resuelve las referencias circulares (forward references) entre los modelos
 User.model_rebuild()
 MigrationProcess.model_rebuild()
