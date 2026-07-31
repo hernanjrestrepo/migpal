@@ -183,6 +183,31 @@ def test_accept_fails_if_not_issued():
         accept(rec)
 
 
+def test_accept_fails_if_a_different_recommendation_is_already_accepted():
+    """Invariante 6 -- vive en domain/rules.py, no en application/ ni en
+    adapters/ (corrección de arquitectura post-revisión de Hito 3)."""
+    rec = issue(build_recommendation(**_base_kwargs()))
+    other_already_accepted = issue(build_recommendation(**_base_kwargs()))
+    other_already_accepted.id = 999  # simula que ya fue persistida con otro id
+
+    with pytest.raises(RecommendationInvariantError):
+        accept(rec, existing_accepted=other_already_accepted)
+
+
+def test_accept_succeeds_when_existing_accepted_is_the_same_recommendation():
+    rec = issue(build_recommendation(**_base_kwargs()))
+    rec.id = 42
+
+    accepted = accept(rec, existing_accepted=rec)
+    assert accepted.status == RecommendationStatus.ACCEPTED
+
+
+def test_accept_succeeds_when_there_is_no_existing_accepted():
+    rec = issue(build_recommendation(**_base_kwargs()))
+    accepted = accept(rec, existing_accepted=None)
+    assert accepted.status == RecommendationStatus.ACCEPTED
+
+
 def test_discard_moves_issued_to_discarded_and_sets_decided_at():
     rec = issue(build_recommendation(**_base_kwargs()))
     discarded = discard(rec)

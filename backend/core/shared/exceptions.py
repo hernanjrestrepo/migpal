@@ -19,3 +19,10 @@ class CaseNotFound(DomainError):
 
 class IdentityAlreadyExists(DomainError):
     pass
+
+
+class RecommendationNotFound(DomainError):
+    """No existe, o no pertenece al caso del usuario autenticado -- ver
+    core/recommendation/application/handlers.py. No es una invariante de
+    Recommendation en sí (eso vive en domain/rules.py), es una regla de
+    acceso/consulta (misma categoría que CaseNotFound)."""

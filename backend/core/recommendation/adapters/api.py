@@ -1,11 +1,13 @@
 """
-Recommendation — adapters: superficie Web API (Sprint 5, Hito 3).
+Recommendation — adapters: superficie Web API (Sprint 5 + estabilización, Hito 3).
 
-Generación Y lectura viven ambas acá -- a diferencia de Assessment (Hito 2),
-donde la generación tuvo que vivir en Conversation porque Decision Engine no
-podía depender del AI Adapter. `recommendation` es su propio bounded
-context y sí puede depender del AI Adapter directamente (ver
-docs/RECOMMENDATION_DESIGN.md §9 y "Ubicación del bounded context").
+Solo traduce HTTP <-> application. Ninguna decisión de negocio vive acá --
+ni la generación (delegada a `application.handlers.handle_request_recommendation`,
+que a su vez usa `orchestrator.py`), ni la invariante 6 de `accept`
+(delegada a `domain.rules.accept`, vía `application.handlers.handle_accept_recommendation`).
+Corrección de arquitectura post-revisión: la primera versión de este archivo
+tenía la validación de invariante 6 acá mismo -- se movió (ver
+`domain/rules.py`, nota en `accept()`).
 """
 
 from __future__ import annotations
@@ -20,17 +22,21 @@ from core.case_engine.application.queries import GetCaseForUserQuery, handle_get
 from core.case_engine.infrastructure.repository import CaseRepository
 from core.decision_engine.infrastructure.repository import AssessmentRepository
 from core.identity.domain.aggregates import User
-from core.recommendation.application.orchestrator import attach_narrative, generate_recommendation
-from core.recommendation.domain.aggregates import Recommendation
-from core.recommendation.domain.rules import (
-    RecommendationInvariantError,
-    RecommendationTransitionError,
-    accept,
-    discard,
+from core.recommendation.application.commands import AcceptRecommendationCommand, DiscardRecommendationCommand
+from core.recommendation.application.handlers import (
+    handle_accept_recommendation,
+    handle_discard_recommendation,
+    handle_request_recommendation,
 )
+from core.recommendation.application.queries import (
+    GetLatestRecommendationQuery,
+    handle_get_latest_recommendation,
+)
+from core.recommendation.domain.aggregates import Recommendation
+from core.recommendation.domain.rules import RecommendationInvariantError, RecommendationTransitionError
 from core.recommendation.infrastructure.ai_adapter import RecommendationAIAdapter
 from core.recommendation.infrastructure.repository import RecommendationRepository
-from core.shared.exceptions import CaseNotFound
+from core.shared.exceptions import CaseNotFound, RecommendationNotFound
 
 router = APIRouter(prefix="/v1/recommendation", tags=["recommendation"])
 
@@ -104,13 +110,6 @@ def _get_case_or_404(current_user: User, session: Session):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
-def _get_owned_recommendation_or_404(recommendation_id: int, case_id: int, repo: RecommendationRepository):
-    rec = repo.get_by_id(recommendation_id)
-    if not rec or rec.case_id != case_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recommendation no encontrada.")
-    return rec
-
-
 @router.post("", response_model=RecommendationRead)
 async def request_recommendation(
     current_user: User = Depends(get_current_user),
@@ -126,11 +125,8 @@ async def request_recommendation(
             detail="Todavía no hay Assessment para tu caso -- generá uno primero (invariante 1).",
         )
 
-    recommendation = generate_recommendation(case=case, assessment=assessment)
-    recommendation = await attach_narrative(recommendation, RecommendationAIAdapter())
-
     recommendation_repo = RecommendationRepository(session)
-    saved = recommendation_repo.save(recommendation)
+    saved = await handle_request_recommendation(case, assessment, RecommendationAIAdapter(), recommendation_repo)
     return _to_read(saved)
 
 
@@ -142,7 +138,7 @@ def get_my_latest_recommendation(
     case = _get_case_or_404(current_user, session)
 
     recommendation_repo = RecommendationRepository(session)
-    rec = recommendation_repo.get_latest_for_case(case.id)
+    rec = handle_get_latest_recommendation(GetLatestRecommendationQuery(case_id=case.id), recommendation_repo)
     if not rec:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Todavía no hay Recommendation para tu caso.")
     return _to_read(rec)
@@ -156,21 +152,16 @@ def accept_recommendation(
 ):
     case = _get_case_or_404(current_user, session)
     recommendation_repo = RecommendationRepository(session)
-    rec = _get_owned_recommendation_or_404(recommendation_id, case.id, recommendation_repo)
-
-    already_accepted = recommendation_repo.get_accepted_for_case(case.id)
-    if already_accepted and already_accepted.id != rec.id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Ya existe una Recommendation ACCEPTED para este caso (invariante 6).",
-        )
 
     try:
-        accept(rec)
+        saved = handle_accept_recommendation(
+            AcceptRecommendationCommand(recommendation_id=recommendation_id, case_id=case.id), recommendation_repo
+        )
+    except RecommendationNotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except (RecommendationTransitionError, RecommendationInvariantError) as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
-    saved = recommendation_repo.save(rec)
     return _to_read(saved)
 
 
@@ -182,12 +173,14 @@ def discard_recommendation(
 ):
     case = _get_case_or_404(current_user, session)
     recommendation_repo = RecommendationRepository(session)
-    rec = _get_owned_recommendation_or_404(recommendation_id, case.id, recommendation_repo)
 
     try:
-        discard(rec)
+        saved = handle_discard_recommendation(
+            DiscardRecommendationCommand(recommendation_id=recommendation_id, case_id=case.id), recommendation_repo
+        )
+    except RecommendationNotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except (RecommendationTransitionError, RecommendationInvariantError) as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
-    saved = recommendation_repo.save(rec)
     return _to_read(saved)

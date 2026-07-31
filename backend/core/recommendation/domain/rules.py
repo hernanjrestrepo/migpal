@@ -6,11 +6,21 @@ mismo espíritu que `decision_engine/infrastructure/scoring.py` (regla
 obligatoria 08: reproducibilidad). Case Engine/Anexo A: el aggregate no
 contiene lógica, así que las reglas viven acá, no en `aggregates.py`.
 
-Invariante 6 (§2 -- "solo una Recommendation ACCEPTED por caso a la vez") NO
-se valida en este módulo: requiere consultar el repositorio para saber si ya
-existe una Recommendation ACCEPTED de ese caso, y el repositorio (Sprint 2)
-todavía no existe. Queda documentada acá para que la orquestación de
-Sprint 3 la aplique antes de llamar a `accept()`.
+Invariante 6 (§2 -- "solo una Recommendation ACCEPTED por caso a la vez"):
+`accept()` la valida acá, recibiendo `existing_accepted` como parámetro --
+la función sigue siendo pura (no consulta el repositorio ella misma), pero
+la regla de negocio en sí vive en `domain/`, no en la capa de aplicación ni
+en el adapter de API. Quien orquesta (`application/handlers.py`) es
+responsable de obtener `existing_accepted` del repositorio y pasarlo acá;
+el adapter de API (`adapters/api.py`) no conoce esta regla en absoluto --
+solo traduce la excepción resultante a un código HTTP.
+
+Corrección post-cierre inicial de Hito 3 (revisión de arquitectura,
+2026-07-31): la primera versión de `POST /v1/recommendation/{id}/accept`
+tenía esta validación directamente en `adapters/api.py`. Se detectó como
+regla de negocio mal ubicada -- un adapter no puede decidir si una
+Recommendation puede aceptarse o no, eso es dominio. Se corrigió sin
+cambiar el comportamiento observable (mismo 409, mismo mensaje).
 """
 
 from __future__ import annotations
@@ -106,13 +116,23 @@ def issue(recommendation: Recommendation) -> Recommendation:
     return recommendation
 
 
-def accept(recommendation: Recommendation) -> Recommendation:
-    """ISSUED -> ACCEPTED. La invariante 6 (una sola ACCEPTED por caso) se
-    valida en la capa de aplicación/repositorio (Sprint 2/3), no acá."""
+def accept(recommendation: Recommendation, *, existing_accepted: Recommendation | None = None) -> Recommendation:
+    """ISSUED -> ACCEPTED.
+
+    `existing_accepted`: la Recommendation ACCEPTED actual del mismo caso,
+    si existe (obtenida por quien llama, vía el repositorio -- ver
+    docstring del módulo). Si es de un id distinto al que se está
+    aceptando, viola la invariante 6. Si es `None` o es la misma
+    Recommendation (aceptar dos veces la misma, idempotente a nivel de
+    id), no hay conflicto."""
 
     if recommendation.status != RecommendationStatus.ISSUED:
         raise RecommendationTransitionError(
             f"Solo se puede aceptar desde ISSUED, no desde {recommendation.status}."
+        )
+    if existing_accepted is not None and existing_accepted.id != recommendation.id:
+        raise RecommendationInvariantError(
+            "Ya existe una Recommendation ACCEPTED para este caso (invariante 6)."
         )
 
     recommendation.status = RecommendationStatus.ACCEPTED

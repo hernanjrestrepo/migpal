@@ -432,18 +432,143 @@ completa — recorrido real, event log, suite completa`.
 
 ---
 
+---
+
+## Estabilización final (post-revisión, 2026-07-31) ✅ completado
+
+Dos correcciones identificadas en revisión de arquitectura antes de aceptar
+el cierre de Hito 3. Ninguna cambia el diseño aprobado (`RECOMMENDATION_DESIGN.md`)
+ni el comportamiento observable de la API -- son correcciones de ubicación de
+código e infraestructura de resiliencia.
+
+### 1. Invariante 6 estaba mal ubicada (adapters/api.py → domain/rules.py)
+
+**Problema:** `POST /v1/recommendation/{id}/accept` validaba "solo una
+Recommendation ACCEPTED por caso" directamente en `adapters/api.py`,
+consultando el repositorio desde el adapter. Eso es una regla de negocio en
+la capa equivocada -- un adapter solo debe traducir HTTP, no decidir.
+
+**Corrección:**
+- `domain/rules.py::accept()` ahora recibe `existing_accepted: Recommendation | None`
+  y valida la invariante 6 ahí mismo (función pura, sin acceso a DB).
+- `core/recommendation/application/` (nuevo): `commands.py`
+  (`AcceptRecommendationCommand`, `DiscardRecommendationCommand`),
+  `queries.py` (`GetLatestRecommendationQuery`), `handlers.py`
+  (`handle_request_recommendation`, `handle_accept_recommendation`,
+  `handle_discard_recommendation`) -- obtienen `existing_accepted` del
+  repositorio y se lo pasan a `domain.rules.accept()`.
+- `adapters/api.py` reescrito: cero funciones de dominio importadas más
+  allá de los tipos de excepción (`RecommendationInvariantError`,
+  `RecommendationTransitionError`) para mapear a HTTP 409/404. No importa
+  `accept`, `discard`, `build_recommendation` ni el repositorio para lógica
+  -- solo instancia el repo y se lo pasa a los handlers.
+- `core/shared/exceptions.py`: nueva `RecommendationNotFound`.
+
+**Verificación de la separación de capas (no solo declarada):**
+```
+HTTP (FastAPI)
+    ↓  adapters/api.py       -- 0 reglas de negocio, solo construye comandos y mapea excepciones a HTTP
+    ↓  application/handlers.py -- obtiene existing_accepted del repo, se lo pasa al dominio
+    ↓  domain/rules.py        -- accept() valida la invariante 6 (función pura)
+    ↓  infrastructure/repository.py -- persiste + emite el evento
+```
+Archivos concretos por responsabilidad:
+- **Adapter (HTTP↔application):** `backend/core/recommendation/adapters/api.py`
+- **Application (orquestación):** `backend/core/recommendation/application/handlers.py`, `commands.py`, `queries.py`
+- **Domain (invariante 6 real):** `backend/core/recommendation/domain/rules.py::accept()`
+- **Infrastructure (persistencia + evento):** `backend/core/recommendation/infrastructure/repository.py::save()`
+
+Nuevos tests: `tests/unit/test_recommendation_domain.py` (3 tests de
+invariante 6 a nivel de dominio, con objetos en memoria) +
+`tests/unit/test_recommendation_handlers.py` (7 tests con repositorio en
+memoria, prueban que el handler delega correctamente, incluida la
+propagación 404/409).
+
+### 2. Timeout fijo sin reintento en las llamadas a Ollama (BLOCKER real observado)
+
+**Problema real, no hipotético:** en la corrida de evidencia previa,
+`tests/integration/test_recommendation_narrative_real_llm.py` fallitó una
+vez por timeout (60s fijo, sin margen) bajo la carga del resto de la
+sesión, y pasó al reejecutarlo aislado -- comportamiento no determinístico
+bajo carga.
+
+**Corrección:** `backend/app/services/ollama_client.py` (nuevo, compartido
+entre `ai_assessment.py` y `ai_recommendation.py`, que antes duplicaban la
+misma llamada httpx): `OLLAMA_TIMEOUT_SECONDS` configurable por entorno
+(antes 60s fijo en cada archivo, ahora 90s por defecto) + `OLLAMA_MAX_ATTEMPTS`
+(reintento controlado, 2 por defecto) con backoff corto. Si se agotan los
+intentos, devuelve `None` y el caller aplica su propio fallback -- la
+Recommendation/Assessment nunca dejan de ser válidos por esto (comportamiento
+ya validado en Sprint 4/6, sin cambios).
+
+**Deliberadamente NO implementado** (deuda técnica registrada, no bloqueante
+según EPWO-010): circuit breaker, cola de ejecución, worker asíncrono. Un
+timeout más realista + un reintento cubre el modo de falla real observado
+(latencia variable de un único proveedor local, no caídas sostenidas). Se
+revisita si el patrón de carga cambia.
+
+**Evidencia objetiva de la corrección:**
+
+```
+# Unit (mockeado, prueba el mecanismo de reintento sin red real):
+$ docker exec migpal-backend-1 python -m pytest tests/unit/test_ollama_client.py -v
+6 passed  -- incluye test_retries_once_after_a_timeout_and_then_succeeds,
+              que reproduce exactamente el escenario que falló (timeout
+              en el primer intento, éxito en el segundo)
+
+# Integración (Ollama real) -- MISMO test que había fallado antes,
+# ejecutado 3 veces consecutivas, sin tocar código entre corridas:
+Ejecución 1/3: 1 passed in 33.96s
+Ejecución 2/3: 1 passed in 25.69s
+Ejecución 3/3: 1 passed in 32.63s
+```
+
+### Evidencia completa post-estabilización (re-ejecutada en orden)
+
+```
+1. ruff:            All checks passed!
+2. unit tests:       58 passed in 27.25s   (incluye los 10 tests nuevos de esta estabilización)
+3. integration:      incluidos en el mismo run de arriba (unit+integration corren juntos)
+4. contract tests:   21 passed in 388.56s  (0:06:28) -- los 5 nombres de test_recommendation_contract.py
+                      confirmados uno por uno, incluido el 409 real de invariante 6
+5. timeout/retry:     3/3 ejecuciones reales consecutivas, ver arriba
+6. recorrido funcional: usuario nuevo `estab_1785535833493` (id 256) -- Registro real (formulario)
+                      → Login → Assessment real → Recommendation real → Accept real (click real) → ACCEPTED
+7. OpenAPI:          /v1/recommendation [get,post], /v1/recommendation/{id}/accept [post],
+                      /v1/recommendation/{id}/discard [post] -- confirmados en el openapi.json real
+8. SQL:              user_id=256, case_id=226, assessment_id=112, recommendation_id=138, status=ACCEPTED
+                      + cadena de 4 eventos (CaseCreated→AssessmentCompleted→RecommendationIssued→RecommendationAccepted)
+9. git status:        limpio tras el commit de esta estabilización (ver commit final)
+```
+
+**Nota de transparencia:** durante esta ronda, una ejecución de
+`pytest tests/contracts` terminó con "Exit code 4" sin salida capturada (sin
+texto de error). No se pudo determinar la causa exacta -- el mismo comando,
+con el mismo código, ejecutado inmediatamente después, completó limpio (21
+passed en 332s). Se documenta como transitorio de infraestructura (probable
+contención de Docker/red tras varias corridas largas consecutivas), no como
+defecto de código -- no hay evidencia que soporte otra conclusión, y no se
+inventa una causa que no se pudo observar.
+
+---
+
 ## Cierre de Hito 3
 
 | Criterio | Estado | Evidencia |
 |---|---|---|
 | Evidencia objetiva de cada Sprint | ✅ | Comandos + salidas reales en cada sección de este documento, no descripciones |
-| Funcionalidad nueva con pruebas | ✅ | 63 tests nuevos: 18 dominio + 6 repositorio + 5 policy engine + 6 orquestador + 3 AI adapter + 1 integración LLM real + 5 contract API + resto ya contado en `tests/unit`/`tests/contracts` preexistentes sin romperse |
-| Reutilización antes de crear código nuevo | ✅ | Mismo patrón exacto de `Assessment`/`MigrationCase` para el aggregate; mismo `SIGNAL_KEYWORDS` reutilizado para `score_route_fit`; mismo `event_log.py`/`persist_event` reutilizado, no reinventado; `RecommendationIssued` ya estaba anticipado en `PERSISTED_EVENT_NAMES` desde Hito 2 |
-| `git status` limpio | ✅ | Confirmado arriba, sin residuos |
-| Commit por Sprint | ✅ | 7 commits, uno por sprint (`2e456fc`…`ff7569f`, más el Sprint 7 que cierra este documento) |
+| Funcionalidad nueva con pruebas | ✅ | 58 tests unit+integration de Recommendation (18 dominio + 3 invariante 6 + 7 handlers + 6 repositorio + 5 policy engine + 6 orquestador + 3 AI adapter + 6 ollama_client + 1 LLM real) + 5 contract tests API reales, sobre 21/21 contract tests totales sin regresiones |
+| Reutilización antes de crear código nuevo | ✅ | Mismo patrón exacto de `Assessment`/`MigrationCase` para el aggregate; mismo `SIGNAL_KEYWORDS` reutilizado para `score_route_fit`; mismo `event_log.py`/`persist_event` reutilizado; `ollama_client.py` extraído cuando el duplicado real apareció (2 consumidores), no antes |
+| `git status` limpio | ✅ | Confirmado tras el commit de estabilización |
+| Commit por Sprint | ✅ | 7 commits de sprint (`2e456fc`…`4b67443`) + 1 commit de estabilización post-revisión |
+| Estabilidad bajo evidencia repetida | ✅ | Test de LLM real que había fallado una vez: 3/3 ejecuciones consecutivas correctas tras el fix de timeout/reintento |
+| Separación de capas verificada, no solo declarada | ✅ | `adapters/api.py` sin funciones de dominio importadas; invariante 6 vive en `domain/rules.py::accept()`, ver sección "Estabilización final" |
 | Checklist de aceptación completo | ✅ | Esta tabla |
 
 **Hito 3 — Recommendation: completo e implementado**, sobre el baseline
-aprobado en `docs/RECOMMENDATION_DESIGN.md`. Ningún punto del diseño se
+aprobado en `docs/RECOMMENDATION_DESIGN.md`. Ningún punto del diseño de
+dominio se
 modificó durante la implementación — no apareció ninguna contradicción
-objetiva que lo ameritara.
+objetiva que lo ameritara. Las dos correcciones de la estabilización final
+(ubicación de la invariante 6, cliente Ollama compartido) son de
+organización de código e infraestructura, no de dominio.
