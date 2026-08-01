@@ -4,17 +4,17 @@
 
 ## 📌 Estado actual del proyecto (Julio 2026)
 
-> ⚠️ Todas las entradas debajo de esta sección (v4.x, v3.x) pertenecen a la generación anterior del proyecto (bot de Telegram monolítico, hasta enero 2026). Desde julio 2026 el proyecto se reconstruyó como plataforma web con arquitectura DDD (`backend/core/`) — ese trabajo aún no tiene entradas propias en este changelog; su historia vive en los commits `b7a922c` (Fase 0 Recovery), `94cb8d3` (Sprint 0 Foundation), `c22f917`/`7d3897c` (Sprint 1 Hito 1), `afc31a6` (Sprint 1 Hito 2) y `2e456fc`…`ff7569f` (Sprint 1 Hito 3, ver [docs/HITO_3_PROGRESS.md](docs/HITO_3_PROGRESS.md)).
+> ⚠️ Todas las entradas debajo de esta sección (v4.x, v3.x) pertenecen a la generación anterior del proyecto (bot de Telegram monolítico, hasta enero 2026). Desde julio 2026 el proyecto se reconstruyó como plataforma web con arquitectura DDD (`backend/core/`) — ese trabajo aún no tiene entradas propias en este changelog; su historia vive en los commits `b7a922c` (Fase 0 Recovery), `94cb8d3` (Sprint 0 Foundation), `c22f917`/`7d3897c` (Sprint 1 Hito 1), `afc31a6` (Sprint 1 Hito 2) y `2e456fc`…`9754968` (Sprint 1 Hito 3, ver [docs/HITO_3_PROGRESS.md](docs/HITO_3_PROGRESS.md), [docs/HITO_3_AUDIT.md](docs/HITO_3_AUDIT.md) y [docs/HITO_3_FINAL_CLOSE.md](docs/HITO_3_FINAL_CLOSE.md)).
 
 **Arquitectura vigente:** DDD/hexagonal en `backend/core/` (identity, case_engine, conversation, decision_engine, policy_engine, recommendation), Postgres + Redis vía `docker compose up`.
 
-**Estado de ejecución:** Recovery ✅ · Foundation ✅ · Sprint 1 – Hito 1 ✅ · Sprint 1 – Hito 2 ✅ · Sprint 1 – Hito 3 ✅ (verificado con evidencia reproducible 2026-07-31).
+**Estado de ejecución:** Recovery ✅ · Foundation ✅ · Sprint 1 – Hito 1 ✅ · Sprint 1 – Hito 2 ✅ · Sprint 1 – Hito 3 ✅ **CERRADO (Recommendation Baseline v1.0 Frozen, 2026-07-31)**.
 
-**Último hito completado:** Hito 3 — Assessment → Recommendation. Decision Engine calcula el ajuste de cada ruta candidata, Policy Engine filtra/enriquece con el catálogo (placeholder, no asesoría real), el orquestador arma una Recommendation 100% determinística y reproducible (mismo Assessment + mismas versiones → misma Recommendation), y `narrative_summary` se redacta aparte por IA (`ai_recommendation.py`, adapter propio) sin decidir la ruta ni el score. API completa (`POST`/`GET`/`accept`/`discard`), frontend extendido en `caso.html`. Recorrido completo verificado en navegador real: Landing → Registro → Login → Assessment → Recommendation → Accept → persistencia confirmada con `SELECT` directo y cadena de 4 eventos de dominio (`CaseCreated → AssessmentCompleted → RecommendationIssued → RecommendationAccepted`).
+**Último hito completado:** Hito 3 — Assessment → Recommendation. Decision Engine calcula el ajuste de cada ruta candidata, Policy Engine filtra/enriquece con el catálogo (placeholder, no asesoría real — ahora con disclaimer visible en la UI), el orquestador arma una Recommendation 100% determinística y reproducible (mismo Assessment + mismas versiones → misma Recommendation), y `narrative_summary` se redacta aparte por IA (`ai_recommendation.py`, adapter propio, cliente Ollama compartido con timeout configurable + reintento) sin decidir la ruta ni el score. API completa (`POST`/`GET`/`accept`/`discard`), frontend extendido en `caso.html`. Recorrido completo verificado en navegador real: Landing → Registro → Login → Assessment → Recommendation → Accept → persistencia confirmada con `SELECT` directo y cadena de 4 eventos de dominio. Cerrado tras una auditoría independiente (APROBADO CON OBSERVACIONES) y una fase de cierre que resolvió las dos observaciones no bloqueantes con impacto real (disclaimer del catálogo, `Protocol` de repositorio incompleto).
 
-**Pendiente conocido:** bug de doble codificación UTF-8 en las respuestas JSON (`"Señal"` sale como `"SeÃ±al"`) — sigue sin corregir, no bloqueó Hito 3.
+**Pendiente conocido:** bug de doble codificación UTF-8 en las respuestas JSON (`"Señal"` sale como `"SeÃ±al"`) — sigue sin corregir, registrado como deuda técnica, no bloqueó el cierre. Ver también "Riesgos abiertos" en `docs/HITO_3_FINAL_CLOSE.md` (acoplamiento menor `policy_engine → recommendation.domain`).
 
-**Próximo hito:** sin definir todavía.
+**Próximo hito:** sin definir todavía. Recommendation queda congelado — cambios futuros a su dominio requieren un ADR nuevo (`docs/adr/README.md`).
 
 ---
 

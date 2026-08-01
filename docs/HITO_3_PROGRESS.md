@@ -572,3 +572,31 @@ modificó durante la implementación — no apareció ninguna contradicción
 objetiva que lo ameritara. Las dos correcciones de la estabilización final
 (ubicación de la invariante 6, cliente Ollama compartido) son de
 organización de código e infraestructura, no de dominio.
+
+---
+
+## Cierre definitivo — Recommendation Baseline v1.0 Frozen (2026-07-31)
+
+Después de esta tabla, el Hito 3 pasó por dos pasos adicionales antes del
+cierre formal:
+
+1. **Auditoría independiente** (agente sin contexto de la implementación,
+   solo lectura + re-ejecución de evidencia) — ver
+   [docs/HITO_3_AUDIT.md](HITO_3_AUDIT.md). Veredicto: **APROBADO CON
+   OBSERVACIONES** (0 críticos, 0 mayores, 3 menores).
+2. **Fase de cierre**: se resolvieron los dos hallazgos menores con impacto
+   real (disclaimer del catálogo en la UI, `Protocol` de repositorio
+   incompleto) y se dejó el UTF-8 como deuda técnica registrada, según lo
+   decidido. Se ejecutó además una revisión arquitectónica final (God
+   objects, invasión entre bounded contexts, dirección de dependencias,
+   duplicación) — ver [docs/HITO_3_FINAL_CLOSE.md](HITO_3_FINAL_CLOSE.md)
+   para el detalle completo, incluyendo un hallazgo de acoplamiento menor
+   no bloqueante detectado en esa revisión.
+
+**Estado final: Sprint 1 — Hito 3: CERRADO.**
+
+A partir de este punto, `Recommendation` queda congelado como **Baseline
+v1.0**: cualquier cambio a sus invariantes, Value Objects, ciclo de vida o
+responsabilidades entre Decision Engine/Policy Engine/LLM requiere un ADR
+nuevo (ver [docs/adr/README.md](adr/README.md)), no una modificación
+directa por implementación.
