@@ -28,10 +28,12 @@ from core.case_engine.domain.aggregates import CaseFamilyMember, MigrationCase  
 
 # Hito 2: Decision Engine (Assessment) + Event Log persistido.
 from core.decision_engine.domain.aggregates import Assessment  # noqa: F401
-from core.shared.event_log import PersistedDomainEvent  # noqa: F401
 
 # Hito 3, Sprint 2: Recommendation (baseline docs/RECOMMENDATION_DESIGN.md).
+# Hito 4, Sprint 1: Execution Plan (baseline docs/HITO_4_DESIGN.md).
+from core.execution_plan.domain.aggregates import ExecutionPlan, PlanStep  # noqa: F401
 from core.recommendation.domain.aggregates import Recommendation  # noqa: F401
+from core.shared.event_log import PersistedDomainEvent  # noqa: F401
 
 # Resuelve las referencias circulares (forward references) entre los modelos
 User.model_rebuild()
@@ -51,5 +53,7 @@ PlannerTask.model_rebuild()
 AuditLog.model_rebuild()
 MigrationCase.model_rebuild()
 CaseFamilyMember.model_rebuild()
+ExecutionPlan.model_rebuild()
+PlanStep.model_rebuild()
 
 metadata = SQLModel.metadata

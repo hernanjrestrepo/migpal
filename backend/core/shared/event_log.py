@@ -6,7 +6,8 @@ memoria de un proceso -- útil para desacoplar publishers de subscribers,
 inútil para auditoría real (se pierde al reiniciar). Este módulo agrega una
 tabla real. No reemplaza EventBus -- se suscribe a él y persiste cada
 evento que decide guardar (hoy: CaseCreated, AssessmentCompleted,
-RecommendationIssued, RecommendationAccepted, RecommendationDiscarded --
+RecommendationIssued, RecommendationAccepted, RecommendationDiscarded,
+ExecutionPlanCreated, PlanStepCompleted, ExecutionPlanCompleted --
 Anexo B completo se conecta progresivamente).
 
 Regla 10 (Constitución): un evento nunca se modifica, solo se agrega uno
@@ -26,6 +27,9 @@ PERSISTED_EVENT_NAMES = {
     "RecommendationIssued",
     "RecommendationAccepted",
     "RecommendationDiscarded",
+    "ExecutionPlanCreated",
+    "PlanStepCompleted",
+    "ExecutionPlanCompleted",
 }
 
 
