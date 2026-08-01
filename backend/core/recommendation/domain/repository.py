@@ -17,7 +17,20 @@ from core.recommendation.domain.aggregates import Recommendation
 
 class RecommendationRepository(Protocol):
     def add(self, recommendation: Recommendation) -> Recommendation:
-        """Persiste (o actualiza) la Recommendation y devuelve la instancia persistida."""
+        """Persiste una Recommendation nueva (normalmente en DRAFT, sin
+        disparar evento). Ver `save()` para persistir una transición de
+        estado ya aplicada."""
+        ...
+
+    def save(self, recommendation: Recommendation) -> Recommendation:
+        """Persiste una Recommendation ya transicionada (issue/accept/discard)
+        y dispara el evento de dominio correspondiente según su `status`
+        (`RecommendationIssued`/`Accepted`/`Discarded`) -- nunca en DRAFT.
+        Ver `infrastructure/repository.py::save()` para la implementación
+        real contra Postgres. Agregado explícitamente al Protocol (auditoría
+        de cierre de Hito 3, 2026-07-31): `application/handlers.py` depende
+        de este método para toda transición de estado -- el contrato de
+        dominio debe declararlo, no solo `add()`."""
         ...
 
     def get_latest_for_case(self, case_id: int) -> Recommendation | None:

@@ -29,6 +29,7 @@
   #chatInput input{flex:1;padding:9px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;}
 
   #assessmentBox{white-space:pre-wrap;font-size:13px;background:#f8f9fa;padding:12px;border-radius:8px;display:none;}
+  .disclaimer{background:#fff7ea;border:1px solid #f0d999;color:#8a6416;font-size:11.5px;line-height:1.5;padding:9px 12px;border-radius:6px;margin-bottom:10px;}
   .score{font-size:26px;font-weight:700;color:#3f7d54;}
   .tag{display:inline-block;font-family:ui-monospace,monospace;font-size:10.5px;background:#eaf0ff;color:var(--accent-dark);padding:2px 8px;border-radius:10px;margin:2px 4px 2px 0;}
   #status{font-size:12px;color:#888;margin-top:8px;}
@@ -84,6 +85,7 @@
   <div class="card" id="recCard" style="display:none;">
     <h2>4. Recommendation</h2>
     <p style="font-size:12px;color:#666;margin:0 0 8px;">Con tu Assessment ya generado, pedile a MigPAL tu recomendación.</p>
+    <div class="disclaimer">⚠️ Esta recomendación es <b>demostrativa y orientativa</b>: se calcula sobre un catálogo de referencia limitado, no sobre asesoría legal migratoria verificada. No reemplaza la opinión de un profesional habilitado ni constituye un compromiso de resultado.</div>
     <div>
       <button class="actionBtn" onclick="requestRecommendation()">Ver mi recomendación</button>
       <button class="actionBtn" style="background:#3f7d54;" onclick="loadRecommendation()">Ver la última</button>
@@ -215,6 +217,7 @@ function renderRecommendation(r){
     : '';
 
   box.innerHTML = `
+    <div class="disclaimer">⚠️ Recomendación <b>demostrativa/orientativa</b>, generada sobre un catálogo de referencia limitado -- no es asesoría migratoria oficial ni un compromiso de resultado.</div>
     <div class="route-title">${primary.route.visa_type} — ${primary.route.country}<span class="rec-status ${r.status}">${r.status}</span></div>
     <div class="fit-score">Ajuste: ${primary.route.fit_score.toFixed(0)}/100 · Confianza: ${(r.confidence*100).toFixed(0)}%</div>
 
