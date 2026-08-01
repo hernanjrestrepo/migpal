@@ -166,7 +166,9 @@ código ya corregido (Protocol + disclaimer).
 ## 6. Riesgos abiertos al momento del cierre
 
 1. **Acoplamiento `policy_engine → recommendation.domain`** (sección 4) —
-   menor, no bloqueante, registrado arriba.
+   menor, no bloqueante, registrado arriba y formalizado en
+   [A-ADR-007](adr/A-ADR-007-desacoplar-policy-engine-recommendation.md)
+   (estado: Propuesta, prioridad Hito 4).
 2. **Catálogo placeholder como único origen de "Knowledge"** — si un uso
    real (no demo) se apoya en esta Recommendation sin reemplazar el
    catálogo por la Knowledge Base real (RAG, `docs/RAG_PIPELINE.md`, aún no
