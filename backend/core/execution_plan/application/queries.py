@@ -64,7 +64,12 @@ def _step_view(step: PlanStep, *, completed_ids: set[int]) -> PlanStepView:
     )
 
 
-def _plan_view(plan: ExecutionPlan) -> ExecutionPlanView:
+def build_plan_view(plan: ExecutionPlan) -> ExecutionPlanView:
+    """Pública -- reutilizada por `adapters/api.py` (Sprint 3) para construir
+    la respuesta de POST /v1/execution-plan y POST .../complete directamente
+    sobre el `ExecutionPlan` que devuelven los handlers, sin un segundo viaje
+    al repositorio."""
+
     completed_ids = {s.id for s in plan.steps if s.status == PlanStepStatus.COMPLETED}
     steps = sorted(plan.steps, key=lambda s: s.sequence)
     return ExecutionPlanView(
@@ -87,4 +92,4 @@ def handle_consultar_mi_plan(
     plan = repo.get_latest_for_case(query.case_id)
     if plan is None:
         return None
-    return _plan_view(plan)
+    return build_plan_view(plan)

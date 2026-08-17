@@ -86,11 +86,6 @@ def test_build_plan_steps_with_no_required_documents_produces_only_the_final_ste
 # ---- start_plan (invariantes 1, 2) ----
 
 
-def test_start_plan_raises_if_no_recommendation():
-    with pytest.raises(ExecutionPlanInvariantError):
-        start_plan(None, existing_active=None)
-
-
 def test_start_plan_raises_if_recommendation_not_accepted():
     rec = issue(
         build_recommendation(

@@ -26,7 +26,7 @@ from core.execution_plan.domain.aggregates import ExecutionPlan
 from core.execution_plan.domain.rules import build_plan_steps, complete_step, start_plan
 from core.execution_plan.infrastructure.repository import ExecutionPlanRepository
 from core.recommendation.infrastructure.repository import RecommendationRepository
-from core.shared.exceptions import ExecutionPlanNotFound
+from core.shared.exceptions import ExecutionPlanNotFound, RecommendationNotFound
 
 
 def handle_generar_execution_plan(
@@ -34,9 +34,18 @@ def handle_generar_execution_plan(
     execution_plan_repo: ExecutionPlanRepository,
     recommendation_repo: RecommendationRepository,
 ) -> ExecutionPlan:
-    recommendation = recommendation_repo.get_accepted_for_case(cmd.case_id)
-    existing_active = execution_plan_repo.get_active_for_case(cmd.case_id)
+    """Si no hay ninguna Recommendation ACCEPTED para el caso, levanta
+    `RecommendationNotFound` acá -- no es una invariante de ExecutionPlan
+    (eso vive en `domain/rules.py::start_plan`, invariantes 1-2), es una
+    regla de acceso/existencia (misma categoría que `_get_owned_recommendation`
+    en `core/recommendation/application/handlers.py`; mapea a 404, no a 409,
+    ver docs/HITO_4_DESIGN.md §10)."""
 
+    recommendation = recommendation_repo.get_accepted_for_case(cmd.case_id)
+    if recommendation is None:
+        raise RecommendationNotFound(f"No hay una Recommendation ACCEPTED para el caso {cmd.case_id}.")
+
+    existing_active = execution_plan_repo.get_active_for_case(cmd.case_id)
     plan = start_plan(recommendation, existing_active=existing_active)
 
     document_steps, final_step = build_plan_steps(

@@ -198,7 +198,121 @@ de orquestación, no solo de dominio aislado. **No** hay todavía ninguna
 capacidad visible para el usuario final (sin API, sin UI) — eso es
 exactamente el alcance aprobado para Sprint 2 (Aplicación), no un déficit.
 
-**Commit:** pendiente de crear (ver `git status` — cambios sin commitear al
-cierre de este sprint).
+**Commit:** `371d3bb` — mensaje `Sprint 2 (Hito 4): capa de aplicacion de
+Execution Plan -- casos de uso, invariantes 1-7`.
 
 **Sprint 2 terminado. Me detengo acá, como indica el orden obligatorio.**
+
+---
+
+## Sprint 3 — API ✅ completado (2026-08-16)
+
+**Alcance exacto** (orden aprobado, §10 del diseño): capa `adapters/` --
+`POST /v1/execution-plan`, `GET /v1/execution-plan`,
+`POST /v1/execution-plan/steps/{step_id}/complete`. Sin frontend (eso es un
+sprint posterior, §14).
+
+**Corrección aplicada a Sprint 2 (documentada, no oculta):** diseñando el
+mapeo HTTP se encontró que §10 exige 404 para la invariante 1 (no hay
+Recommendation ACCEPTED) pero 409 para las invariantes 2/3/6 -- y ambas
+compartían la misma excepción (`ExecutionPlanInvariantError`), sin forma de
+distinguirlas en el adapter sin parsear el mensaje. Se resolvió con el mismo
+criterio que Recommendation ya había aplicado en su propia "Corrección
+post-cierre inicial de Hito 3" (ver docstring de
+`core/recommendation/domain/rules.py`): la ausencia de un recurso requerido
+no es una invariante de dominio, es una regla de existencia que pertenece a
+`application/`. Cambio mínimo:
+- `domain/rules.py::start_plan()` — el parámetro `recommendation` deja de
+  aceptar `None` (ahora obligatorio); solo valida `status == ACCEPTED`
+  (defensivo) e invariante 2.
+- `application/handlers.py::handle_generar_execution_plan()` — si
+  `recommendation_repo.get_accepted_for_case()` devuelve `None`, levanta
+  `RecommendationNotFound` (excepción ya existente en
+  `core/shared/exceptions.py`, reutilizada tal cual -- no se creó ninguna
+  excepción nueva).
+- Tests ajustados: `test_start_plan_raises_if_no_recommendation` se eliminó
+  (`None` ya no es un input válido de `start_plan`);
+  `test_handle_generar_execution_plan_raises_if_no_accepted_recommendation`
+  pasó a esperar `RecommendationNotFound` en vez de
+  `ExecutionPlanInvariantError` (renombrado a
+  `test_handle_generar_execution_plan_raises_not_found_if_no_accepted_recommendation`).
+
+**Archivos creados:**
+- `backend/core/execution_plan/adapters/api.py` — router, `PlanStepRead`/
+  `ExecutionPlanRead`, los tres endpoints, mapeo de excepciones a HTTP.
+- `backend/tests/contracts/test_execution_plan_contract.py` — 6 tests
+  contra Postgres + Ollama reales (vía `/v1/assessment` y
+  `/v1/recommendation`, igual criterio que
+  `test_recommendation_contract.py`).
+
+**Archivos modificados:**
+- `backend/core/execution_plan/domain/rules.py` — `start_plan()`, ver
+  corrección arriba.
+- `backend/core/execution_plan/application/handlers.py` —
+  `handle_generar_execution_plan()`, ver corrección arriba.
+- `backend/core/execution_plan/application/queries.py` — `_plan_view()` →
+  `build_plan_view()` (pública), reutilizada por el adapter para construir
+  la respuesta de `POST`/`complete` directamente sobre el `ExecutionPlan`
+  que devuelven los handlers, sin un segundo viaje al repositorio.
+- `backend/main.py` — `execution_plan_router` importado e incluido.
+- `backend/tests/unit/test_execution_plan_rules.py` /
+  `test_execution_plan_handlers.py` — ajustados por la corrección de
+  arriba.
+
+**Verificación real de que las invariantes se aplican en los tres niveles
+(dominio, aplicación, HTTP):** se comentó momentáneamente la validación de
+la invariante 2 en `domain/rules.py` (`existing_active is not None`) y se
+reconstruyó la imagen -- fallaron `test_start_plan_raises_if_case_already_has_active_plan`
+(dominio), `test_handle_generar_execution_plan_raises_if_case_already_has_active_plan`
+(aplicación) y `test_generating_a_second_plan_while_one_is_active_returns_409`
+(contrato HTTP real), los tres como se esperaba; se restauró la validación
+y se reconstruyó de nuevo antes de levantar la evidencia final de abajo.
+
+**Evidencia de ejecución:**
+
+```
+$ docker exec migpal-backend-1 python -m pytest tests/unit/test_execution_plan_rules.py tests/unit/test_execution_plan_handlers.py -v
+23 passed, 3 warnings in 0.54s
+-- 24 de Sprint 2 menos 1 (test_start_plan_raises_if_no_recommendation,
+-- eliminado por la corrección) más el renombre del test que ahora espera
+-- RecommendationNotFound.
+
+$ docker exec migpal-backend-1 python -m pytest tests/contracts/test_execution_plan_contract.py -v
+6 passed, 5 warnings in 183.87s (0:03:03)
+-- autenticación requerida en las tres rutas, 404 sin Recommendation
+-- ACCEPTED, flujo completo generar->leer->completar todos los pasos
+-- (incluido el paso final bloqueado hasta completar sus dependencias,
+-- criterio de éxito 9) hasta status COMPLETED, 409 al intentar completar
+-- un plan ya COMPLETED, 409 al generar un segundo plan mientras el primero
+-- sigue ACTIVE.
+
+$ docker exec migpal-backend-1 python -m pytest tests/unit tests/integration tests/contracts -v
+120 passed, 5 warnings in 486.21s (0:08:06)
+-- suite completa (incluye los 94 tests preexistentes de Sprint 1/2 e
+-- Hito 3), cero regresión.
+
+$ docker exec migpal-backend-1 python -m ruff check core/execution_plan main.py tests/contracts/test_execution_plan_contract.py tests/unit/test_execution_plan_rules.py tests/unit/test_execution_plan_handlers.py
+All checks passed!
+```
+
+**Reutilización antes de crear código nuevo:** mismo patrón exacto de
+`core/recommendation/adapters/api.py` para el router (`_get_case_or_404()`
+reescrito localmente, sin utilidad compartida entre adapters -- mismo
+criterio del proyecto), mismos nombres de parámetros/dependencias
+(`current_user: User = Depends(get_current_user)`,
+`session: Session = Depends(get_session)`); mismo patrón de
+`test_recommendation_contract.py` para los contract tests (registro/login/
+case/assessment reales, `TestClient(app)` contra Ollama real).
+
+**Capacidad funcional demostrable de este sprint:** un usuario autenticado
+con una Recommendation ACCEPTED puede generar su ExecutionPlan vía HTTP,
+consultarlo con el estado bloqueado/disponible ya calculado, y completar
+sus pasos uno por uno respetando las dependencias -- primera capacidad de
+Execution Plan visible de punta a punta (sin UI todavía, pero accionable
+por cualquier cliente HTTP). Recorrido completo verificado contra Postgres
+y Ollama reales, no solo con repositorios en memoria.
+
+**Commit:** ver historial de git — mensaje `Sprint 3 (Hito 4): API de
+Execution Plan -- endpoints, correccion de invariante 1, contract tests`.
+
+**Sprint 3 terminado. Me detengo acá, como indica el orden obligatorio.**

@@ -18,7 +18,7 @@ from core.execution_plan.domain.rules import ExecutionPlanInvariantError
 from core.execution_plan.domain.value_objects import ExecutionPlanStatus, PlanStepStatus
 from core.recommendation.domain.rules import accept, build_recommendation, issue
 from core.recommendation.domain.value_objects import MigrationRoute, NextStep, RouteEvaluation
-from core.shared.exceptions import ExecutionPlanNotFound
+from core.shared.exceptions import ExecutionPlanNotFound, RecommendationNotFound
 
 ROUTE = MigrationRoute(visa_type="O-1", country="Estados Unidos", fit_score=82.0)
 EVALUATION = RouteEvaluation(
@@ -149,11 +149,13 @@ def test_handle_generar_execution_plan_final_step_depends_on_real_document_step_
     assert set(final_step.depends_on) == document_ids
 
 
-def test_handle_generar_execution_plan_raises_if_no_accepted_recommendation():
+def test_handle_generar_execution_plan_raises_not_found_if_no_accepted_recommendation():
+    """No es una invariante de ExecutionPlan -- es un recurso faltante
+    (mapea a 404, no a 409; ver docstring de `handle_generar_execution_plan`)."""
     rec_repo = _InMemoryRecommendationRepository()
     plan_repo = _InMemoryExecutionPlanRepository()
 
-    with pytest.raises(ExecutionPlanInvariantError):
+    with pytest.raises(RecommendationNotFound):
         handle_generar_execution_plan(GenerarExecutionPlanCommand(case_id=5), plan_repo, rec_repo)
 
 

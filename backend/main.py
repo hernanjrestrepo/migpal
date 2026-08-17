@@ -7,6 +7,7 @@ from app.utils.logging_config import get_api_logger, setup_logging
 from core.case_engine.adapters.api import router as case_router
 from core.conversation.adapters.api import router as conversation_router
 from core.decision_engine.adapters.api import router as decision_engine_router
+from core.execution_plan.adapters.api import router as execution_plan_router
 from core.identity.adapters.api import router as identity_router
 from core.recommendation.adapters.api import router as recommendation_router
 
@@ -47,6 +48,10 @@ app.include_router(decision_engine_router)
 
 # Hito 3: Assessment -> Recommendation (ruta, por qué, próximo paso).
 app.include_router(recommendation_router)
+
+# Hito 4: Recommendation ACCEPTED -> Execution Plan (pasos a seguir, con
+# dependencias y progreso).
+app.include_router(execution_plan_router)
 
 
 @app.get("/")

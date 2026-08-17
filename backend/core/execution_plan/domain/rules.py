@@ -51,16 +51,21 @@ def build_plan_steps(evaluation: RouteEvaluation, next_step: NextStep) -> tuple[
     return document_steps, final_step
 
 
-def start_plan(
-    recommendation: Recommendation | None, *, existing_active: ExecutionPlan | None
-) -> ExecutionPlan:
+def start_plan(recommendation: Recommendation, *, existing_active: ExecutionPlan | None) -> ExecutionPlan:
     """Crea el `ExecutionPlan` (sin steps todavía -- se agregan aparte, ver
-    `build_plan_steps`). Invariante 1: `recommendation` debe existir y estar
-    ACCEPTED. Invariante 2: no puede haber ya un ExecutionPlan ACTIVE para
-    este caso (`existing_active` lo trae quien orquesta, vía el repositorio
-    -- mismo criterio que `Recommendation.accept()` con `existing_accepted`)."""
+    `build_plan_steps`). Invariante 1: `recommendation` debe estar ACCEPTED
+    -- verificación defensiva, ya que quien llama (`application/handlers.py`)
+    solo debe llegar acá con una Recommendation obtenida vía
+    `get_accepted_for_case` (nunca `None`; la ausencia de una Recommendation
+    ACCEPTED no es una invariante de dominio, es un caso de "recurso no
+    encontrado" -- mismo criterio que `RecommendationNotFound` en
+    `core/recommendation/application/handlers.py`, ver docstring de
+    `handle_generar_execution_plan`). Invariante 2: no puede haber ya un
+    ExecutionPlan ACTIVE para este caso (`existing_active` lo trae quien
+    orquesta, vía el repositorio -- mismo criterio que
+    `Recommendation.accept()` con `existing_accepted`)."""
 
-    if recommendation is None or recommendation.status != RecommendationStatus.ACCEPTED:
+    if recommendation.status != RecommendationStatus.ACCEPTED:
         raise ExecutionPlanInvariantError(
             "Un ExecutionPlan requiere una Recommendation ACCEPTED que lo origine (invariante 1)."
         )
