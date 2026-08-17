@@ -26,3 +26,10 @@ class RecommendationNotFound(DomainError):
     core/recommendation/application/handlers.py. No es una invariante de
     Recommendation en sí (eso vive en domain/rules.py), es una regla de
     acceso/consulta (misma categoría que CaseNotFound)."""
+
+
+class ExecutionPlanNotFound(DomainError):
+    """No existe, o no pertenece al caso del usuario autenticado -- ver
+    core/execution_plan/application/handlers.py. Misma categoría que
+    RecommendationNotFound: regla de acceso/consulta, no una invariante del
+    aggregate (eso vive en core/execution_plan/domain/rules.py)."""

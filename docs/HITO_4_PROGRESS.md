@@ -106,3 +106,99 @@ para Sprint 1 (Persistencia), no un déficit.
 de Execution Plan — aggregate, entidad, repositorio, migración, eventos`.
 
 **Sprint 1 terminado. Me detengo acá, como indica el orden obligatorio.**
+
+---
+
+## Sprint 2 — Aplicación ✅ completado (2026-08-16)
+
+**Alcance exacto** (orden aprobado): capa `application/` + `domain/rules.py`
+-- invariantes 1-7 del diseño (§5), tres casos de uso (`GenerarExecutionPlan`,
+`CompletarPaso`, `ConsultarMiPlan`, §8). Sin API, sin frontend (eso es un
+sprint posterior). `domain/aggregates.py`, `domain/repository.py` e
+`infrastructure/repository.py` (los tres de Sprint 1) **no se tocaron** --
+las invariantes se apoyan exclusivamente en los métodos que el Protocol ya
+declaraba desde el día uno.
+
+**Archivos creados:**
+- `backend/core/execution_plan/domain/rules.py` — `ExecutionPlanInvariantError`,
+  `ExecutionPlanTransitionError`, `build_plan_steps()` (invariante 7,
+  determinístico), `start_plan()` (invariantes 1-2), `complete_step()`
+  (invariantes 3, 5, 6).
+- `backend/core/execution_plan/application/commands.py` —
+  `GenerarExecutionPlanCommand`, `CompletarPasoCommand`.
+- `backend/core/execution_plan/application/queries.py` —
+  `ConsultarMiPlanQuery`, `PlanStepView`/`ExecutionPlanView` (bloqueado/
+  disponible calculado, no almacenado, ver §4 del diseño), `handle_consultar_mi_plan()`.
+- `backend/core/execution_plan/application/handlers.py` —
+  `handle_generar_execution_plan()`, `handle_completar_paso()`.
+- `backend/tests/unit/test_execution_plan_rules.py` — 15 tests estructurales,
+  sin DB.
+- `backend/tests/unit/test_execution_plan_handlers.py` — 9 tests de
+  orquestación con repositorios falsos en memoria (mismo patrón que
+  `test_recommendation_handlers.py`).
+
+**Archivos modificados:**
+- `backend/core/shared/exceptions.py` — `ExecutionPlanNotFound` agregada
+  (mismo criterio que `RecommendationNotFound`).
+
+**Problema de diseño resuelto sin tocar Sprint 1:** el paso final (derivado
+de `next_step`) necesita `depends_on` con los ids reales de los pasos de
+documentos (§12), pero esos ids no existen hasta que Postgres los asigna al
+insertar. Se resolvió con un flujo de dos llamadas dentro de
+`handle_generar_execution_plan()`, usando únicamente los métodos que el
+Protocol de Sprint 1 ya declaraba: `execution_plan_repo.add(plan)` con solo
+los pasos de documentos (dispara `ExecutionPlanCreated`, y tras el
+`refresh()` interno cada paso ya tiene su id real), después se arma el paso
+final con esos ids y se persiste con `execution_plan_repo.save(plan)` (sin
+`completed_step_id`, así que no dispara ningún evento de más — verificado
+contra `test_save_without_completed_step_id_emits_no_step_event` de
+Sprint 1). Ninguna otra alternativa (ids provisionales, remapeo en
+infraestructura) fue necesaria.
+
+**Verificación real de que las invariantes se aplican (no solo "no rompe
+nada"):** se comentó momentáneamente la validación de la invariante 3 en
+`domain/rules.py` (bloqueo por dependencia) y se reconstruyó la imagen —
+`test_complete_step_raises_if_dependency_not_completed` y
+`test_handle_completar_paso_raises_for_blocked_step` fallaron como se
+esperaba; se restauró la validación y se reconstruyó de nuevo antes de
+levantar la evidencia final de abajo.
+
+**Evidencia de ejecución:**
+
+```
+$ docker exec migpal-backend-1 python -m pytest tests/unit/test_execution_plan_rules.py tests/unit/test_execution_plan_handlers.py -v
+24 passed, 3 warnings in 0.40s
+
+$ docker exec migpal-backend-1 python -m pytest tests/unit tests/integration -v
+94 passed, 4 warnings in 8.11s
+-- incluye los 6 tests de integración de Sprint 1 (persistencia, sin
+-- cambios) y los 7 tests preexistentes de Recommendation/Hito 3, todos
+-- pasando sin regresión.
+
+$ docker exec migpal-backend-1 python -m ruff check core/execution_plan tests/unit/test_execution_plan_rules.py tests/unit/test_execution_plan_handlers.py core/shared
+All checks passed!
+```
+
+**Reutilización antes de crear código nuevo:** mismo patrón exacto de
+`core/recommendation/domain/rules.py` para invariantes puras sin DB
+(`*InvariantError`/`*TransitionError` como subclases de `ValueError`); mismo
+patrón de `core/recommendation/application/{commands,queries,handlers}.py`
+para la capa de aplicación (funciones sueltas, repos inyectados como
+argumentos, sin clases de caso de uso); mismo patrón de
+`_InMemoryRecommendationRepository` en `test_recommendation_handlers.py`
+para el repositorio falso de los tests nuevos (reescrito localmente, sin
+compartir código entre archivos de test, mismo criterio del proyecto).
+
+**Capacidad funcional demostrable de este sprint:** dado un caso con una
+Recommendation ACCEPTED, se puede generar su ExecutionPlan con los pasos
+derivados determinísticamente, completar pasos respetando sus dependencias
+(con auto-completado del plan al terminar el último), y consultar el plan
+con el estado bloqueado/disponible ya calculado — todo verificado con tests
+de orquestación, no solo de dominio aislado. **No** hay todavía ninguna
+capacidad visible para el usuario final (sin API, sin UI) — eso es
+exactamente el alcance aprobado para Sprint 2 (Aplicación), no un déficit.
+
+**Commit:** pendiente de crear (ver `git status` — cambios sin commitear al
+cierre de este sprint).
+
+**Sprint 2 terminado. Me detengo acá, como indica el orden obligatorio.**
