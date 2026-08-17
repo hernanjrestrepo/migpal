@@ -48,6 +48,18 @@
   .rec-status.ACCEPTED{background:#e6efe3;color:#3f7d54;}
   .rec-status.DISCARDED{background:#f4e2df;color:#a3423a;}
   .alt-route{border-top:1px solid var(--border);padding:8px 0;font-size:12.5px;}
+
+  #planBox{font-size:13px;background:#f8f9fa;padding:14px;border-radius:8px;display:none;margin-top:10px;}
+  .plan-progress{font-size:12px;color:var(--ink-soft);margin-bottom:10px;font-weight:600;}
+  .plan-step{display:flex;align-items:flex-start;gap:8px;padding:9px 0;border-top:1px solid var(--border);}
+  .plan-step:first-child{border-top:none;}
+  .plan-step .icon{font-size:15px;line-height:1.5;}
+  .plan-step input[type=checkbox]{margin-top:4px;width:15px;height:15px;}
+  .plan-step .body{flex:1;}
+  .plan-step .title{font-weight:600;}
+  .plan-step .desc{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .plan-step .blocked-note{font-size:11.5px;color:#a3423a;margin-top:3px;}
+  .plan-complete-banner{background:#e6efe3;color:#3f7d54;border-radius:8px;padding:12px;margin-top:12px;font-weight:600;font-size:13px;}
 </style>
 </head>
 <body>
@@ -93,6 +105,16 @@
     <div id="recommendationBox"></div>
   </div>
 
+  <div class="card" id="planCard" style="display:none;">
+    <h2>5. Mi Plan</h2>
+    <p style="font-size:12px;color:#666;margin:0 0 8px;">Con tu ruta aceptada, generá los pasos a seguir para avanzar tu proyecto migratorio.</p>
+    <div>
+      <button class="actionBtn" onclick="generatePlan()">Generar mi plan</button>
+      <button class="actionBtn" style="background:#3f7d54;" onclick="loadPlan()">Ver mi plan</button>
+    </div>
+    <div id="planBox"></div>
+  </div>
+
   <div id="status"></div>
 </div>
 
@@ -117,6 +139,7 @@ async function login(){
     document.getElementById('chatCard').style.display = 'block';
     document.getElementById('assessCard').style.display = 'block';
     document.getElementById('recCard').style.display = 'block';
+    document.getElementById('planCard').style.display = 'block';
     await fetch(`${API_BASE}/v1/case`, {method:'POST', headers:{Authorization:`Bearer ${TOKEN}`}});
     setStatus('Caso abierto. Puedes conversar y generar tu Assessment.');
   } else {
@@ -303,6 +326,88 @@ async function discardRecommendation(id){
     setStatus('Recommendation descartada.');
   } else {
     setStatus('Error: ' + (data.detail || res.status));
+  }
+}
+
+function renderPlanStep(s, stepsById){
+  if(s.status === 'COMPLETED'){
+    return `<div class="plan-step">
+      <span class="icon">☑️</span>
+      <div class="body"><div class="title">${s.title}</div><div class="desc">completado</div></div>
+    </div>`;
+  }
+  if(s.blocked){
+    const names = s.blocked_by.map(id => (stepsById[id] && stepsById[id].title) || id).join(', ');
+    return `<div class="plan-step">
+      <span class="icon">🔒</span>
+      <div class="body">
+        <div class="title">${s.title}</div>
+        <div class="desc">${s.description}</div>
+        <div class="blocked-note">Bloqueado hasta completar: ${names}</div>
+      </div>
+    </div>`;
+  }
+  return `<div class="plan-step">
+    <input type="checkbox" onclick="completeStep(${s.id})">
+    <div class="body"><div class="title">${s.title}</div><div class="desc">${s.description}</div></div>
+  </div>`;
+}
+
+function renderPlan(p){
+  const box = document.getElementById('planBox');
+  box.style.display = 'block';
+  const stepsById = Object.fromEntries(p.steps.map(s => [s.id, s]));
+  const steps = [...p.steps].sort((a, b) => a.sequence - b.sequence);
+  const banner = p.status === 'COMPLETED'
+    ? `<div class="plan-complete-banner">🎉 Completaste tu plan — tu proyecto migratorio llegó al final de esta etapa.</div>`
+    : '';
+  box.innerHTML = `
+    <div class="plan-progress">Progreso: ${p.completed_count}/${p.total_count} pasos completados</div>
+    ${steps.map(s => renderPlanStep(s, stepsById)).join('')}
+    ${banner}
+  `;
+}
+
+async function generatePlan(){
+  setStatus('Generando tu plan de ejecución...');
+  const res = await fetch(`${API_BASE}/v1/execution-plan`, {
+    method:'POST',
+    headers:{Authorization:`Bearer ${TOKEN}`}
+  });
+  const data = await res.json();
+  if(res.status === 200){
+    renderPlan(data);
+    setStatus('Plan generado y guardado en tu Case.');
+  } else {
+    setStatus('Error: ' + (data.detail || res.status));
+  }
+}
+
+async function loadPlan(){
+  setStatus('Buscando tu plan...');
+  const res = await fetch(`${API_BASE}/v1/execution-plan`, { headers:{Authorization:`Bearer ${TOKEN}`} });
+  const data = await res.json();
+  if(res.status === 200){
+    renderPlan(data);
+    setStatus('Plan recuperado.');
+  } else {
+    setStatus('Todavía no tienes un plan (' + res.status + ').');
+  }
+}
+
+async function completeStep(stepId){
+  setStatus('Marcando paso como completado...');
+  const res = await fetch(`${API_BASE}/v1/execution-plan/steps/${stepId}/complete`, {
+    method:'POST',
+    headers:{Authorization:`Bearer ${TOKEN}`}
+  });
+  const data = await res.json();
+  if(res.status === 200){
+    renderPlan(data);
+    setStatus('Paso completado.');
+  } else {
+    setStatus('Error: ' + (data.detail || res.status));
+    loadPlan();
   }
 }
 </script>

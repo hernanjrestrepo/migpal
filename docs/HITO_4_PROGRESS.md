@@ -312,7 +312,84 @@ Execution Plan visible de punta a punta (sin UI todavía, pero accionable
 por cualquier cliente HTTP). Recorrido completo verificado contra Postgres
 y Ollama reales, no solo con repositorios en memoria.
 
-**Commit:** ver historial de git — mensaje `Sprint 3 (Hito 4): API de
-Execution Plan -- endpoints, correccion de invariante 1, contract tests`.
+**Commit:** `a8cd428` — mensaje `Sprint 3 (Hito 4): API de Execution Plan --
+endpoints, correccion de invariante 1, contract tests`.
 
 **Sprint 3 terminado. Me detengo acá, como indica el orden obligatorio.**
+
+---
+
+## Sprint 4 — Frontend ✅ completado (2026-08-16)
+
+**Alcance exacto** (orden aprobado, §14 del diseño): extender `caso.html`
+con una quinta sección, "Mi Plan" -- mismo patrón visual que las secciones
+1-4 (mismo `.card`, mismos estilos ya existentes, ningún Dashboard nuevo,
+mismo criterio que Hito 3 Sprint 6). Sin cambios de backend -- este sprint
+es 100% frontend estático, consumiendo los tres endpoints de Sprint 3 tal
+cual.
+
+**Archivos modificados:**
+- `frontend/public/caso.html` — CSS de la sección (`#planBox`, `.plan-step`,
+  `.plan-complete-banner`), markup de la card 5 ("Mi Plan", oculta hasta el
+  login, mismo criterio que las cards 2-4), y JS: `generatePlan()`,
+  `loadPlan()`, `completeStep()`, `renderPlan()`/`renderPlanStep()` --
+  consumen `POST/GET /v1/execution-plan` y
+  `POST /v1/execution-plan/steps/{id}/complete` (Sprint 3), sin lógica de
+  negocio nueva en el cliente: bloqueado/disponible y progreso ya vienen
+  calculados por `ExecutionPlanRead` (backend).
+
+**Verificación real en navegador (no solo "compila"):** `docker compose
+build frontend && docker compose up -d frontend`, luego recorrido completo
+en el Browser pane contra el stack real (Postgres + Ollama), sin mocks:
+
+1. Registro (`/registro.html`) + login real en `caso.html` -- card "5. Mi
+   Plan" aparece tras el login, igual que las demás.
+2. Assessment real (Ollama) → Recommendation real (Ollama, ruta O-1 Estados
+   Unidos, `required_documents`: CV detallado, Cartas de recomendación,
+   Evidencia de logros documentados) → aceptada.
+3. `generatePlan()` → 4 pasos renderizados: los 3 documentos disponibles
+   sin bloqueo, el paso final ("Perfilamiento completo") con 🔒 y
+   `Bloqueado hasta completar: CV detallado, Cartas de recomendación,
+   Evidencia de logros documentados` -- exactamente el criterio de éxito 9
+   del diseño.
+4. Se completó cada paso de documento haciendo clic real en su checkbox
+   (`element.click()`, disparando el `onclick` real, no una llamada directa
+   a la función) -- después de cada uno, `Bloqueado hasta completar:` se
+   redujo en vivo (2 pendientes → 1 → ninguno) y el paso final pasó a
+   mostrarse disponible, con checkbox, sin 🔒.
+5. Se completó el paso final -- `Progreso: 4/4 pasos completados`, los 4
+   pasos con ☑️, y apareció el banner exacto del criterio de éxito 8: *"🎉
+   Completaste tu plan — tu proyecto migratorio llegó al final de esta
+   etapa."*
+6. `loadPlan()` (recarga completa del box) devolvió el mismo estado --
+   confirma que lo que se ve es lo persistido, no solo el DOM en memoria.
+7. `generatePlan()` de nuevo -- como el plan anterior ya estaba
+   `COMPLETED` (no `ACTIVE`), la invariante 2 lo permitió: se generó un
+   plan nuevo, 0/4, con el paso final bloqueado otra vez (comportamiento
+   correcto, no un bug -- invariante 2 es "una sola ACTIVE a la vez", no
+   "una sola en la vida del caso").
+8. Con ese plan nuevo todavía `ACTIVE`, un segundo `generatePlan()` sí
+   devolvió el 409 esperado, y el error se mostró en `#status` con el mismo
+   patrón que usan las demás cards (`Error: <detail>`), sin romper el
+   render.
+9. `read_console_messages` sin errores en ningún punto del recorrido.
+
+**Reutilización antes de crear código nuevo:** mismo patrón visual/CSS que
+las cards 3-4 (`.card`, `.actionBtn`, `#status`, mismo criterio de
+"mostrar la card recién en `login()`"); ningún endpoint ni campo nuevo --
+todo lo que la UI muestra (`blocked`, `blocked_by`, `completed_count`,
+`total_count`) ya lo calculaba `ExecutionPlanRead` desde Sprint 3, la UI
+solo lo pinta.
+
+**Capacidad funcional demostrable de este sprint:** un usuario real, desde
+el navegador, puede generar su plan de ejecución después de aceptar una
+ruta, ver exactamente qué pasos están disponibles y cuáles bloqueados (y
+por qué), marcarlos uno por uno, y ver el mensaje de cierre al terminar --
+recorrido de punta a punta completo de Hito 4 (Discovery → Assessment →
+Recommendation → Execution), verificado con interacción real de UI, no solo
+llamadas a la API.
+
+**Commit:** ver historial de git — mensaje `Sprint 4 (Hito 4): frontend de
+Execution Plan -- seccion 5 Mi Plan en caso.html`.
+
+**Sprint 4 terminado. Me detengo acá, como indica el orden obligatorio.**
