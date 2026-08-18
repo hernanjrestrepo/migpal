@@ -5,6 +5,12 @@ Funciones puras, sin DB -- mismo espíritu que
 `core/recommendation/domain/rules.py`. Ver docs/HITO_4_DESIGN.md §5
 (invariantes) y §12 (integración con Recommendation, solo lectura).
 
+Dependencia hacia `recommendation.domain` deliberadamente mínima: solo los
+Value Objects `RouteEvaluation`/`NextStep` (datos puros para derivar
+`PlanStep`s en `build_plan_steps`), nunca el aggregate `Recommendation` ni
+su enum de estado -- ver docstring de `start_plan` para la corrección
+aplicada en el cierre de Hito 4.
+
 Nota sobre `depends_on` del paso final (§12): esta capa no puede resolverlo
 por sí sola -- necesita los ids reales que Postgres asigna a los pasos de
 documentos al insertarlos, y estas funciones no tocan DB. Por eso
@@ -19,8 +25,7 @@ from datetime import UTC, datetime
 
 from core.execution_plan.domain.aggregates import ExecutionPlan, PlanStep
 from core.execution_plan.domain.value_objects import ExecutionPlanStatus, PlanStepStatus
-from core.recommendation.domain.aggregates import Recommendation
-from core.recommendation.domain.value_objects import NextStep, RecommendationStatus, RouteEvaluation
+from core.recommendation.domain.value_objects import NextStep, RouteEvaluation
 
 
 class ExecutionPlanInvariantError(ValueError):
@@ -36,10 +41,23 @@ def build_plan_steps(evaluation: RouteEvaluation, next_step: NextStep) -> tuple[
     determinístico -- mismo `evaluation`/`next_step` producen siempre la
     misma lista). Un paso sin dependencias por cada `required_documents`,
     más un paso final derivado de `next_step` cuyo `depends_on` queda sin
-    resolver acá (ver docstring del módulo)."""
+    resolver acá (ver docstring del módulo).
+
+    `description` de los pasos de documento es un texto distinto de
+    `title`, no una repetición (corrección de la auditoría independiente de
+    Hito 4, hallazgo mayor 1: criterio de éxito 6 exige que el usuario
+    entienda qué tiene que lograr en cada paso, no solo un título genérico
+    -- `RouteEvaluation.required_documents` es `list[str]`, sin ningún
+    campo de descripción propio, así que se genera una plantilla explícita
+    en vez de repetir el nombre del documento)."""
 
     document_steps = [
-        PlanStep(title=document, description=document, sequence=index, depends_on=[])
+        PlanStep(
+            title=document,
+            description=f"Reunir y adjuntar: {document}.",
+            sequence=index,
+            depends_on=[],
+        )
         for index, document in enumerate(evaluation.required_documents, start=1)
     ]
     final_step = PlanStep(
@@ -51,32 +69,57 @@ def build_plan_steps(evaluation: RouteEvaluation, next_step: NextStep) -> tuple[
     return document_steps, final_step
 
 
-def start_plan(recommendation: Recommendation, *, existing_active: ExecutionPlan | None) -> ExecutionPlan:
-    """Crea el `ExecutionPlan` (sin steps todavía -- se agregan aparte, ver
-    `build_plan_steps`). Invariante 1: `recommendation` debe estar ACCEPTED
-    -- verificación defensiva, ya que quien llama (`application/handlers.py`)
-    solo debe llegar acá con una Recommendation obtenida vía
-    `get_accepted_for_case` (nunca `None`; la ausencia de una Recommendation
-    ACCEPTED no es una invariante de dominio, es un caso de "recurso no
-    encontrado" -- mismo criterio que `RecommendationNotFound` en
-    `core/recommendation/application/handlers.py`, ver docstring de
-    `handle_generar_execution_plan`). Invariante 2: no puede haber ya un
-    ExecutionPlan ACTIVE para este caso (`existing_active` lo trae quien
-    orquesta, vía el repositorio -- mismo criterio que
-    `Recommendation.accept()` con `existing_accepted`)."""
+def validate_step_dependencies(steps: list[PlanStep]) -> None:
+    """Invariante 4: `depends_on` de un PlanStep solo puede referenciar ids
+    de otros PlanStep del mismo plan -- nunca de otro plan, nunca del propio
+    paso. Hoy se sostiene "por construcción" (ningún endpoint permite fijar
+    `depends_on` arbitrariamente), pero sin esta guarda explícita un futuro
+    cambio en `application/handlers.py` podría introducir una violación sin
+    que ningún test lo detectara (hallazgo menor 1 de la auditoría
+    independiente de Hito 4). Se llama antes de persistir un plan recién
+    ensamblado (ver `application/handlers.py::handle_generar_execution_plan`)."""
 
-    if recommendation.status != RecommendationStatus.ACCEPTED:
-        raise ExecutionPlanInvariantError(
-            "Un ExecutionPlan requiere una Recommendation ACCEPTED que lo origine (invariante 1)."
-        )
+    ids = {s.id for s in steps if s.id is not None}
+    for step in steps:
+        for dep_id in step.depends_on:
+            if step.id is not None and dep_id == step.id:
+                raise ExecutionPlanInvariantError(
+                    f"El PlanStep {step.id} no puede depender de sí mismo (invariante 4)."
+                )
+            if dep_id not in ids:
+                raise ExecutionPlanInvariantError(
+                    f"El PlanStep {step.id} depende de {dep_id}, que no pertenece a este plan (invariante 4)."
+                )
+
+
+def start_plan(*, case_id: int, recommendation_id: int, existing_active: ExecutionPlan | None) -> ExecutionPlan:
+    """Crea el `ExecutionPlan` (sin steps todavía -- se agregan aparte, ver
+    `build_plan_steps`). Invariante 1 (requiere una Recommendation ACCEPTED)
+    ya está garantizada por construcción antes de llegar acá: quien llama
+    (`application/handlers.py::handle_generar_execution_plan`) solo obtiene
+    `recommendation_id` de `RecommendationRepository.get_accepted_for_case()`,
+    cuyo contrato ya filtra por ACCEPTED -- si no hay ninguna, el handler
+    levanta `RecommendationNotFound` antes de llegar acá, nunca llama a esta
+    función con datos inválidos. Por eso esta función toma `case_id`/
+    `recommendation_id` como primitivos, no el aggregate `Recommendation`
+    completo -- no necesita importar ningún tipo de `recommendation.domain`
+    (corrección de la auditoría independiente de Hito 4: la versión anterior
+    importaba `Recommendation`/`RecommendationStatus` solo para repetir una
+    verificación que el repositorio ya garantiza, violando la dirección de
+    dependencia declarada en docs/HITO_4_DESIGN.md §12 -- "execution_plan/
+    application depende de recommendation.domain", no execution_plan/domain).
+    Invariante 2: no puede haber ya un ExecutionPlan ACTIVE para este caso
+    (`existing_active` lo trae quien orquesta, vía el repositorio -- mismo
+    criterio que `Recommendation.accept()` con `existing_accepted`)."""
+
     if existing_active is not None:
         raise ExecutionPlanInvariantError(
             "Ya existe un ExecutionPlan ACTIVE para este caso (invariante 2)."
         )
 
     return ExecutionPlan(
-        case_id=recommendation.case_id,
-        recommendation_id=recommendation.id,
+        case_id=case_id,
+        recommendation_id=recommendation_id,
         status=ExecutionPlanStatus.ACTIVE,
     )
 

@@ -15,15 +15,23 @@ documentos, pero esos ids no existen hasta que se persisten. Por eso:
    documentos -- dispara `ExecutionPlanCreated`, y tras el `refresh()`
    interno cada `PlanStep` ya tiene su id real.
 2. Se arma el paso final con esos ids y se agrega a `plan.steps` (ya
-   trackeado por la sesión vía la relación), y `execution_plan_repo.save(plan)`
-   (sin `completed_step_id`) lo persiste sin disparar ningún evento de más.
+   trackeado por la sesión vía la relación), se valida la integridad
+   referencial de `depends_on` (invariante 4, `validate_step_dependencies`
+   -- agregado en el cierre de Hito 4 tras la auditoría independiente) y
+   `execution_plan_repo.save(plan)` (sin `completed_step_id`) lo persiste
+   sin disparar ningún evento de más.
 """
 
 from __future__ import annotations
 
 from core.execution_plan.application.commands import CompletarPasoCommand, GenerarExecutionPlanCommand
 from core.execution_plan.domain.aggregates import ExecutionPlan
-from core.execution_plan.domain.rules import build_plan_steps, complete_step, start_plan
+from core.execution_plan.domain.rules import (
+    build_plan_steps,
+    complete_step,
+    start_plan,
+    validate_step_dependencies,
+)
 from core.execution_plan.infrastructure.repository import ExecutionPlanRepository
 from core.recommendation.infrastructure.repository import RecommendationRepository
 from core.shared.exceptions import ExecutionPlanNotFound, RecommendationNotFound
@@ -46,7 +54,9 @@ def handle_generar_execution_plan(
         raise RecommendationNotFound(f"No hay una Recommendation ACCEPTED para el caso {cmd.case_id}.")
 
     existing_active = execution_plan_repo.get_active_for_case(cmd.case_id)
-    plan = start_plan(recommendation, existing_active=existing_active)
+    plan = start_plan(
+        case_id=recommendation.case_id, recommendation_id=recommendation.id, existing_active=existing_active
+    )
 
     document_steps, final_step = build_plan_steps(
         recommendation.primary_route_evaluation(), recommendation.next_step_detail()
@@ -56,6 +66,7 @@ def handle_generar_execution_plan(
 
     final_step.depends_on = [s.id for s in plan.steps]
     plan.steps.append(final_step)
+    validate_step_dependencies(plan.steps)
     return execution_plan_repo.save(plan)
 
 
