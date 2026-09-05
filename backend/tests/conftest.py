@@ -19,7 +19,11 @@ from sqlmodel import SQLModel
 # seguidos desde la IP única del TestClient, y chocarían con el rate limit
 # de producción. El limitador se prueba aparte, directo, en
 # tests/unit/test_middleware.py.
-os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
+#
+# Asignación directa, NO `setdefault`: el contenedor ya define
+# RATE_LIMIT_ENABLED=true (docker-compose.yml), así que un setdefault no
+# haría nada y la suite seguiría chocando con el límite.
+os.environ["RATE_LIMIT_ENABLED"] = "false"
 
 from app.db.base import metadata  # noqa: E402,F401 (importa y registra todos los modelos)
 from app.db.session import engine  # noqa: E402

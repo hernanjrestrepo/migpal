@@ -67,20 +67,24 @@ ROUTE_CATALOG: list[RouteCatalogEntry] = [
             "Formulario I-129 presentado por un empleador o agente en EE.UU.",
             "Consulta escrita de un grupo de pares o experto en la materia",
             "Contrato de trabajo o resumen de los términos del acuerdo",
-            "Evidencia de al menos 3 de los 8 criterios: premios reconocidos, "
-            "membresías que exijan logros destacados, publicaciones sobre tu trabajo, "
-            "haber sido jurado del trabajo de otros, contribuciones originales de "
-            "importancia mayor, autoría de artículos académicos, empleo en capacidad "
-            "crítica en organizaciones de reputación distinguida, o salario alto",
+            # Cada documento se convierte en un paso del plan (ver
+            # execution_plan/domain/rules.py::build_plan_steps), así que el
+            # texto tiene que leerse como un paso accionable, no como un
+            # párrafo. El detalle de los 8 criterios va en `risks_hint`.
+            "Evidencia de al menos 3 de los 8 criterios probatorios de USCIS",
         ],
         "strengths_hint": (
             "Vía para quien puede documentar estar en el pequeño porcentaje que llegó "
             "a lo más alto de su campo (ciencias, educación, negocios o atletismo)."
         ),
         "risks_hint": (
-            "No alcanza con experiencia general: USCIS exige evidencia de al menos 3 de "
-            "8 criterios probatorios, y la petición la presenta un empleador o agente "
-            "estadounidense, no vos directamente."
+            "No alcanza con experiencia general: USCIS exige evidencia de al menos 3 de 8 "
+            "criterios probatorios — premios reconocidos, membresías que exijan logros "
+            "destacados, publicaciones sobre tu trabajo, haber sido jurado del trabajo de "
+            "otros, contribuciones originales de importancia mayor, autoría de artículos "
+            "académicos, empleo en capacidad crítica en organizaciones de reputación "
+            "distinguida, o salario alto. Además la petición la presenta un empleador o "
+            "agente estadounidense, no vos directamente."
         ),
         "source_name": "USCIS — U.S. Citizenship and Immigration Services",
         "source_url": (
