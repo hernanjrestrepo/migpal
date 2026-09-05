@@ -1,0 +1,44 @@
+# =============================================================================
+# MigPAL — exposición pública TEMPORAL para pruebas (túnel de Cloudflare)
+# -----------------------------------------------------------------------------
+# Esto NO es el despliegue de producción (para eso está docker-compose.prod.yml).
+# Es un túnel rápido para que otras personas puedan entrar a probar desde
+# afuera, sin servidor ni dominio.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.public.yml up -d
+#   docker logs migpal-tunnel-1 2>&1 | grep trycloudflare
+#
+# Por qué hace falta nginx acá y no basta con tunelear el frontend solo:
+# el navegador de quien entra resuelve la API con `window.location.origin`
+# (ver frontend/public/assets/app.js). Si se expusiera únicamente el
+# frontend, ese navegador intentaría llamar al `localhost:8010` de SU
+# máquina, no al tuyo, y todo fallaría. nginx pone frontend y API detrás
+# del mismo origen y el problema desaparece.
+#
+# A diferencia de producción, acá se MANTIENEN los puertos locales
+# (3000/8010) para poder seguir probando en la máquina mientras el túnel
+# está levantado.
+# =============================================================================
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      # 8090 lo ocupa voice-gateway en esta máquina; 8091 está libre.
+      - "8091:80"          # acceso local al mismo origen que ve el túnel
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend/public:/usr/share/nginx/html:ro
+    restart: unless-stopped
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    # Túnel rápido: URL aleatoria *.trycloudflare.com, sin cuenta ni dominio.
+    # Mismo patrón que el túnel ya en uso para ato-api en esta máquina.
+    command: ["tunnel", "--no-autoupdate", "--url", "http://nginx:80"]
+    depends_on:
+      - nginx
+    restart: unless-stopped

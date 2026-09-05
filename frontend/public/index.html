@@ -202,8 +202,8 @@
     </nav>
     <div class="header-actions">
       <button class="icon-btn" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema">◐</button>
-      <a href="/login.html" class="btn btn-ghost btn-sm">Iniciar sesión</a>
-      <a href="/registro.html" class="btn btn-sm btn-primary">Comenzar gratis</a>
+      <a href="/login.html" class="btn btn-ghost btn-sm" id="navLogin">Iniciar sesión</a>
+      <a href="/registro.html" class="btn btn-sm btn-primary" id="navSignup">Crear cuenta</a>
     </div>
   </div>
 </header>
@@ -223,7 +223,7 @@
         guardado para cuando vuelvas.
       </p>
       <div class="hero-cta">
-        <a href="/registro.html" class="btn btn-lg btn-primary">Comenzar mi evaluación</a>
+        <a href="/registro.html" class="btn btn-lg btn-primary">Crear mi cuenta gratis</a>
         <a href="#como-funciona" class="btn btn-lg btn-secondary">Ver cómo funciona</a>
       </div>
       <p class="hero-note">Gratis para empezar · Sin tarjeta · Tu caso queda guardado</p>
@@ -474,15 +474,20 @@
     MigPAL.theme.toggle();
   });
 
-  // Si ya hay sesión activa, la landing ofrece volver al caso en vez de
-  // pedir login de nuevo.
+  // Con sesión activa se AGREGA un acceso directo al caso, pero NO se
+  // quitan los otros botones: la versión anterior los borraba y dejaba la
+  // landing sin ninguna vía visible para crear una cuenta -- por ejemplo
+  // para alguien que quiere registrar a un familiar desde el mismo equipo.
   if (MigPAL.session.isAuthenticated) {
-    document.querySelectorAll('.header-actions .btn').forEach(function (el) { el.remove(); });
+    var login = document.getElementById('navLogin');
+    if (login) login.remove();          // con sesión, "iniciar sesión" sobra
     var go = document.createElement('a');
     go.href = '/caso.html';
-    go.className = 'btn btn-sm btn-primary';
+    go.className = 'btn btn-sm btn-dark';
     go.textContent = 'Ir a mi caso';
-    document.querySelector('.header-actions').appendChild(go);
+    document.querySelector('.header-actions').insertBefore(
+      go, document.getElementById('navSignup')
+    );
   }
 </script>
 </body>
