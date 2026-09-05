@@ -36,14 +36,25 @@ Registro → Login → Perfil → Evaluación → Ruta recomendada → Aceptar �
 
 ## 3. Lo que se hizo en la sesión del 2026-09-04
 
-Cuatro commits, en orden:
+Cinco commits, en orden:
 
 1. **`74d8d92`** — Kimi como proveedor LLM + reescritura completa del frontend.
 2. **`1d85739`** — Procedencia oficial del catálogo (A-ADR-008) + hardening.
-3. *(este)* — Artefactos de despliegue y este documento.
+3. **`f5fe034`** — Artefactos de despliegue y este documento.
+4. **`10f1baf`** — Rate limit configurable + 10 tests de middleware.
+5. **`b7a2bd9`** — Corrección del rate limit en tests + pulido de títulos.
 
 Antes de eso, en la misma sesión, se cerró **Hito 4 (Execution Plan)** con
 auditoría independiente: `docs/HITO_4_AUDIT.md` y `docs/HITO_4_FINAL_CLOSE.md`.
+
+**Verificación final:** 142 tests (unit + integration + contracts) pasando en
+76 segundos, ruff limpio, y el recorrido completo probado en navegador con un
+usuario nuevo — registro con auto-login, evaluación, ruta O-1A mostrando su
+fuente USCIS en pantalla, plan derivado de los requisitos reales, y las 4
+etapas cerradas con el mensaje de cierre.
+
+> Contexto de la mejora: esa misma suite, con el LLM local, tardaba entre 8 y
+> 29 minutos y en una corrida quedó colgada más de 2 horas sin terminar.
 
 ### Problemas reales que se arreglaron (no cosméticos)
 
