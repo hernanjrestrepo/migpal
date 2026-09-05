@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Verificar cuenta — MigPAL</title>
+<title data-i18n="title.verify">Verificar cuenta — MigPAL</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232454eb'/><text x='16' y='23' font-family='system-ui,sans-serif' font-size='19' font-weight='800' fill='white' text-anchor='middle'>M</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,49 +22,49 @@
       <!-- Estado: verificando -->
       <div id="loading">
         <div class="empty-icon" style="margin-bottom:var(--sp-5)">⏳</div>
-        <h1 class="auth-title">Verificando tu cuenta…</h1>
-        <p class="text-soft">Un segundo.</p>
+        <h1 class="auth-title" data-i18n="verify.loadingTitle">Verificando tu cuenta…</h1>
+        <p class="text-soft" data-i18n="verify.loadingSub">Un segundo.</p>
       </div>
 
       <!-- Estado: verificada -->
       <div id="success" class="hidden">
         <div class="empty-icon" style="background:var(--success-bg);color:var(--success-fg);margin-bottom:var(--sp-5)">✓</div>
-        <h1 class="auth-title">¡Cuenta verificada!</h1>
-        <p class="text-soft mb-6">Ya podés usar MigPAL con tu cuenta confirmada.</p>
-        <a href="/caso.html" class="btn btn-primary btn-lg btn-block" id="goToCase">Ir a mi caso</a>
+        <h1 class="auth-title" data-i18n="verify.okTitle">¡Cuenta verificada!</h1>
+        <p class="text-soft mb-6" data-i18n="verify.okSub">Ya puedes usar MigPAL con tu cuenta confirmada.</p>
+        <a href="/caso.html" class="btn btn-primary btn-lg btn-block" id="goToCase" data-i18n="nav.myCase">Ir a mi caso</a>
       </div>
 
       <!-- Estado: falló -->
       <div id="error" class="hidden">
         <div class="empty-icon" style="background:var(--warn-bg);color:var(--warn-fg);margin-bottom:var(--sp-5)">⚠️</div>
-        <h1 class="auth-title">No pudimos verificar</h1>
+        <h1 class="auth-title" data-i18n="verify.failTitle">No pudimos verificar</h1>
         <p class="text-soft mb-5" id="errorDetail">El enlace no es válido.</p>
 
         <form id="resendForm" class="mb-4" style="text-align:left">
-          <label class="label" for="email">Reenviar el enlace a tu email</label>
-          <input class="input" id="email" type="email" required placeholder="vos@ejemplo.com">
-          <button class="btn btn-secondary btn-block mt-3" type="submit" id="resendBtn">
-            Enviarme un enlace nuevo
-          </button>
+          <label class="label" for="email" data-i18n="verify.resendLabel">Reenviar el enlace a tu email</label>
+          <input class="input" id="email" type="email" required placeholder="tu@ejemplo.com">
+          <button class="btn btn-secondary btn-block mt-3" type="submit" id="resendBtn"
+                  data-i18n="verify.resendBtn">Enviarme un enlace nuevo</button>
         </form>
 
-        <a href="/login.html" class="auth-link text-sm">Volver a iniciar sesión</a>
+        <a href="/login.html" class="auth-link text-sm" data-i18n="verify.backLogin">Volver a iniciar sesión</a>
       </div>
     </div>
   </section>
 
   <aside class="auth-aside">
     <div class="auth-aside-inner">
-      <div class="aside-quote">Verificar tu email protege tu cuenta.</div>
+      <div class="aside-quote" data-i18n="verify.asideQuote">Verificar tu email protege tu cuenta.</div>
       <ul class="list-check aside-list">
-        <li>Confirma que la dirección es tuya</li>
-        <li>Te permite recuperar el acceso si olvidás la contraseña</li>
-        <li>Evita que alguien registre una cuenta con tu email</li>
+        <li data-i18n="verify.aside1">Confirma que la dirección es tuya</li>
+        <li data-i18n="verify.aside2">Te permite recuperar el acceso si olvidas la contraseña</li>
+        <li data-i18n="verify.aside3">Evita que alguien registre una cuenta con tu email</li>
       </ul>
     </div>
   </aside>
 </main>
 
+<script src="/assets/i18n.js"></script>
 <script src="/assets/app.js"></script>
 <script>
 (function () {
@@ -82,7 +82,7 @@
   }
 
   if (!token) {
-    fallo('El enlace no incluye un token. Revisá que lo hayas copiado completo desde el email.');
+    fallo(MigPAL.t('verify.noToken'));
   } else {
     MigPAL.api.post('/v1/auth/verify-email', { json: { token: token }, auth: false })
       .then(function () {
@@ -92,11 +92,11 @@
         if (!MigPAL.session.isAuthenticated) {
           var btn = document.getElementById('goToCase');
           btn.href = '/login.html';
-          btn.textContent = 'Iniciar sesión';
+          btn.textContent = MigPAL.t('nav.login');
         }
       })
       .catch(function (err) {
-        fallo(err.detail || 'El enlace no es válido o ya venció.');
+        fallo(err.detail || MigPAL.t('reset.invalidSub'));
       });
   }
 
@@ -106,14 +106,14 @@
     var email = document.getElementById('email').value.trim();
     if (!email) return;
 
-    var restore = MigPAL.busy(btn, 'Enviando…');
+    var restore = MigPAL.busy(btn, MigPAL.t('busy.sending'));
     try {
       var res = await MigPAL.api.post('/v1/auth/resend-verification', {
         json: { email: email }, auth: false
       });
       MigPAL.toast(res.message, 'success', 6000);
     } catch (err) {
-      MigPAL.toast(err.detail || 'No se pudo reenviar el enlace.', 'error');
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
     } finally {
       restore();
     }

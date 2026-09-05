@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recuperar contraseña — MigPAL</title>
+<title data-i18n="title.forgot">Recuperar contraseña — MigPAL</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232454eb'/><text x='16' y='23' font-family='system-ui,sans-serif' font-size='19' font-weight='800' fill='white' text-anchor='middle'>M</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,60 +20,59 @@
       <a href="/" class="brand mb-8"><span class="brand-mark">M</span><span>MigPAL</span></a>
 
       <div id="formStep">
-        <h1 class="auth-title">Recuperar tu contraseña</h1>
+        <h1 class="auth-title" data-i18n="forgot.title">Recuperar tu contraseña</h1>
         <p class="text-soft mb-6">
-          Escribí tu email y te mandamos un enlace para crear una contraseña nueva.
+          <span data-i18n="forgot.sub">Escribe tu email y te enviamos un enlace para crear una contraseña nueva.</span>
         </p>
 
         <form id="forgotForm" novalidate>
           <div class="field">
-            <label class="label" for="email">Email de tu cuenta</label>
+            <label class="label" for="email" data-i18n="forgot.label">Email de tu cuenta</label>
             <input class="input" id="email" type="email" autocomplete="email" required
-                   placeholder="vos@ejemplo.com">
+                   placeholder="tu@ejemplo.com">
           </div>
-          <button class="btn btn-primary btn-block btn-lg mt-4" type="submit" id="submitBtn">
-            Enviarme el enlace
-          </button>
+          <button class="btn btn-primary btn-block btn-lg mt-4" type="submit" id="submitBtn"
+                  data-i18n="forgot.btn">Enviarme el enlace</button>
         </form>
       </div>
 
       <div id="sentStep" class="hidden" style="text-align:center">
         <div class="empty-icon" style="background:var(--success-bg);color:var(--success-fg);margin-bottom:var(--sp-5)">✉️</div>
-        <h1 class="auth-title">Revisá tu correo</h1>
+        <h1 class="auth-title" data-i18n="forgot.sentTitle">Revisa tu correo</h1>
         <p class="text-soft mb-2" id="sentMessage"></p>
         <p class="hint mb-6">
-          El enlace vence en 1 hora y solo se puede usar una vez.
-          Si no lo ves, mirá en spam.
+          <span data-i18n="forgot.sentHint">El enlace vence en 1 hora y solo se puede usar una vez. Si no lo ves, mira en spam.</span>
         </p>
       </div>
 
       <p class="text-sm text-soft mt-6 auth-alt">
-        <a href="/login.html" class="auth-link">← Volver a iniciar sesión</a>
+        <a href="/login.html" class="auth-link" data-i18n="forgot.backLogin">← Volver a iniciar sesión</a>
       </p>
     </div>
   </section>
 
   <aside class="auth-aside">
     <div class="auth-aside-inner">
-      <div class="aside-quote">Tu caso no se pierde.</div>
+      <div class="aside-quote" data-i18n="forgot.asideQuote">Tu caso no se pierde.</div>
       <ul class="list-check aside-list">
-        <li>Tu evaluación, tu ruta y tu plan siguen guardados</li>
-        <li>Recuperás el acceso sin perder nada de tu progreso</li>
-        <li>El enlace vence en 1 hora, por seguridad</li>
+        <li data-i18n="forgot.aside1">Tu evaluación, tu ruta y tu plan siguen guardados</li>
+        <li data-i18n="forgot.aside2">Recuperas el acceso sin perder nada de tu progreso</li>
+        <li data-i18n="forgot.aside3">El enlace vence en 1 hora, por seguridad</li>
       </ul>
     </div>
   </aside>
 </main>
 
+<script src="/assets/i18n.js"></script>
 <script src="/assets/app.js"></script>
 <script>
   document.getElementById('forgotForm').addEventListener('submit', async function (e) {
     e.preventDefault();
     var btn = document.getElementById('submitBtn');
     var email = document.getElementById('email').value.trim();
-    if (!email) { MigPAL.toast('Escribí tu email.', 'error'); return; }
+    if (!email) { MigPAL.toast(MigPAL.t('toast.writeEmail'), 'error'); return; }
 
-    var restore = MigPAL.busy(btn, 'Enviando…');
+    var restore = MigPAL.busy(btn, MigPAL.t('busy.sending'));
     try {
       var res = await MigPAL.api.post('/v1/auth/forgot-password', {
         json: { email: email }, auth: false
@@ -84,7 +83,7 @@
       document.getElementById('formStep').classList.add('hidden');
       document.getElementById('sentStep').classList.remove('hidden');
     } catch (err) {
-      MigPAL.toast(err.detail || 'No se pudo procesar el pedido.', 'error');
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
       restore();
     }
   });

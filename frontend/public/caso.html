@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mi caso — MigPAL</title>
+<title data-i18n="title.case">Mi caso — MigPAL</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232454eb'/><text x='16' y='23' font-family='system-ui,sans-serif' font-size='19' font-weight='800' fill='white' text-anchor='middle'>M</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -139,8 +139,8 @@
     <a href="/" class="brand"><span class="brand-mark">M</span><span>MigPAL</span></a>
     <div class="header-actions">
       <span class="badge badge-neutral" id="userBadge">…</span>
-      <button class="icon-btn" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema">◐</button>
-      <button class="btn btn-ghost btn-sm" id="logoutBtn">Salir</button>
+      <button class="icon-btn" id="themeToggle" data-i18n-aria="common.theme" data-i18n-title="common.theme" aria-label="Cambiar tema" title="Cambiar tema">◐</button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn" data-i18n="nav.logout">Salir</button>
     </div>
   </div>
 </header>
@@ -150,18 +150,20 @@
 
     <div class="case-head">
       <div>
+        <!-- Sin data-i18n a proposito: lo pinta pintarSaludo(), que incluye
+           el nombre del usuario. apply() lo sobreescribiria. -->
         <h1 id="greeting">Tu caso</h1>
         <p class="text-soft" id="caseSubtitle">Cargando el estado de tu caso…</p>
       </div>
-      <button class="btn btn-secondary btn-sm" id="refreshBtn">↻ Actualizar</button>
+      <button class="btn btn-secondary btn-sm" id="refreshBtn" data-i18n="case.refresh">↻ Actualizar</button>
     </div>
 
     <!-- Recorrido -->
     <nav class="journey-bar" id="journeyBar" aria-label="Progreso del caso">
-      <a class="jnode pending" href="#stage-perfil"><div class="jmark">1</div><div class="jlabel">Perfil</div><div class="jsub" data-sub="1">—</div></a>
-      <a class="jnode pending" href="#stage-evaluacion"><div class="jmark">2</div><div class="jlabel">Evaluación</div><div class="jsub" data-sub="2">—</div></a>
-      <a class="jnode pending" href="#stage-ruta"><div class="jmark">3</div><div class="jlabel">Ruta</div><div class="jsub" data-sub="3">—</div></a>
-      <a class="jnode pending" href="#stage-plan"><div class="jmark">4</div><div class="jlabel">Mi plan</div><div class="jsub" data-sub="4">—</div></a>
+      <a class="jnode pending" href="#stage-perfil"><div class="jmark">1</div><div class="jlabel" data-i18n="case.j1">Perfil</div><div class="jsub" data-sub="1">—</div></a>
+      <a class="jnode pending" href="#stage-evaluacion"><div class="jmark">2</div><div class="jlabel" data-i18n="case.j2">Evaluación</div><div class="jsub" data-sub="2">—</div></a>
+      <a class="jnode pending" href="#stage-ruta"><div class="jmark">3</div><div class="jlabel" data-i18n="case.j3">Ruta</div><div class="jsub" data-sub="3">—</div></a>
+      <a class="jnode pending" href="#stage-plan"><div class="jmark">4</div><div class="jlabel" data-i18n="case.j4">Mi plan</div><div class="jsub" data-sub="4">—</div></a>
     </nav>
 
     <!-- ===================== ETAPA 1 — PERFIL ===================== -->
@@ -171,30 +173,30 @@
           <div class="card-title">
             <span class="step-num" id="num1">1</span>
             <div>
-              <h2>Contá tu situación</h2>
-              <div class="card-sub">Escribí tu perfil o conversá con MigPAL para ordenarlo.</div>
+              <h2 data-i18n="case.s1Title">Cuenta tu situación</h2>
+              <div class="card-sub" data-i18n="case.s1Sub">Escribe tu perfil o conversa con MigPAL para ordenarlo.</div>
             </div>
           </div>
         </div>
 
-        <label class="label" for="profileText">Tu perfil migratorio</label>
+        <label class="label" for="profileText" data-i18n="case.profileLabel">Tu perfil migratorio</label>
         <textarea class="textarea" id="profileText"
-          placeholder="Ej: Soy ingeniero de software con 6 años de experiencia, tengo una maestría, quiero migrar a Estados Unidos con mi pareja y tenemos algo de ahorro."></textarea>
+          data-i18n-placeholder="case.profilePh" placeholder="Ej: Soy ingeniero de software con 6 años de experiencia, tengo una maestría, quiero migrar a Estados Unidos con mi pareja y tenemos algo de ahorro."></textarea>
         <div class="hint">Cuanto más concreto seas (años de experiencia, estudios, destino, familia, ahorros), mejor será tu evaluación.</div>
 
         <div class="row gap-2 mt-4 wrapf">
-          <button class="btn btn-primary" id="assessBtn">Generar mi evaluación</button>
-          <button class="btn btn-ghost btn-sm" id="toggleChatBtn">💬 Prefiero conversarlo</button>
+          <button class="btn btn-primary" id="assessBtn" data-i18n="case.assessBtn">Generar mi evaluación</button>
+          <button class="btn btn-ghost btn-sm" id="toggleChatBtn" data-i18n="case.chatToggle">💬 Prefiero conversarlo</button>
         </div>
 
         <div id="chatPanel" class="hidden mt-5">
           <div class="hr"></div>
           <div class="chat-log" id="chatLog">
-            <div class="msg msg-ai"><div class="bubble">Contame tu situación: a qué te dedicás, qué estudiaste, a dónde querés migrar y con quién.</div></div>
+            <div class="msg msg-ai"><div class="bubble" data-i18n="case.chatIntro">Contame tu situación: a qué te dedicás, qué estudiaste, a dónde quieres migrar y con quién.</div></div>
           </div>
           <form class="chat-form" id="chatForm">
-            <input class="input" id="chatText" placeholder="Escribí tu mensaje…" autocomplete="off">
-            <button class="btn btn-secondary" type="submit" id="chatSendBtn">Enviar</button>
+            <input class="input" id="chatText" data-i18n-placeholder="case.chatPh" placeholder="Escribe tu mensaje…" autocomplete="off">
+            <button class="btn btn-secondary" type="submit" id="chatSendBtn" data-i18n="case.send">Enviar</button>
           </form>
         </div>
       </div>
@@ -207,8 +209,8 @@
           <div class="card-title">
             <span class="step-num" id="num2">2</span>
             <div>
-              <h2>Tu evaluación</h2>
-              <div class="card-sub">Puntaje calculado con reglas explícitas y versionadas.</div>
+              <h2 data-i18n="case.s2Title">Tu evaluación</h2>
+              <div class="card-sub" data-i18n="case.s2Sub">Puntaje calculado con reglas explícitas y versionadas.</div>
             </div>
           </div>
           <span class="badge badge-neutral hidden" id="assessBadge"></span>
@@ -216,8 +218,8 @@
         <div id="assessmentBody">
           <div class="empty">
             <div class="empty-icon">📊</div>
-            <h3>Todavía no generaste tu evaluación</h3>
-            <p>Completá tu perfil arriba y generala para continuar.</p>
+            <h3 data-i18n="case.s2EmptyTitle">Todavía no generas tu evaluación</h3>
+            <p data-i18n="case.s2EmptyBody">Completa tu perfil arriba y genérala para continuar.</p>
           </div>
         </div>
       </div>
@@ -230,8 +232,8 @@
           <div class="card-title">
             <span class="step-num" id="num3">3</span>
             <div>
-              <h2>Tu ruta recomendada</h2>
-              <div class="card-sub">La alternativa con mejor ajuste a tu perfil, y por qué.</div>
+              <h2 data-i18n="case.s3Title">Tu ruta recomendada</h2>
+              <div class="card-sub" data-i18n="case.s3Sub">La alternativa con mejor ajuste a tu perfil, y por qué.</div>
             </div>
           </div>
           <span class="badge badge-neutral hidden" id="recBadge"></span>
@@ -240,7 +242,7 @@
         <div class="alert alert-warn mb-5">
           <span class="alert-icon">⚠️</span>
           <div>
-            <strong>Orientativo, no asesoría legal.</strong> Se calcula sobre un
+            <strong data-i18n="case.disclaimerTitle">Orientativo, no asesoría legal.</strong> Se calcula sobre un
             catálogo de referencia limitado, no sobre normativa verificada y
             actualizada. No reemplaza a un profesional habilitado.
           </div>
@@ -249,8 +251,8 @@
         <div id="recommendationBody">
           <div class="empty">
             <div class="empty-icon">🧭</div>
-            <h3>Todavía no tenés una ruta recomendada</h3>
-            <p>Necesitás una evaluación primero.</p>
+            <h3 data-i18n="case.s3EmptyTitle">Todavía no tienes una ruta recomendada</h3>
+            <p data-i18n="case.s3EmptyBody">Necesitas una evaluación primero.</p>
           </div>
         </div>
       </div>
@@ -263,8 +265,8 @@
           <div class="card-title">
             <span class="step-num" id="num4">4</span>
             <div>
-              <h2>Mi plan</h2>
-              <div class="card-sub">Los pasos concretos para avanzar, en orden.</div>
+              <h2 data-i18n="case.s4Title">Mi plan</h2>
+              <div class="card-sub" data-i18n="case.s4Sub">Los pasos concretos para avanzar, en orden.</div>
             </div>
           </div>
           <span class="badge badge-neutral hidden" id="planBadge"></span>
@@ -272,7 +274,7 @@
         <div id="planBody">
           <div class="empty">
             <div class="empty-icon">🗺️</div>
-            <h3>Todavía no generaste tu plan</h3>
+            <h3 data-i18n="case.s4EmptyTitle">Todavía no generas tu plan</h3>
             <p>Aceptá una ruta recomendada para poder armarlo.</p>
           </div>
         </div>
@@ -282,6 +284,7 @@
   </div>
 </main>
 
+<script src="/assets/i18n.js"></script>
 <script src="/assets/app.js"></script>
 <script>
 (function () {
@@ -302,7 +305,7 @@
   document.getElementById('refreshBtn').addEventListener('click', function () { loadAll(true); });
 
   if (new URLSearchParams(location.search).get('welcome')) {
-    MigPAL.toast('¡Bienvenido! Contanos tu situación para empezar.', 'success');
+    MigPAL.toast(MigPAL.t('toast.welcome'), 'success');
   }
 
   /* ------------------------------------------------------------ helpers */
@@ -327,11 +330,16 @@
   /** Marca las 4 etapas del recorrido según el estado real del caso. */
   function renderJourney() {
     var nodes = document.querySelectorAll('.jnode');
+    var pend = MigPAL.t('case.pending');
     var subs = {
-      1: state.assessment ? 'Listo' : 'Pendiente',
-      2: state.assessment ? Math.round(state.assessment.score) + '/100' : 'Pendiente',
-      3: state.recommendation ? (state.recommendation.status === 'ACCEPTED' ? 'Aceptada' : 'Emitida') : 'Pendiente',
-      4: state.plan ? state.plan.completed_count + '/' + state.plan.total_count + ' pasos' : 'Pendiente'
+      1: state.assessment ? MigPAL.t('case.ready') : pend,
+      2: state.assessment ? Math.round(state.assessment.score) + '/100' : pend,
+      3: state.recommendation
+           ? MigPAL.t(state.recommendation.status === 'ACCEPTED' ? 'case.accepted' : 'case.issued')
+           : pend,
+      4: state.plan
+           ? MigPAL.t('case.stepsShort', { done: state.plan.completed_count, total: state.plan.total_count })
+           : pend
     };
     var done = {
       1: !!state.assessment,
@@ -364,19 +372,19 @@
     setStageLocked('stage-plan', !state.recommendation || state.recommendation.status !== 'ACCEPTED');
 
     var sub = document.getElementById('caseSubtitle');
-    if (!state.assessment) sub.textContent = 'Empezá contándonos tu situación.';
-    else if (!state.recommendation) sub.textContent = 'Tu evaluación está lista. Pedí tu ruta recomendada.';
-    else if (state.recommendation.status !== 'ACCEPTED') sub.textContent = 'Revisá tu ruta y aceptala para armar el plan.';
-    else if (!state.plan) sub.textContent = 'Ruta aceptada. Generá tu plan de pasos.';
-    else if (state.plan.status === 'COMPLETED') sub.textContent = '¡Completaste tu plan! 🎉';
-    else sub.textContent = 'Vas ' + state.plan.completed_count + ' de ' + state.plan.total_count + ' pasos.';
+    if (!state.assessment) sub.textContent = MigPAL.t('case.subEmpty');
+    else if (!state.recommendation) sub.textContent = MigPAL.t('case.subAssessed');
+    else if (state.recommendation.status !== 'ACCEPTED') sub.textContent = MigPAL.t('case.subIssued');
+    else if (!state.plan) sub.textContent = MigPAL.t('case.subAcceptedNoPlan');
+    else if (state.plan.status === 'COMPLETED') sub.textContent = MigPAL.t('case.subDone');
+    else sub.textContent = MigPAL.t('case.subProgress', { done: state.plan.completed_count, total: state.plan.total_count });
   }
 
   /* -------------------------------------------------------- evaluación */
 
   function renderAssessment(a) {
     state.assessment = a;
-    setBadge('assessBadge', 'Confianza ' + Math.round(a.confidence * 100) + '%', 'brand');
+    setBadge('assessBadge', MigPAL.t('case.confidence', { n: Math.round(a.confidence * 100) }), 'brand');
 
     var findings = (a.findings || []).map(function (f) {
       return '<div class="finding">' + esc(f) + '</div>';
@@ -392,13 +400,13 @@
         '</div>' +
         '<div class="flex-1" style="min-width:200px">' +
           (a.ai_reflection
-            ? '<div class="text-xs text-muted fw-700 mb-2" style="letter-spacing:.05em;text-transform:uppercase">MigPAL entendió</div>' +
+            ? '<div class="text-xs text-muted fw-700 mb-2" style="letter-spacing:.05em;text-transform:uppercase">' + esc(MigPAL.t('case.understood')) + '</div>' +
               '<div class="narrative">' + esc(a.ai_reflection) + '</div>'
             : '') +
         '</div>' +
       '</div>' +
-      (findings ? '<h3 class="text-md mb-2">Hallazgos</h3>' + findings : '') +
-      (recs ? '<h3 class="text-md mb-2 mt-5">Recomendaciones</h3>' + recs : '') +
+      (findings ? '<h3 class="text-md mb-2">' + esc(MigPAL.t('case.findings')) + '</h3>' + findings : '') +
+      (recs ? '<h3 class="text-md mb-2 mt-5">' + esc(MigPAL.t('case.recommendations')) + '</h3>' + recs : '') +
       '<div class="row gap-2 wrapf mt-5">' +
         '<span class="chip">Decision Engine v' + esc(a.decision_engine_version) + '</span>' +
         '<span class="chip">Policy v' + esc(a.policy_version) + '</span>' +
@@ -406,7 +414,7 @@
       '</div>' +
       '<div class="hr"></div>' +
       '<button class="btn btn-primary" id="recBtn">' +
-        (state.recommendation ? 'Regenerar mi ruta' : 'Ver mi ruta recomendada') +
+        esc(MigPAL.t(state.recommendation ? 'case.regenRoute' : 'case.seeRoute')) +
       '</button>';
 
     document.getElementById('recBtn').addEventListener('click', requestRecommendation);
@@ -417,7 +425,8 @@
   function renderRecommendation(r) {
     state.recommendation = r;
     var statusKind = r.status === 'ACCEPTED' ? 'success' : r.status === 'DISCARDED' ? 'danger' : 'brand';
-    var statusText = r.status === 'ACCEPTED' ? 'Aceptada' : r.status === 'DISCARDED' ? 'Descartada' : 'Emitida';
+    var statusText = MigPAL.t(r.status === 'ACCEPTED' ? 'case.accepted'
+      : r.status === 'DISCARDED' ? 'case.discarded' : 'case.issued');
     setBadge('recBadge', statusText, statusKind);
 
     var p = r.primary_evaluation;
@@ -432,12 +441,12 @@
 
     var actions = r.status === 'ISSUED'
       ? '<div class="row gap-2 wrapf mt-5">' +
-          '<button class="btn btn-success" id="acceptBtn">Aceptar esta ruta</button>' +
-          '<button class="btn btn-ghost btn-sm" id="discardBtn">Descartar</button>' +
+          '<button class="btn btn-success" id="acceptBtn">' + esc(MigPAL.t('case.acceptRoute')) + '</button>' +
+          '<button class="btn btn-ghost btn-sm" id="discardBtn">' + esc(MigPAL.t('case.discardRoute')) + '</button>' +
         '</div>'
       : r.status === 'ACCEPTED'
         ? '<div class="row gap-2 mt-5"><button class="btn btn-primary" id="planBtn">' +
-            (state.plan ? 'Ver mi plan' : 'Generar mi plan de pasos') + '</button></div>'
+            esc(MigPAL.t(state.plan ? 'case.seePlan' : 'case.createPlan')) + '</button></div>'
         : '';
 
     // Procedencia del dato (A-ADR-008): una ruta verificada contra la
@@ -447,31 +456,35 @@
     if (src) {
       sourceBlock = src.verified_at
         ? '<div class="source-line is-verified">' +
-            '<span>✔️</span><span>Requisitos según <a href="' + esc(src.url) + '" target="_blank" rel="noopener noreferrer">' +
-            esc(src.name) + '</a>, verificados el ' + esc(src.verified_at) + '.</span></div>'
+            '<span>✔️</span><span>' + MigPAL.t('case.sourceVerified', {
+              source: '<a href="' + esc(src.url) + '" target="_blank" rel="noopener noreferrer">' + esc(src.name) + '</a>',
+              date: esc(src.verified_at)
+            }) + '</span></div>'
         : '<div class="source-line is-unverified">' +
-            '<span>⚠️</span><span>Estos requisitos <strong>no pudieron verificarse</strong> contra ' +
-            '<a href="' + esc(src.url) + '" target="_blank" rel="noopener noreferrer">' + esc(src.name) + '</a>. ' +
-            'Tratalos como orientativos y confirmalos en la fuente.</span></div>';
+            '<span>⚠️</span><span>' + MigPAL.t('case.sourceUnverified', {
+              source: '<a href="' + esc(src.url) + '" target="_blank" rel="noopener noreferrer">' + esc(src.name) + '</a>'
+            }) + '</span></div>';
     }
 
     document.getElementById('recommendationBody').innerHTML =
       '<div class="route-hero">' +
         '<div><div class="route-name">' + esc(p.route.visa_type) + ' · ' + esc(p.route.country) + '</div>' +
-        '<div class="route-meta">Ajuste ' + Math.round(p.route.fit_score) + '/100 · Confianza ' + Math.round(r.confidence * 100) + '%</div></div>' +
+        '<div class="route-meta">' + esc(MigPAL.t('case.fit', {
+          fit: Math.round(p.route.fit_score), conf: Math.round(r.confidence * 100)
+        })) + '</div></div>' +
         '<span class="badge badge-' + statusKind + ' badge-dot">' + statusText + '</span>' +
       '</div>' +
       sourceBlock +
       (r.narrative_summary ? '<div class="narrative mb-5">' + esc(r.narrative_summary) + '</div>' : '') +
-      '<h3 class="text-md mb-2">Por qué esta ruta</h3>' + rationale +
+      '<h3 class="text-md mb-2">' + esc(MigPAL.t('case.whyRoute')) + '</h3>' + rationale +
       (p.required_documents && p.required_documents.length
-        ? '<h3 class="text-md mb-2 mt-5">Documentación que vas a necesitar</h3>' +
+        ? '<h3 class="text-md mb-2 mt-5">' + esc(MigPAL.t('case.docsNeeded')) + '</h3>' +
           p.required_documents.map(function (d) { return '<div class="finding">' + esc(d) + '</div>'; }).join('')
         : '') +
-      '<div class="next-step-box"><div class="kicker">Próximo paso</div>' +
+      '<div class="next-step-box"><div class="kicker">' + esc(MigPAL.t('case.nextStep')) + '</div>' +
         '<div class="fw-700">' + esc(r.next_step.title) + '</div>' +
         '<div class="text-sm mt-1" style="opacity:.85">' + esc(r.next_step.description) + '</div></div>' +
-      (alts ? '<h3 class="text-md mb-1 mt-5">Alternativas consideradas</h3>' + alts : '') +
+      (alts ? '<h3 class="text-md mb-1 mt-5">' + esc(MigPAL.t('case.alternatives')) + '</h3>' + alts : '') +
       actions;
 
     var acceptBtn = document.getElementById('acceptBtn');
@@ -487,7 +500,7 @@
   function renderPlan(p) {
     state.plan = p;
     var pct = p.total_count ? Math.round((p.completed_count / p.total_count) * 100) : 0;
-    setBadge('planBadge', p.status === 'COMPLETED' ? 'Completado' : 'En curso',
+    setBadge('planBadge', MigPAL.t(p.status === 'COMPLETED' ? 'case.completed' : 'case.inProgress'),
              p.status === 'COMPLETED' ? 'success' : 'brand');
 
     var byId = {};
@@ -502,27 +515,30 @@
         return '<div class="plan-step ' + cls + '">' +
           '<button class="plan-step-check" data-step="' + s.id + '"' +
             (s.status === 'COMPLETED' || s.blocked ? ' disabled' : '') +
-            ' aria-label="Marcar como completado">' +
+            ' aria-label="' + esc(MigPAL.t('case.markDone')) + '">' +
             (s.status === 'COMPLETED' ? '✓' : (s.blocked ? '🔒' : '')) +
           '</button>' +
           '<div class="plan-step-body">' +
             '<div class="plan-step-title">' + esc(s.title) + '</div>' +
             '<div class="plan-step-desc">' + esc(s.description) + '</div>' +
-            (s.blocked ? '<div class="plan-step-lock"><span>🔒</span><span>Bloqueado hasta completar: ' + esc(blockedBy) + '</span></div>' : '') +
+            (s.blocked ? '<div class="plan-step-lock"><span>🔒</span><span>' +
+              esc(MigPAL.t('case.blockedUntil', { steps: blockedBy })) + '</span></div>' : '') +
           '</div>' +
         '</div>';
       }).join('');
 
     document.getElementById('planBody').innerHTML =
       '<div class="row between mb-2" style="align-items:baseline">' +
-        '<span class="fw-700">' + p.completed_count + ' de ' + p.total_count + ' pasos completados</span>' +
+        '<span class="fw-700">' + esc(MigPAL.t('case.progress', {
+          done: p.completed_count, total: p.total_count
+        })) + '</span>' +
         '<span class="text-sm text-muted">' + pct + '%</span>' +
       '</div>' +
       '<div class="progress mb-5"><div class="progress-bar' + (p.status === 'COMPLETED' ? ' is-complete' : '') + '" style="width:' + pct + '%"></div></div>' +
       steps +
       (p.status === 'COMPLETED'
-        ? '<div class="alert alert-success mt-5"><span class="alert-icon">🎉</span><div>' +
-          '<strong>Completaste tu plan.</strong> Tu proyecto migratorio llegó al final de esta etapa.</div></div>'
+        ? '<div class="alert alert-success mt-5"><span class="alert-icon">🎉</span><div><strong>' +
+          esc(MigPAL.t('case.planDoneTitle')) + '</strong> ' + esc(MigPAL.t('case.planDoneBody')) + '</div></div>'
         : '');
 
     document.querySelectorAll('.plan-step-check:not([disabled])').forEach(function (btn) {
@@ -539,17 +555,17 @@
   async function requestAssessment() {
     var btn = document.getElementById('assessBtn');
     var text = document.getElementById('profileText').value.trim();
-    if (text.length < 20) { MigPAL.toast('Contanos un poco más sobre tu situación (al menos 20 caracteres).', 'error'); return; }
+    if (text.length < 20) { MigPAL.toast(MigPAL.t('toast.profileShort'), 'error'); return; }
 
-    var restore = MigPAL.busy(btn, 'Analizando tu perfil…');
+    var restore = MigPAL.busy(btn, MigPAL.t('busy.analyzing'));
     document.getElementById('assessmentBody').innerHTML = skeleton(4);
     try {
       renderAssessment(await api.createAssessment(text));
       renderJourney();
-      MigPAL.toast('Evaluación lista.', 'success');
+      MigPAL.toast(MigPAL.t('toast.assessReady'), 'success');
       scrollTo('stage-evaluacion');
     } catch (err) {
-      MigPAL.toast(err.detail || 'No se pudo generar la evaluación.', 'error');
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
       document.getElementById('assessmentBody').innerHTML =
         '<div class="empty"><div class="empty-icon">⚠️</div><h3>No se pudo generar</h3><p>' + esc(err.detail || '') + '</p></div>';
     } finally { restore(); }
@@ -557,46 +573,46 @@
 
   async function requestRecommendation() {
     var btn = document.getElementById('recBtn');
-    var restore = MigPAL.busy(btn, 'Buscando tu mejor ruta…');
+    var restore = MigPAL.busy(btn, MigPAL.t('busy.findingRoute'));
     document.getElementById('recommendationBody').innerHTML = skeleton(4);
     try {
       renderRecommendation(await api.createRecommendation());
       renderJourney();
-      MigPAL.toast('Ruta recomendada lista.', 'success');
+      MigPAL.toast(MigPAL.t('toast.routeReady'), 'success');
       scrollTo('stage-ruta');
     } catch (err) {
-      MigPAL.toast(err.detail || 'No se pudo generar la ruta.', 'error');
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
       if (state.recommendation) renderRecommendation(state.recommendation);
     } finally { restore(); }
   }
 
   async function decideRecommendation(action, btn) {
-    var restore = MigPAL.busy(btn, action === 'accept' ? 'Aceptando…' : 'Descartando…');
+    var restore = MigPAL.busy(btn, MigPAL.t(action === 'accept' ? 'busy.accepting' : 'busy.discarding'));
     try {
       var r = action === 'accept'
         ? await api.acceptRecommendation(state.recommendation.id)
         : await api.discardRecommendation(state.recommendation.id);
       renderRecommendation(r);
       renderJourney();
-      MigPAL.toast(action === 'accept' ? 'Ruta aceptada. Ya podés generar tu plan.' : 'Ruta descartada.',
+      MigPAL.toast(MigPAL.t(action === 'accept' ? 'toast.routeAccepted' : 'toast.routeDiscarded'),
                    action === 'accept' ? 'success' : 'info');
       if (action === 'accept') scrollTo('stage-plan');
     } catch (err) {
-      MigPAL.toast(err.detail || 'No se pudo completar la acción.', 'error');
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
       restore();
     }
   }
 
   async function createPlan(btn) {
-    var restore = MigPAL.busy(btn, 'Armando tu plan…');
+    var restore = MigPAL.busy(btn, MigPAL.t('busy.buildingPlan'));
     document.getElementById('planBody').innerHTML = skeleton(4);
     try {
       renderPlan(await api.createPlan());
       renderJourney();
-      MigPAL.toast('Tu plan está listo.', 'success');
+      MigPAL.toast(MigPAL.t('toast.planReady'), 'success');
       scrollTo('stage-plan');
     } catch (err) {
-      MigPAL.toast(err.detail || 'No se pudo generar el plan.', 'error');
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
       await loadPlan();
     } finally { restore(); }
   }
@@ -606,9 +622,9 @@
     try {
       renderPlan(await api.completeStep(stepId));
       renderJourney();
-      if (state.plan.status === 'COMPLETED') MigPAL.toast('¡Completaste todo tu plan! 🎉', 'success', 6000);
+      if (state.plan.status === 'COMPLETED') MigPAL.toast(MigPAL.t('toast.planDone'), 'success', 6000);
     } catch (err) {
-      MigPAL.toast(err.detail || 'No se pudo completar el paso.', 'error');
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
       await loadPlan();   // re-sincroniza con el estado real del backend
     }
   }
@@ -642,7 +658,7 @@
     addMsg('user', message);
     input.value = '';
 
-    var thinking = addMsg('ai', 'MigPAL está pensando…');
+    var thinking = addMsg('ai', MigPAL.t('case.thinking'));
     try {
       var data = await api.sendMessage(message);
       thinking.textContent = data.reply;
@@ -651,7 +667,7 @@
       var pt = document.getElementById('profileText');
       pt.value = (pt.value ? pt.value + ' ' : '') + message;
     } catch (err) {
-      thinking.textContent = 'No se pudo responder: ' + (err.detail || 'error de red');
+      thinking.textContent = err.detail || MigPAL.t('toast.genericError');
     }
   });
 
@@ -693,15 +709,30 @@
     // Errores reales (no 404 de "todavía no existe") sí se avisan.
     [a, r, p].forEach(function (res) {
       if (res.status === 'rejected' && res.reason && res.reason.status && res.reason.status !== 404) {
-        MigPAL.toast(res.reason.detail || 'Error cargando tu caso.', 'error');
+        MigPAL.toast(res.reason.detail || MigPAL.t('toast.genericError'), 'error');
       }
     });
 
-    if (showToast) MigPAL.toast('Caso actualizado.', 'info', 2000);
+    if (showToast) MigPAL.toast(MigPAL.t('toast.caseRefreshed'), 'info', 2000);
   }
 
-  document.getElementById('greeting').textContent =
-    MigPAL.session.username ? 'Hola, ' + MigPAL.session.username : 'Tu caso';
+  function pintarSaludo() {
+    document.getElementById('greeting').textContent = MigPAL.session.username
+      ? MigPAL.t('case.greeting', { name: MigPAL.session.username })
+      : MigPAL.t('case.yourCase');
+  }
+  pintarSaludo();
+
+  // Al cambiar de idioma hay que repintar lo que genero el JS: los
+  // data-i18n del HTML los actualiza i18n.js solo, pero el contenido
+  // dinamico (evaluacion, ruta, plan) se arma con innerHTML y no lo alcanza.
+  document.addEventListener('migpal:langchange', function () {
+    pintarSaludo();
+    if (state.assessment) renderAssessment(state.assessment);
+    if (state.recommendation) renderRecommendation(state.recommendation);
+    if (state.plan) renderPlan(state.plan);
+    renderJourney();
+  });
 
   loadAll();
 })();

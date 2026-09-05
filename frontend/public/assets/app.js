@@ -135,7 +135,8 @@ window.MigPAL = (function () {
     try {
       res = await fetch(API_BASE + path, init);
     } catch (e) {
-      throw new ApiError(0, 'No se pudo contactar al servidor. Verificá tu conexión.');
+      throw new ApiError(0, window.MigPALi18n ? window.MigPALi18n.t('toast.noNetwork')
+        : 'No se pudo contactar al servidor.');
     }
 
     // Sesión vencida o inválida: limpiar y mandar al login, salvo que la
@@ -146,7 +147,8 @@ window.MigPAL = (function () {
         var next = encodeURIComponent(window.location.pathname);
         window.location.replace('/login.html?expired=1&next=' + next);
       }
-      throw new ApiError(401, 'Tu sesión expiró. Iniciá sesión de nuevo.');
+      throw new ApiError(401, window.MigPALi18n ? window.MigPALi18n.t('toast.sessionExpired')
+        : 'Tu sesión expiró.');
     }
 
     var body = null;
@@ -290,6 +292,12 @@ window.MigPAL = (function () {
 
   /* -------------------------------------------------------------- exports */
 
+  /** Atajo a i18n. Se resuelve en cada llamada (no se captura) para que
+      cambiar de idioma actualice tambien los textos que genera el JS. */
+  function t(key, vars) {
+    return window.MigPALi18n ? window.MigPALi18n.t(key, vars) : key;
+  }
+
   return {
     api: api,
     session: session,
@@ -297,6 +305,8 @@ window.MigPAL = (function () {
     escapeHtml: escapeHtml,
     busy: busy,
     theme: theme,
+    t: t,
+    get lang() { return window.MigPALi18n ? window.MigPALi18n.lang : 'es'; },
     ApiError: ApiError
   };
 })();
