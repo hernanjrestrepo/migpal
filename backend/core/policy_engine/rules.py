@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from core.decision_engine.infrastructure.scoring import score_route_fit
 from core.policy_engine.catalog import ROUTE_CATALOG
-from core.recommendation.domain.value_objects import MigrationRoute, RouteEvaluation
+from core.recommendation.domain.value_objects import MigrationRoute, RouteEvaluation, RouteSource
 
 
 def evaluate_candidate_routes(
@@ -47,6 +47,12 @@ def evaluate_candidate_routes(
             strengths=[entry["strengths_hint"]],
             risks=[entry["risks_hint"]],
             required_documents=list(entry["required_documents"]),
+            # Procedencia del dato, hasta el usuario final (A-ADR-008).
+            source=RouteSource(
+                name=entry["source_name"],
+                url=entry["source_url"],
+                verified_at=entry["verified_at"],
+            ),
         )
         scored.append((evaluation, signal_hits))
 

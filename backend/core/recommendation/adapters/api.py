@@ -47,11 +47,22 @@ class MigrationRouteRead(BaseModel):
     fit_score: float
 
 
+class RouteSourceRead(BaseModel):
+    """Procedencia del dato de la ruta (A-ADR-008). `verified_at` en `null`
+    significa que no se pudo verificar contra la fuente oficial -- el
+    frontend lo muestra distinto, no lo oculta."""
+
+    name: str
+    url: str
+    verified_at: str | None = None
+
+
 class RouteEvaluationRead(BaseModel):
     route: MigrationRouteRead
     strengths: list[str]
     risks: list[str]
     required_documents: list[str]
+    source: RouteSourceRead | None = None
 
 
 class NextStepRead(BaseModel):

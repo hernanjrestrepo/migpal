@@ -89,6 +89,18 @@
   .route-name { font-size: var(--text-xl); font-weight: 780; letter-spacing: -.025em; }
   .route-meta { font-size: var(--text-sm); color: var(--text-soft); margin-top: 3px; }
 
+  /* Procedencia del dato de la ruta (A-ADR-008) */
+  .source-line {
+    display: flex; gap: 8px; align-items: flex-start;
+    font-size: var(--text-sm); line-height: 1.5;
+    padding: 9px 12px; border-radius: var(--r-md);
+    margin-bottom: var(--sp-5);
+    border: 1px solid transparent;
+  }
+  .source-line a { color: inherit; text-decoration: underline; text-underline-offset: 2px; font-weight: 650; }
+  .source-line.is-verified   { background: var(--success-bg); color: var(--success-fg); border-color: var(--success-line); }
+  .source-line.is-unverified { background: var(--warn-bg);    color: var(--warn-fg);    border-color: var(--warn-line); }
+
   .narrative {
     padding: var(--sp-4);
     background: var(--surface-2);
@@ -428,12 +440,28 @@
             (state.plan ? 'Ver mi plan' : 'Generar mi plan de pasos') + '</button></div>'
         : '';
 
+    // Procedencia del dato (A-ADR-008): una ruta verificada contra la
+    // fuente oficial se muestra distinto de una que no se pudo verificar.
+    var src = p.source;
+    var sourceBlock = '';
+    if (src) {
+      sourceBlock = src.verified_at
+        ? '<div class="source-line is-verified">' +
+            '<span>✔️</span><span>Requisitos según <a href="' + esc(src.url) + '" target="_blank" rel="noopener noreferrer">' +
+            esc(src.name) + '</a>, verificados el ' + esc(src.verified_at) + '.</span></div>'
+        : '<div class="source-line is-unverified">' +
+            '<span>⚠️</span><span>Estos requisitos <strong>no pudieron verificarse</strong> contra ' +
+            '<a href="' + esc(src.url) + '" target="_blank" rel="noopener noreferrer">' + esc(src.name) + '</a>. ' +
+            'Tratalos como orientativos y confirmalos en la fuente.</span></div>';
+    }
+
     document.getElementById('recommendationBody').innerHTML =
       '<div class="route-hero">' +
         '<div><div class="route-name">' + esc(p.route.visa_type) + ' · ' + esc(p.route.country) + '</div>' +
         '<div class="route-meta">Ajuste ' + Math.round(p.route.fit_score) + '/100 · Confianza ' + Math.round(r.confidence * 100) + '%</div></div>' +
         '<span class="badge badge-' + statusKind + ' badge-dot">' + statusText + '</span>' +
       '</div>' +
+      sourceBlock +
       (r.narrative_summary ? '<div class="narrative mb-5">' + esc(r.narrative_summary) + '</div>' : '') +
       '<h3 class="text-md mb-2">Por qué esta ruta</h3>' + rationale +
       (p.required_documents && p.required_documents.length

@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "MigPAL"
 
     FRONTEND_URL: str = "http://localhost:3000"
+    # Orígenes permitidos por CORS en producción, separados por comas.
+    # En desarrollo se agregan localhost:3000/127.0.0.1:3000 automáticamente
+    # (ver main.py) -- en producción NO, para no dejar entrar a un localhost
+    # atacante contra el API real.
+    CORS_ORIGINS: str = ""
 
     # Telegram Bot - MUST be set in .env (no hardcoded fallback for security)
     TELEGRAM_BOT_TOKEN: str = ""

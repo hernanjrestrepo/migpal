@@ -37,9 +37,33 @@ class MigrationRoute(BaseModel):
     fit_score: float  # [0, 100]
 
 
+class RouteSource(BaseModel):
+    """VO inmutable -- de dónde salió la información de esta ruta y cuándo se
+    verificó por última vez contra la fuente oficial (A-ADR-008).
+
+    `verified_at` en `None` significa explícitamente "no se pudo verificar
+    contra la fuente": el producto lo muestra distinto a una ruta verificada,
+    en vez de presentar ambas como igual de confiables."""
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    url: str
+    verified_at: str | None = None
+
+    @property
+    def is_verified(self) -> bool:
+        return bool(self.verified_at)
+
+
 class RouteEvaluation(BaseModel):
     """VO inmutable -- lo que Recommendation determinó sobre una ruta, para
-    este caso, con este Assessment y esta versión de Policy/Knowledge (§2)."""
+    este caso, con este Assessment y esta versión de Policy/Knowledge (§2).
+
+    `source` es opcional y aditivo (A-ADR-008): las Recommendation ya
+    persistidas, cuyo JSON no tiene la clave, siguen validando sin migración.
+    No participa de ninguna decisión -- es metadato de procedencia, no entra
+    en `fit_score` ni en `confidence`."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -47,6 +71,7 @@ class RouteEvaluation(BaseModel):
     strengths: list[str] = []
     risks: list[str] = []
     required_documents: list[str] = []
+    source: RouteSource | None = None
 
 
 class NextStep(BaseModel):

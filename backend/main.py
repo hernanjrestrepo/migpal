@@ -1,8 +1,14 @@
+import redis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlmodel import Session, select
+
+from app.db.session import engine
 
 from app.api import router as api_router
 from app.config import settings
+from app.middleware import RateLimitMiddleware, RequestIdMiddleware, SecurityHeadersMiddleware
 from app.utils.logging_config import get_api_logger, setup_logging
 from core.case_engine.adapters.api import router as case_router
 from core.conversation.adapters.api import router as conversation_router
@@ -26,14 +32,30 @@ app = FastAPI(
     "/docs para la documentación interactiva (OpenAPI).",
 )
 
-# Configure CORS
+# Middleware. Orden: el último agregado es el más externo, así que
+# RequestId envuelve a todo y su id ya está disponible para el resto.
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware)
+
+# CORS: en producción se define con CORS_ORIGINS (lista separada por comas).
+# Los orígenes de desarrollo solo se agregan fuera de producción -- dejarlos
+# siempre permitiría que un localhost atacante hablara con el API real.
+_cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+if settings.environment != "production":
+    _cors_origins += ["http://localhost:3000", "http://127.0.0.1:3000"]
+if settings.FRONTEND_URL and settings.FRONTEND_URL not in _cors_origins:
+    _cors_origins.append(settings.FRONTEND_URL)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", settings.FRONTEND_URL],
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
+app.add_middleware(RequestIdMiddleware)
+
+logger.info(f"CORS habilitado para: {_cors_origins}")
 
 app.include_router(api_router, prefix=settings.api_prefix)
 
@@ -66,4 +88,41 @@ def root():
 
 @app.get("/health")
 def health_check():
+    """Liveness: ¿está vivo el proceso? Lo usa el healthcheck de Docker.
+    Deliberadamente no toca la base de datos -- si Postgres se cae, no
+    queremos que el orquestador reinicie un backend que está perfectamente
+    sano."""
     return {"status": "healthy"}
+
+
+@app.get("/ready")
+def readiness_check():
+    """Readiness: ¿puede este proceso atender tráfico real? Verifica las
+    dependencias de las que depende cada request. Un balanceador debe sacar
+    de rotación una instancia que responda 503 acá."""
+    checks: dict[str, str] = {}
+    ready = True
+
+    try:
+        with Session(engine) as session:
+            session.exec(select(1))
+        checks["database"] = "ok"
+    except Exception as exc:  # noqa: BLE001 -- el detalle se reporta, no se propaga
+        checks["database"] = f"error: {type(exc).__name__}"
+        ready = False
+
+    try:
+        redis.from_url(settings.REDIS_URL, socket_connect_timeout=2).ping()
+        checks["redis"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        checks["redis"] = f"error: {type(exc).__name__}"
+        ready = False
+
+    # El proveedor de IA no entra en readiness: si el LLM falla, el producto
+    # se degrada (narrative_summary cae a su fallback) pero sigue sirviendo.
+    checks["llm_provider"] = settings.AI_PROVIDER
+
+    return JSONResponse(
+        status_code=200 if ready else 503,
+        content={"status": "ready" if ready else "degraded", "checks": checks},
+    )
