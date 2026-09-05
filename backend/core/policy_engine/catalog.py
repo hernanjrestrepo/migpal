@@ -16,17 +16,19 @@ Regla de este módulo, sin excepciones:
     muestra como NO verificada -- nunca se completa "a ojo" ni con
     conocimiento general del modelo que escribe el código.
 
-Estado de verificación al 2026-09-04:
+Estado de verificación al 2026-09-05:
 
   ✅ O-1A (Estados Unidos)  -- verificado contra uscis.gov (criterios
      probatorios del Policy Manual, Volume 2, Part M, Chapter 4).
   ✅ Express Entry (Canadá) -- verificado contra canada.ca (requisitos
      mínimos del Federal Skilled Worker Program).
-  ⚠️ Subclass 189 (Australia) -- immi.homeaffairs.gov.au responde HTTP 403
-     a consultas automatizadas; no se pudo verificar. Queda como NO
-     verificada, con los datos mínimos que ya tenía.
-  ⚠️ Trabajo por cuenta ajena (España) -- el portal de extranjería no fue
-     accesible (404 / certificado no verificable). Queda como NO verificada.
+  ✅ Subclass 189 (Australia) -- verificado contra immi.homeaffairs.gov.au
+     (pestaña "Eligibility" de la corriente Points-tested). El sitio rechaza
+     peticiones automatizadas con HTTP 403, así que se leyó abriéndolo en un
+     navegador real.
+  ✅ Residencia y trabajo por cuenta ajena (España) -- verificado contra la
+     Hoja informativa 12 de inclusion.gob.es (base legal: LO 4/2000 y
+     RD 1155/2024).
 
 `required_signals` usa el mismo vocabulario que
 `decision_engine.infrastructure.scoring.SIGNAL_KEYWORDS`
@@ -124,42 +126,67 @@ ROUTE_CATALOG: list[RouteCatalogEntry] = [
         "visa_type": "Skilled Independent Visa (subclass 189)",
         "country": "Australia",
         "required_signals": ["education"],
+        # Criterios de elegibilidad textuales del Department of Home Affairs,
+        # pestaña "Eligibility" de la corriente Points-tested.
         "required_documents": [
-            "Evaluación de habilidades (skills assessment) de la autoridad de tu ocupación",
-            "Resultados de test de inglés",
-            "Expression of Interest (EOI) en SkillSelect",
+            "Ocupación incluida en la lista de ocupaciones calificadas vigente",
+            "Evaluación de habilidades (skills assessment) favorable para esa ocupación",
+            "Expression of Interest (EOI) en SkillSelect y recibir una invitación para postular",
+            "Puntaje de 65 puntos o más en la prueba de puntos",
+            "Acreditar inglés al menos en nivel «competent English»",
+            "Cumplir los requisitos de salud y de carácter (health y character)",
         ],
-        "strengths_hint": "Vía independiente por puntos: no requiere patrocinador ni empleador.",
+        "strengths_hint": (
+            "Residencia permanente sin patrocinador ni empleador: es una vía independiente "
+            "por puntos, y permite vivir y trabajar en cualquier parte de Australia."
+        ),
         "risks_hint": (
-            "Es por invitación y por puntaje. La evaluación de habilidades es específica "
-            "por ocupación y puede llevar tiempo."
+            "Es por invitación: sin 65 puntos no se recibe invitación para postular. Además "
+            "hay que tener menos de 45 años al momento de la invitación, la evaluación de "
+            "habilidades es específica por ocupación, y el costo parte de AUD 6.135."
         ),
         "source_name": "Department of Home Affairs (Australia)",
         "source_url": (
-            "https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/skilled-independent-189"
+            "https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/"
+            "skilled-independent-189/points-tested"
         ),
-        # El sitio devuelve HTTP 403 a consultas automatizadas: no se pudo
-        # verificar el contenido. Se deja explícitamente sin verificar.
-        "verified_at": None,
+        # El sitio rechaza peticiones automatizadas (HTTP 403); se verificó
+        # abriéndolo en un navegador real.
+        "verified_at": "2026-09-05",
     },
     {
-        "visa_type": "Residencia y trabajo por cuenta ajena",
+        "visa_type": "Residencia temporal y trabajo por cuenta ajena",
         "country": "España",
         "required_signals": ["experience"],
+        # Hoja informativa 12 del Ministerio de Inclusión (última
+        # actualización oficial: mayo 2025). Base legal: LO 4/2000 (arts. 36,
+        # 38 y 40) y RD 1155/2024 (arts. 72 a 79).
         "required_documents": [
-            "Oferta de trabajo de una empresa en España",
-            "Titulación homologada o acreditación de la cualificación",
-            "Pasaporte en vigor y antecedentes penales",
+            "Contrato de trabajo firmado por empleador y trabajador (lo solicita el empleador, no vos)",
+            "Que la situación nacional de empleo permita la contratación: ocupación en el "
+            "catálogo de difícil cobertura, o que la empresa acredite la dificultad de cubrir "
+            "el puesto, o ser nacional de Chile o Perú por convenio",
+            "Certificado de antecedentes penales de España y de los países de residencia "
+            "de los últimos 5 años",
+            "Pasaporte en vigor y pago de la tasa (modelo 790, código 052)",
         ],
-        "strengths_hint": "Vía directa cuando ya existe una oferta laboral concreta en el país.",
+        "strengths_hint": (
+            "Vía directa cuando ya existe una oferta laboral concreta, y permite además "
+            "trabajar por cuenta propia mientras la actividad principal siga siendo por "
+            "cuenta ajena."
+        ),
         "risks_hint": (
-            "Depende de conseguir la oferta primero; la empresa suele tener que acreditar "
-            "la situación nacional de empleo."
+            "No la pedís vos: la solicita el empleador. El cuello de botella real es la "
+            "situación nacional de empleo — si la ocupación no está en el catálogo de "
+            "difícil cobertura, la empresa tiene que probar que no pudo cubrir el puesto "
+            "en el mercado local. No aplica a ciudadanos de la UE, EEE ni Suiza."
         ),
         "source_name": "Ministerio de Inclusión, Seguridad Social y Migraciones (España)",
-        "source_url": "https://extranjeros.inclusion.gob.es/",
-        # Portal no accesible automáticamente (404 / certificado no verificable).
-        "verified_at": None,
+        "source_url": (
+            "https://www.inclusion.gob.es/web/migraciones/w/"
+            "autorizacion-inicial-de-residencia-temporal-y-trabajo-por-cuenta-ajena-hi-16-"
+        ),
+        "verified_at": "2026-09-05",
     },
 ]
 
