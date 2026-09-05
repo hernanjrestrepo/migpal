@@ -16,10 +16,17 @@ Decisiones deliberadas:
 - **Solo se limitan los endpoints de autenticación.** Limitar todo el API
   sin datos de uso real produciría cortes arbitrarios a usuarios legítimos.
   Login y registro son los que tienen un abuso obvio y conocido.
+- **Se puede desactivar con `RATE_LIMIT_ENABLED=false`.** No es una puerta
+  trasera: es necesario para los contract tests, que registran y loguean
+  decenas de usuarios seguidos desde una única IP (la del TestClient) y
+  chocarían con el límite. El comportamiento del limitador sigue cubierto
+  por `tests/unit/test_middleware.py`, que lo prueba directamente en vez de
+  a través del recorrido completo.
 """
 
 from __future__ import annotations
 
+import os
 import time
 import uuid
 from collections import defaultdict, deque
@@ -27,6 +34,8 @@ from collections import defaultdict, deque
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+
+RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").strip().lower() not in ("false", "0", "no")
 
 # Rutas protegidas contra fuerza bruta y su cupo por ventana.
 _RATE_LIMITED_PATHS: dict[str, tuple[int, int]] = {
@@ -54,7 +63,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         limit = _RATE_LIMITED_PATHS.get(request.url.path)
-        if limit is None or request.method != "POST":
+        if not RATE_LIMIT_ENABLED or limit is None or request.method != "POST":
             return await call_next(request)
 
         max_hits, window = limit

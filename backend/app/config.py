@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # (ver main.py) -- en producción NO, para no dejar entrar a un localhost
     # atacante contra el API real.
     CORS_ORIGINS: str = ""
+    # Rate limit de login/registro. Solo se desactiva en tests (ver
+    # tests/conftest.py) -- en producción debe quedar en true.
+    RATE_LIMIT_ENABLED: bool = True
 
     # Telegram Bot - MUST be set in .env (no hardcoded fallback for security)
     TELEGRAM_BOT_TOKEN: str = ""

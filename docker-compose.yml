@@ -91,6 +91,7 @@ services:
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-json}
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

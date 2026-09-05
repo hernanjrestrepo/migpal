@@ -4,10 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 
-from app.db.session import engine
-
 from app.api import router as api_router
 from app.config import settings
+from app.db.session import engine
 from app.middleware import RateLimitMiddleware, RequestIdMiddleware, SecurityHeadersMiddleware
 from app.utils.logging_config import get_api_logger, setup_logging
 from core.case_engine.adapters.api import router as case_router
