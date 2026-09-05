@@ -6,14 +6,14 @@ turnos, ni gestión de etapa -- es una sola pasada de texto a texto sobre el
 perfil que ya escribió el usuario. No comparte contrato con `process_message`
 a propósito (ver docs/adr/A-ADR-006-separar-casos-de-uso-llm.md).
 
-La plomería HTTP (timeout, reintento) vive en `ollama_client.py` (extraída
-en la estabilización de Hito 3) -- este archivo solo define su propio
-`system prompt` y su propio mensaje de fallback.
+La plomería HTTP (timeout, reintento, elección de proveedor) vive en
+`llm_client.py` -- este archivo solo define su propio `system prompt` y su
+propio mensaje de fallback.
 """
 
 from __future__ import annotations
 
-from app.services.ollama_client import call_ollama
+from app.services.llm_client import call_llm
 
 SYSTEM_PROMPT = (
     "Sos MigPAL, un analista migratorio. Tu única tarea es leer el perfil que te da "
@@ -27,10 +27,10 @@ FALLBACK_MESSAGE = "No fue posible generar la reflexión del perfil en este mome
 
 async def summarize_profile(profile_text: str) -> str:
     """Reflexión cualitativa de un perfil migratorio -- sin estado, sin turnos."""
-    text = await call_ollama(
+    text = await call_llm(
         system=SYSTEM_PROMPT,
         prompt=f'Perfil del cliente: "{profile_text}"',
         temperature=0.4,
-        num_predict=200,
+        max_tokens=400,
     )
     return text or FALLBACK_MESSAGE

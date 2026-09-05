@@ -1,0 +1,94 @@
+/* ==========================================================================
+   MigPAL — Pantallas de autenticación (login / registro)
+   Layout partido: formulario a la izquierda, panel de marca a la derecha.
+   En móvil el panel desaparece y queda solo el formulario.
+   ========================================================================== */
+
+.auth-body { min-height: 100vh; background: var(--bg); }
+
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 0.85fr;
+}
+
+/* — Panel del formulario — */
+.auth-pane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-10) var(--sp-6);
+}
+.auth-form-wrap { width: 100%; max-width: 380px; }
+.auth-title { font-size: var(--text-3xl); margin-bottom: var(--sp-2); }
+
+.auth-alt { text-align: center; }
+.auth-link { color: var(--accent); font-weight: 650; }
+.auth-link:hover { text-decoration: underline; }
+
+/* Input con botón adosado (mostrar/ocultar contraseña) */
+.input-affix { position: relative; display: flex; align-items: center; }
+.input-affix .input { padding-right: 42px; }
+.affix-btn {
+  position: absolute; right: 6px;
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  background: transparent; border: 0; border-radius: var(--r-sm);
+  cursor: pointer; font-size: 14px; line-height: 1;
+  opacity: .65; transition: opacity var(--fast), background var(--fast);
+}
+.affix-btn:hover { opacity: 1; background: var(--surface-2); }
+
+/* Medidor de fuerza de contraseña (solo registro) */
+.pw-meter { display: flex; gap: 4px; margin-top: 8px; }
+.pw-seg {
+  height: 4px; flex: 1; border-radius: var(--r-full);
+  background: var(--surface-3);
+  transition: background var(--base-t);
+}
+.pw-seg.on-weak   { background: #f87171; }
+.pw-seg.on-medium { background: #fbbf24; }
+.pw-seg.on-strong { background: #34d399; }
+.pw-label { font-size: var(--text-xs); color: var(--text-muted); margin-top: 6px; }
+
+/* — Panel de marca — */
+.auth-aside {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--sp-10);
+  overflow: hidden;
+  background: linear-gradient(150deg, var(--brand-700), var(--brand-600) 42%, #6d5ae8);
+  color: #fff;
+}
+/* Textura suave, sin imágenes */
+.auth-aside::before,
+.auth-aside::after {
+  content: ''; position: absolute; border-radius: 50%;
+  filter: blur(70px); opacity: .45; pointer-events: none;
+}
+.auth-aside::before {
+  width: 420px; height: 420px; top: -120px; right: -100px;
+  background: radial-gradient(circle, rgba(255,255,255,.5), transparent 65%);
+}
+.auth-aside::after {
+  width: 340px; height: 340px; bottom: -110px; left: -80px;
+  background: radial-gradient(circle, rgba(167,139,250,.75), transparent 68%);
+}
+.auth-aside-inner { position: relative; z-index: 1; max-width: 380px; }
+
+.aside-quote {
+  font-size: var(--text-2xl);
+  font-weight: 750;
+  letter-spacing: -.025em;
+  line-height: 1.32;
+  margin-bottom: var(--sp-8);
+}
+.aside-list { gap: 12px; }
+.aside-list li { color: rgba(255,255,255,.92); font-size: var(--text-base); }
+.aside-list li::before { color: #fff; }
+
+@media (max-width: 900px) {
+  .auth-shell { grid-template-columns: 1fr; }
+  .auth-aside { display: none; }
+  .auth-pane { padding: var(--sp-8) var(--sp-5); align-items: flex-start; padding-top: var(--sp-12); }
+}

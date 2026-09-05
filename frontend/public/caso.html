@@ -3,413 +3,680 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MigPAL — Mi Caso</title>
+<title>Mi caso — MigPAL</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232454eb'/><text x='16' y='23' font-family='system-ui,sans-serif' font-size='19' font-weight='800' fill='white' text-anchor='middle'>M</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/app.css">
 <style>
-  :root{--ink:#0f172a;--ink-soft:#475569;--accent:#2454eb;--accent-dark:#1a3fc4;--border:#e2e6ee;}
-  body{font-family:-apple-system,'Segoe UI',sans-serif;margin:0;min-height:100vh;background:#f7f8fb;color:var(--ink);}
-  header{background:var(--ink);color:#fff;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;}
-  header h1{margin:0;font-size:16px;font-weight:700;}
-  header a{color:#cbd5f5;font-size:13px;text-decoration:none;}
-  header a:hover{color:#fff;}
-  .wrap{max-width:640px;margin:0 auto;padding:20px;}
-  .card{background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 2px 10px rgba(15,23,42,.05);padding:20px;margin-bottom:16px;}
-  .card h2{margin:0 0 12px;font-size:15px;color:var(--accent);}
+  .app-main { padding: var(--sp-8) 0 var(--sp-20); }
 
-  #loginBox input{width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;box-sizing:border-box;font-size:13px;}
-  #loginBox button, .actionBtn{background:var(--accent);color:#fff;border:none;padding:10px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;}
-  #loginBox button:hover, .actionBtn:hover{background:var(--accent-dark);}
+  /* — Cabecera del caso — */
+  .case-head { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--sp-5); flex-wrap: wrap; margin-bottom: var(--sp-6); }
+  .case-head h1 { font-size: var(--text-3xl); }
 
-  #chatLog{border:1px solid #eee;border-radius:8px;padding:12px;height:220px;overflow-y:auto;margin-bottom:10px;background:#fafafa;}
-  .msg{margin-bottom:10px;font-size:13px;line-height:1.5;}
-  .msg.user{text-align:right;}
-  .msg .bubble{display:inline-block;padding:8px 12px;border-radius:12px;max-width:85%;}
-  .msg.user .bubble{background:var(--accent);color:#fff;}
-  .msg.ai .bubble{background:#e9e9f0;color:#333;}
-  #chatInput{display:flex;gap:8px;}
-  #chatInput input{flex:1;padding:9px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;}
+  /* — Barra de recorrido (4 etapas) — */
+  .journey-bar {
+    display: flex; gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    padding: var(--sp-4) var(--sp-5);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--sp-6);
+  }
+  .jnode { flex: 1; position: relative; display: flex; flex-direction: column; align-items: flex-start; padding-right: var(--sp-4); cursor: pointer; }
+  .jnode:last-child { padding-right: 0; }
+  .jnode::after {
+    content: ''; position: absolute; top: 13px; left: 32px; right: 8px; height: 2px;
+    background: var(--border); transition: background var(--slow);
+  }
+  .jnode:last-child::after { display: none; }
+  .jnode.done::after { background: #10b981; }
+  .jmark {
+    position: relative; z-index: 1;
+    width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: var(--text-xs); font-weight: 750;
+    background: var(--surface-3); color: var(--text-muted);
+    border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--border);
+    transition: all var(--base-t);
+  }
+  .jnode.done .jmark { background: #10b981; color: #fff; box-shadow: 0 0 0 1px #10b981; }
+  .jnode.active .jmark { background: var(--accent); color: #fff; box-shadow: 0 0 0 1px var(--accent), 0 0 0 5px var(--accent-ring); }
+  .jlabel { margin-top: 9px; font-size: var(--text-sm); font-weight: 650; }
+  .jnode.pending .jlabel { color: var(--text-muted); font-weight: 500; }
+  .jsub { font-size: var(--text-xs); color: var(--text-muted); margin-top: 1px; }
 
-  #assessmentBox{white-space:pre-wrap;font-size:13px;background:#f8f9fa;padding:12px;border-radius:8px;display:none;}
-  .disclaimer{background:#fff7ea;border:1px solid #f0d999;color:#8a6416;font-size:11.5px;line-height:1.5;padding:9px 12px;border-radius:6px;margin-bottom:10px;}
-  .score{font-size:26px;font-weight:700;color:#3f7d54;}
-  .tag{display:inline-block;font-family:ui-monospace,monospace;font-size:10.5px;background:#eaf0ff;color:var(--accent-dark);padding:2px 8px;border-radius:10px;margin:2px 4px 2px 0;}
-  #status{font-size:12px;color:#888;margin-top:8px;}
-  textarea{width:100%;padding:9px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;box-sizing:border-box;min-height:70px;font-family:inherit;}
+  /* — Tarjetas de etapa — */
+  .stage { margin-bottom: var(--sp-5); scroll-margin-top: 80px; }
+  .stage.is-locked { opacity: .58; }
+  .stage.is-locked .card { background: var(--surface-2); }
 
-  #recommendationBox{font-size:13px;background:#f8f9fa;padding:14px;border-radius:8px;display:none;margin-top:10px;}
-  .route-title{font-size:18px;font-weight:700;color:var(--ink);}
-  .fit-score{font-size:13px;color:var(--ink-soft);margin-bottom:10px;}
-  .rec-section{margin:12px 0;}
-  .rec-section b{display:block;margin-bottom:4px;}
-  .narrative{background:#eaf0ff;border-radius:6px;padding:10px;color:var(--ink);}
-  .next-step{background:var(--ink);color:#fff;border-radius:8px;padding:12px;margin-top:12px;}
-  .next-step b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#cbd5f5;margin-bottom:4px;}
-  .rec-status{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle;}
-  .rec-status.ISSUED{background:#eaf0ff;color:var(--accent-dark);}
-  .rec-status.ACCEPTED{background:#e6efe3;color:#3f7d54;}
-  .rec-status.DISCARDED{background:#f4e2df;color:#a3423a;}
-  .alt-route{border-top:1px solid var(--border);padding:8px 0;font-size:12.5px;}
+  /* — Evaluación — */
+  .score-ring {
+    --pct: 0;
+    width: 96px; height: 96px; flex: none; border-radius: 50%;
+    display: grid; place-items: center;
+    background: conic-gradient(var(--accent) calc(var(--pct) * 1%), var(--surface-3) 0);
+    position: relative;
+  }
+  .score-ring::before {
+    content: ''; position: absolute; inset: 8px; border-radius: 50%; background: var(--surface);
+  }
+  .score-ring > * { position: relative; z-index: 1; text-align: center; }
+  .score-num { font-size: var(--text-2xl); font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+  .score-den { font-size: 10px; color: var(--text-muted); }
 
-  #planBox{font-size:13px;background:#f8f9fa;padding:14px;border-radius:8px;display:none;margin-top:10px;}
-  .plan-progress{font-size:12px;color:var(--ink-soft);margin-bottom:10px;font-weight:600;}
-  .plan-step{display:flex;align-items:flex-start;gap:8px;padding:9px 0;border-top:1px solid var(--border);}
-  .plan-step:first-child{border-top:none;}
-  .plan-step .icon{font-size:15px;line-height:1.5;}
-  .plan-step input[type=checkbox]{margin-top:4px;width:15px;height:15px;}
-  .plan-step .body{flex:1;}
-  .plan-step .title{font-weight:600;}
-  .plan-step .desc{font-size:12px;color:var(--ink-soft);margin-top:2px;}
-  .plan-step .blocked-note{font-size:11.5px;color:#a3423a;margin-top:3px;}
-  .plan-complete-banner{background:#e6efe3;color:#3f7d54;border-radius:8px;padding:12px;margin-top:12px;font-weight:600;font-size:13px;}
+  .finding {
+    display: flex; gap: 9px; padding: 8px 0;
+    font-size: var(--text-base); color: var(--text-soft); line-height: 1.5;
+  }
+  .finding::before { content: '▸'; color: var(--accent); flex: none; font-size: 11px; margin-top: 4px; }
+
+  /* — Ruta recomendada — */
+  .route-hero {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: var(--sp-4); flex-wrap: wrap;
+    padding: var(--sp-5);
+    border-radius: var(--r-lg);
+    background: linear-gradient(135deg, var(--accent-soft), transparent 70%);
+    border: 1px solid var(--info-line);
+    margin-bottom: var(--sp-5);
+  }
+  .route-name { font-size: var(--text-xl); font-weight: 780; letter-spacing: -.025em; }
+  .route-meta { font-size: var(--text-sm); color: var(--text-soft); margin-top: 3px; }
+
+  .narrative {
+    padding: var(--sp-4);
+    background: var(--surface-2);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+    font-size: var(--text-base);
+    line-height: 1.65;
+    color: var(--text-soft);
+  }
+  .next-step-box {
+    margin-top: var(--sp-5); padding: var(--sp-4);
+    background: var(--slate-900); color: #fff; border-radius: var(--r-lg);
+  }
+  :root[data-theme='dark'] .next-step-box { background: var(--surface-3); }
+  .next-step-box .kicker {
+    font-size: 10px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--brand-300); margin-bottom: 5px;
+  }
+  .alt-route {
+    display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3);
+    padding: 10px 0; border-top: 1px solid var(--border-soft); font-size: var(--text-base);
+  }
+
+  @media (max-width: 720px) {
+    .journey-bar { flex-wrap: wrap; gap: var(--sp-4); }
+    .jnode { flex: 1 1 42%; padding-right: 0; }
+    .jnode::after { display: none; }
+    .case-head h1 { font-size: var(--text-2xl); }
+  }
 </style>
 </head>
 <body>
-<header><h1>MigPAL — Mi caso</h1><a href="/">← Volver</a></header>
-<div class="wrap">
 
-  <div class="card" id="loginBox">
-    <h2>1. Iniciar sesión</h2>
-    <input id="loginUser" placeholder="usuario (el que usaste en /registro.html)">
-    <input id="loginPass" type="password" placeholder="contraseña">
-    <button onclick="login()">Entrar</button>
-    <div id="loginMsg" style="font-size:12px;margin-top:6px;"></div>
-  </div>
-
-  <div class="card" id="chatCard" style="display:none;">
-    <h2>2. Habla con MigPAL</h2>
-    <div id="chatLog"></div>
-    <div id="chatInput">
-      <input id="chatText" placeholder="Ej: Soy ingeniero con 6 años de experiencia, quiero migrar a Canadá...">
-      <button class="actionBtn" onclick="sendMessage()">Enviar</button>
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><span class="brand-mark">M</span><span>MigPAL</span></a>
+    <div class="header-actions">
+      <span class="badge badge-neutral" id="userBadge">…</span>
+      <button class="icon-btn" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema">◐</button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Salir</button>
     </div>
   </div>
+</header>
 
-  <div class="card" id="assessCard" style="display:none;">
-    <h2>3. Generar mi Assessment</h2>
-    <p style="font-size:12px;color:#666;margin:0 0 8px;">Describe tu perfil (o copia lo que ya conversaste) y MigPAL calculará tu evaluación.</p>
-    <textarea id="profileText" placeholder="Soy ingeniero de software, 6 años de experiencia, maestría, quiero migrar a Canadá con mi familia..."></textarea>
-    <div style="margin-top:8px;">
-      <button class="actionBtn" onclick="requestAssessment()">Generar Assessment</button>
-      <button class="actionBtn" style="background:#3f7d54;" onclick="loadAssessment()">Ver mi último Assessment</button>
-    </div>
-    <div id="assessmentBox"></div>
-  </div>
+<main class="app-main">
+  <div class="wrap">
 
-  <div class="card" id="recCard" style="display:none;">
-    <h2>4. Recommendation</h2>
-    <p style="font-size:12px;color:#666;margin:0 0 8px;">Con tu Assessment ya generado, pedile a MigPAL tu recomendación.</p>
-    <div class="disclaimer">⚠️ Esta recomendación es <b>demostrativa y orientativa</b>: se calcula sobre un catálogo de referencia limitado, no sobre asesoría legal migratoria verificada. No reemplaza la opinión de un profesional habilitado ni constituye un compromiso de resultado.</div>
-    <div>
-      <button class="actionBtn" onclick="requestRecommendation()">Ver mi recomendación</button>
-      <button class="actionBtn" style="background:#3f7d54;" onclick="loadRecommendation()">Ver la última</button>
-    </div>
-    <div id="recommendationBox"></div>
-  </div>
-
-  <div class="card" id="planCard" style="display:none;">
-    <h2>5. Mi Plan</h2>
-    <p style="font-size:12px;color:#666;margin:0 0 8px;">Con tu ruta aceptada, generá los pasos a seguir para avanzar tu proyecto migratorio.</p>
-    <div>
-      <button class="actionBtn" onclick="generatePlan()">Generar mi plan</button>
-      <button class="actionBtn" style="background:#3f7d54;" onclick="loadPlan()">Ver mi plan</button>
-    </div>
-    <div id="planBox"></div>
-  </div>
-
-  <div id="status"></div>
-</div>
-
-<script>
-const API_BASE = 'http://localhost:8010';
-let TOKEN = null;
-
-function setStatus(t){ document.getElementById('status').textContent = t; }
-
-async function login(){
-  const username = document.getElementById('loginUser').value;
-  const password = document.getElementById('loginPass').value;
-  const res = await fetch(`${API_BASE}/api/v1/auth/token`, {
-    method:'POST',
-    headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:`username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
-  });
-  const data = await res.json();
-  if(res.status === 200){
-    TOKEN = data.access_token;
-    document.getElementById('loginMsg').textContent = '✅ Sesión iniciada';
-    document.getElementById('chatCard').style.display = 'block';
-    document.getElementById('assessCard').style.display = 'block';
-    document.getElementById('recCard').style.display = 'block';
-    document.getElementById('planCard').style.display = 'block';
-    await fetch(`${API_BASE}/v1/case`, {method:'POST', headers:{Authorization:`Bearer ${TOKEN}`}});
-    setStatus('Caso abierto. Puedes conversar y generar tu Assessment.');
-  } else {
-    document.getElementById('loginMsg').textContent = '❌ ' + (data.detail || 'Error de login');
-  }
-}
-
-function addMsg(role, text){
-  const log = document.getElementById('chatLog');
-  const div = document.createElement('div');
-  div.className = 'msg ' + role;
-  div.innerHTML = `<span class="bubble"></span>`;
-  div.querySelector('.bubble').textContent = text;
-  log.appendChild(div);
-  log.scrollTop = log.scrollHeight;
-}
-
-async function sendMessage(){
-  const input = document.getElementById('chatText');
-  const message = input.value.trim();
-  if(!message) return;
-  addMsg('user', message);
-  input.value = '';
-  setStatus('MigPAL está pensando...');
-  const res = await fetch(`${API_BASE}/v1/messages`, {
-    method:'POST',
-    headers:{'Content-Type':'application/json', Authorization:`Bearer ${TOKEN}`},
-    body: JSON.stringify({message})
-  });
-  const data = await res.json();
-  if(res.status === 200){
-    addMsg('ai', data.reply);
-    setStatus('Listo.');
-  } else {
-    addMsg('ai', 'Error: ' + (data.detail || res.status));
-    setStatus('Error al conversar.');
-  }
-}
-
-function renderAssessment(a){
-  const box = document.getElementById('assessmentBox');
-  box.style.display = 'block';
-  box.innerHTML = `
-    <div class="score">${a.score.toFixed(0)} / 100</div>
-    <div>Confianza: ${(a.confidence*100).toFixed(0)}%</div>
-    <div style="margin:10px 0 4px;"><b>Hallazgos:</b></div>
-    <ul>${a.findings.map(f=>`<li>${f}</li>`).join('')}</ul>
-    <div style="margin:10px 0 4px;"><b>Recomendaciones:</b></div>
-    <ul>${a.recommendations.map(f=>`<li>${f}</li>`).join('')}</ul>
-    ${a.ai_reflection ? `<div style="margin:10px 0 4px;"><b>MigPAL entendió:</b></div><div>${a.ai_reflection}</div>` : ''}
-    <div style="margin-top:10px;">
-      <span class="tag">Decision Engine v${a.decision_engine_version}</span>
-      <span class="tag">Policy v${a.policy_version}</span>
-      <span class="tag">Knowledge v${a.knowledge_version}</span>
-    </div>
-  `;
-}
-
-async function requestAssessment(){
-  const profile_text = document.getElementById('profileText').value.trim();
-  if(!profile_text) return;
-  setStatus('Generando Assessment (MigPAL está analizando)...');
-  const res = await fetch(`${API_BASE}/v1/assessment`, {
-    method:'POST',
-    headers:{'Content-Type':'application/json', Authorization:`Bearer ${TOKEN}`},
-    body: JSON.stringify({profile_text})
-  });
-  const data = await res.json();
-  if(res.status === 200){
-    renderAssessment(data);
-    setStatus('Assessment generado y guardado en tu Case.');
-  } else {
-    setStatus('Error: ' + (data.detail || res.status));
-  }
-}
-
-async function loadAssessment(){
-  setStatus('Buscando tu último Assessment...');
-  const res = await fetch(`${API_BASE}/v1/assessment`, { headers:{Authorization:`Bearer ${TOKEN}`} });
-  const data = await res.json();
-  if(res.status === 200){
-    renderAssessment(data);
-    setStatus('Assessment recuperado -- así se ve "volver otro día y verlo".');
-  } else {
-    setStatus('Todavía no tienes un Assessment (' + res.status + ').');
-  }
-}
-
-function renderRecommendation(r){
-  const box = document.getElementById('recommendationBox');
-  box.style.display = 'block';
-  const primary = r.primary_evaluation;
-  const alternatives = r.alternative_evaluations || [];
-
-  const acceptBtn = r.status === 'ISSUED'
-    ? `<button class="actionBtn" onclick="acceptRecommendation(${r.id})">Aceptar esta ruta</button>
-       <button class="actionBtn" style="background:#a3423a;" onclick="discardRecommendation(${r.id})">Descartar</button>`
-    : '';
-
-  box.innerHTML = `
-    <div class="disclaimer">⚠️ Recomendación <b>demostrativa/orientativa</b>, generada sobre un catálogo de referencia limitado -- no es asesoría migratoria oficial ni un compromiso de resultado.</div>
-    <div class="route-title">${primary.route.visa_type} — ${primary.route.country}<span class="rec-status ${r.status}">${r.status}</span></div>
-    <div class="fit-score">Ajuste: ${primary.route.fit_score.toFixed(0)}/100 · Confianza: ${(r.confidence*100).toFixed(0)}%</div>
-
-    <div class="rec-section">
-      <b>Por qué esta ruta</b>
-      <ul>${r.rationale.map(x=>`<li>${x}</li>`).join('')}</ul>
-    </div>
-
-    ${r.narrative_summary ? `<div class="rec-section"><b>MigPAL en tus palabras</b><div class="narrative">${r.narrative_summary}</div></div>` : ''}
-
-    <div class="next-step">
-      <b>Próximo paso</b>
-      ${r.next_step.title} — ${r.next_step.description}
-    </div>
-
-    <div style="margin-top:12px;">${acceptBtn}</div>
-
-    ${alternatives.length ? `
-      <div class="rec-section" style="margin-top:14px;">
-        <b>Alternativas</b>
-        ${alternatives.map(a => `<div class="alt-route">${a.route.visa_type} — ${a.route.country} (ajuste ${a.route.fit_score.toFixed(0)}/100)</div>`).join('')}
-      </div>` : ''}
-
-    <div style="margin-top:10px;">
-      <span class="tag">Decision Engine v${r.decision_engine_version}</span>
-      <span class="tag">Policy v${r.policy_version}</span>
-      <span class="tag">Knowledge v${r.knowledge_version}</span>
-    </div>
-  `;
-}
-
-async function requestRecommendation(){
-  setStatus('Generando tu Recommendation (MigPAL está decidiendo tu mejor ruta)...');
-  const res = await fetch(`${API_BASE}/v1/recommendation`, {
-    method:'POST',
-    headers:{Authorization:`Bearer ${TOKEN}`}
-  });
-  const data = await res.json();
-  if(res.status === 200){
-    renderRecommendation(data);
-    setStatus('Recommendation generada y guardada en tu Case.');
-  } else {
-    setStatus('Error: ' + (data.detail || res.status));
-  }
-}
-
-async function loadRecommendation(){
-  setStatus('Buscando tu última Recommendation...');
-  const res = await fetch(`${API_BASE}/v1/recommendation`, { headers:{Authorization:`Bearer ${TOKEN}`} });
-  const data = await res.json();
-  if(res.status === 200){
-    renderRecommendation(data);
-    setStatus('Recommendation recuperada.');
-  } else {
-    setStatus('Todavía no tienes una Recommendation (' + res.status + ').');
-  }
-}
-
-async function acceptRecommendation(id){
-  setStatus('Aceptando ruta...');
-  const res = await fetch(`${API_BASE}/v1/recommendation/${id}/accept`, {
-    method:'POST',
-    headers:{Authorization:`Bearer ${TOKEN}`}
-  });
-  const data = await res.json();
-  if(res.status === 200){
-    renderRecommendation(data);
-    setStatus('Ruta aceptada.');
-  } else {
-    setStatus('Error: ' + (data.detail || res.status));
-  }
-}
-
-async function discardRecommendation(id){
-  setStatus('Descartando recomendación...');
-  const res = await fetch(`${API_BASE}/v1/recommendation/${id}/discard`, {
-    method:'POST',
-    headers:{Authorization:`Bearer ${TOKEN}`}
-  });
-  const data = await res.json();
-  if(res.status === 200){
-    renderRecommendation(data);
-    setStatus('Recommendation descartada.');
-  } else {
-    setStatus('Error: ' + (data.detail || res.status));
-  }
-}
-
-function renderPlanStep(s, stepsById){
-  if(s.status === 'COMPLETED'){
-    return `<div class="plan-step">
-      <span class="icon">☑️</span>
-      <div class="body"><div class="title">${s.title}</div><div class="desc">completado</div></div>
-    </div>`;
-  }
-  if(s.blocked){
-    const names = s.blocked_by.map(id => (stepsById[id] && stepsById[id].title) || id).join(', ');
-    return `<div class="plan-step">
-      <span class="icon">🔒</span>
-      <div class="body">
-        <div class="title">${s.title}</div>
-        <div class="desc">${s.description}</div>
-        <div class="blocked-note">Bloqueado hasta completar: ${names}</div>
+    <div class="case-head">
+      <div>
+        <h1 id="greeting">Tu caso</h1>
+        <p class="text-soft" id="caseSubtitle">Cargando el estado de tu caso…</p>
       </div>
-    </div>`;
+      <button class="btn btn-secondary btn-sm" id="refreshBtn">↻ Actualizar</button>
+    </div>
+
+    <!-- Recorrido -->
+    <nav class="journey-bar" id="journeyBar" aria-label="Progreso del caso">
+      <a class="jnode pending" href="#stage-perfil"><div class="jmark">1</div><div class="jlabel">Perfil</div><div class="jsub" data-sub="1">—</div></a>
+      <a class="jnode pending" href="#stage-evaluacion"><div class="jmark">2</div><div class="jlabel">Evaluación</div><div class="jsub" data-sub="2">—</div></a>
+      <a class="jnode pending" href="#stage-ruta"><div class="jmark">3</div><div class="jlabel">Ruta</div><div class="jsub" data-sub="3">—</div></a>
+      <a class="jnode pending" href="#stage-plan"><div class="jmark">4</div><div class="jlabel">Mi plan</div><div class="jsub" data-sub="4">—</div></a>
+    </nav>
+
+    <!-- ===================== ETAPA 1 — PERFIL ===================== -->
+    <section class="stage" id="stage-perfil">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step-num" id="num1">1</span>
+            <div>
+              <h2>Contá tu situación</h2>
+              <div class="card-sub">Escribí tu perfil o conversá con MigPAL para ordenarlo.</div>
+            </div>
+          </div>
+        </div>
+
+        <label class="label" for="profileText">Tu perfil migratorio</label>
+        <textarea class="textarea" id="profileText"
+          placeholder="Ej: Soy ingeniero de software con 6 años de experiencia, tengo una maestría, quiero migrar a Estados Unidos con mi pareja y tenemos algo de ahorro."></textarea>
+        <div class="hint">Cuanto más concreto seas (años de experiencia, estudios, destino, familia, ahorros), mejor será tu evaluación.</div>
+
+        <div class="row gap-2 mt-4 wrapf">
+          <button class="btn btn-primary" id="assessBtn">Generar mi evaluación</button>
+          <button class="btn btn-ghost btn-sm" id="toggleChatBtn">💬 Prefiero conversarlo</button>
+        </div>
+
+        <div id="chatPanel" class="hidden mt-5">
+          <div class="hr"></div>
+          <div class="chat-log" id="chatLog">
+            <div class="msg msg-ai"><div class="bubble">Contame tu situación: a qué te dedicás, qué estudiaste, a dónde querés migrar y con quién.</div></div>
+          </div>
+          <form class="chat-form" id="chatForm">
+            <input class="input" id="chatText" placeholder="Escribí tu mensaje…" autocomplete="off">
+            <button class="btn btn-secondary" type="submit" id="chatSendBtn">Enviar</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================== ETAPA 2 — EVALUACIÓN =================== -->
+    <section class="stage" id="stage-evaluacion">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step-num" id="num2">2</span>
+            <div>
+              <h2>Tu evaluación</h2>
+              <div class="card-sub">Puntaje calculado con reglas explícitas y versionadas.</div>
+            </div>
+          </div>
+          <span class="badge badge-neutral hidden" id="assessBadge"></span>
+        </div>
+        <div id="assessmentBody">
+          <div class="empty">
+            <div class="empty-icon">📊</div>
+            <h3>Todavía no generaste tu evaluación</h3>
+            <p>Completá tu perfil arriba y generala para continuar.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================== ETAPA 3 — RUTA ====================== -->
+    <section class="stage" id="stage-ruta">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step-num" id="num3">3</span>
+            <div>
+              <h2>Tu ruta recomendada</h2>
+              <div class="card-sub">La alternativa con mejor ajuste a tu perfil, y por qué.</div>
+            </div>
+          </div>
+          <span class="badge badge-neutral hidden" id="recBadge"></span>
+        </div>
+
+        <div class="alert alert-warn mb-5">
+          <span class="alert-icon">⚠️</span>
+          <div>
+            <strong>Orientativo, no asesoría legal.</strong> Se calcula sobre un
+            catálogo de referencia limitado, no sobre normativa verificada y
+            actualizada. No reemplaza a un profesional habilitado.
+          </div>
+        </div>
+
+        <div id="recommendationBody">
+          <div class="empty">
+            <div class="empty-icon">🧭</div>
+            <h3>Todavía no tenés una ruta recomendada</h3>
+            <p>Necesitás una evaluación primero.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================== ETAPA 4 — PLAN ====================== -->
+    <section class="stage" id="stage-plan">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step-num" id="num4">4</span>
+            <div>
+              <h2>Mi plan</h2>
+              <div class="card-sub">Los pasos concretos para avanzar, en orden.</div>
+            </div>
+          </div>
+          <span class="badge badge-neutral hidden" id="planBadge"></span>
+        </div>
+        <div id="planBody">
+          <div class="empty">
+            <div class="empty-icon">🗺️</div>
+            <h3>Todavía no generaste tu plan</h3>
+            <p>Aceptá una ruta recomendada para poder armarlo.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script src="/assets/app.js"></script>
+<script>
+(function () {
+  'use strict';
+  if (!MigPAL.session.requireAuth()) return;
+
+  var esc = MigPAL.escapeHtml;
+  var api = MigPAL.api;
+
+  /* Estado local del caso: lo que el backend ya sabe de este usuario. */
+  var state = { assessment: null, recommendation: null, plan: null };
+
+  /* ------------------------------------------------------------ chrome */
+
+  document.getElementById('userBadge').textContent = MigPAL.session.username || 'mi cuenta';
+  document.getElementById('themeToggle').addEventListener('click', function () { MigPAL.theme.toggle(); });
+  document.getElementById('logoutBtn').addEventListener('click', function () { MigPAL.session.logout(); });
+  document.getElementById('refreshBtn').addEventListener('click', function () { loadAll(true); });
+
+  if (new URLSearchParams(location.search).get('welcome')) {
+    MigPAL.toast('¡Bienvenido! Contanos tu situación para empezar.', 'success');
   }
-  return `<div class="plan-step">
-    <input type="checkbox" onclick="completeStep(${s.id})">
-    <div class="body"><div class="title">${s.title}</div><div class="desc">${s.description}</div></div>
-  </div>`;
-}
 
-function renderPlan(p){
-  const box = document.getElementById('planBox');
-  box.style.display = 'block';
-  const stepsById = Object.fromEntries(p.steps.map(s => [s.id, s]));
-  const steps = [...p.steps].sort((a, b) => a.sequence - b.sequence);
-  const banner = p.status === 'COMPLETED'
-    ? `<div class="plan-complete-banner">🎉 Completaste tu plan — tu proyecto migratorio llegó al final de esta etapa.</div>`
-    : '';
-  box.innerHTML = `
-    <div class="plan-progress">Progreso: ${p.completed_count}/${p.total_count} pasos completados</div>
-    ${steps.map(s => renderPlanStep(s, stepsById)).join('')}
-    ${banner}
-  `;
-}
+  /* ------------------------------------------------------------ helpers */
 
-async function generatePlan(){
-  setStatus('Generando tu plan de ejecución...');
-  const res = await fetch(`${API_BASE}/v1/execution-plan`, {
-    method:'POST',
-    headers:{Authorization:`Bearer ${TOKEN}`}
+  function setStageLocked(id, locked) {
+    document.getElementById(id).classList.toggle('is-locked', locked);
+  }
+
+  function setBadge(id, text, kind) {
+    var el = document.getElementById(id);
+    if (!text) { el.classList.add('hidden'); return; }
+    el.className = 'badge badge-' + (kind || 'neutral');
+    el.textContent = text;
+  }
+
+  function skeleton(n) {
+    var out = '';
+    for (var i = 0; i < (n || 3); i++) out += '<div class="skeleton skeleton-line"></div>';
+    return out;
+  }
+
+  /** Marca las 4 etapas del recorrido según el estado real del caso. */
+  function renderJourney() {
+    var nodes = document.querySelectorAll('.jnode');
+    var subs = {
+      1: state.assessment ? 'Listo' : 'Pendiente',
+      2: state.assessment ? Math.round(state.assessment.score) + '/100' : 'Pendiente',
+      3: state.recommendation ? (state.recommendation.status === 'ACCEPTED' ? 'Aceptada' : 'Emitida') : 'Pendiente',
+      4: state.plan ? state.plan.completed_count + '/' + state.plan.total_count + ' pasos' : 'Pendiente'
+    };
+    var done = {
+      1: !!state.assessment,
+      2: !!state.assessment,
+      3: !!state.recommendation && state.recommendation.status === 'ACCEPTED',
+      4: !!state.plan && state.plan.status === 'COMPLETED'
+    };
+    // La etapa activa es la primera no terminada.
+    var activeIndex = !state.assessment ? 1
+      : !state.recommendation ? 3
+      : state.recommendation.status !== 'ACCEPTED' ? 3
+      : !state.plan ? 4
+      : state.plan.status !== 'COMPLETED' ? 4 : 0;
+
+    nodes.forEach(function (node, i) {
+      var n = i + 1;
+      node.classList.remove('done', 'active', 'pending');
+      node.classList.add(done[n] ? 'done' : (n === activeIndex ? 'active' : 'pending'));
+      node.querySelector('.jmark').textContent = done[n] ? '✓' : String(n);
+      node.querySelector('[data-sub="' + n + '"]').textContent = subs[n];
+    });
+
+    ['num1', 'num2', 'num3', 'num4'].forEach(function (id, i) {
+      var el = document.getElementById(id);
+      el.className = 'step-num' + (done[i + 1] ? ' is-done' : '');
+      el.textContent = done[i + 1] ? '✓' : String(i + 1);
+    });
+
+    setStageLocked('stage-ruta', !state.assessment);
+    setStageLocked('stage-plan', !state.recommendation || state.recommendation.status !== 'ACCEPTED');
+
+    var sub = document.getElementById('caseSubtitle');
+    if (!state.assessment) sub.textContent = 'Empezá contándonos tu situación.';
+    else if (!state.recommendation) sub.textContent = 'Tu evaluación está lista. Pedí tu ruta recomendada.';
+    else if (state.recommendation.status !== 'ACCEPTED') sub.textContent = 'Revisá tu ruta y aceptala para armar el plan.';
+    else if (!state.plan) sub.textContent = 'Ruta aceptada. Generá tu plan de pasos.';
+    else if (state.plan.status === 'COMPLETED') sub.textContent = '¡Completaste tu plan! 🎉';
+    else sub.textContent = 'Vas ' + state.plan.completed_count + ' de ' + state.plan.total_count + ' pasos.';
+  }
+
+  /* -------------------------------------------------------- evaluación */
+
+  function renderAssessment(a) {
+    state.assessment = a;
+    setBadge('assessBadge', 'Confianza ' + Math.round(a.confidence * 100) + '%', 'brand');
+
+    var findings = (a.findings || []).map(function (f) {
+      return '<div class="finding">' + esc(f) + '</div>';
+    }).join('');
+    var recs = (a.recommendations || []).map(function (r) {
+      return '<div class="finding">' + esc(r) + '</div>';
+    }).join('');
+
+    document.getElementById('assessmentBody').innerHTML =
+      '<div class="row gap-5 wrapf mb-5" style="align-items:center">' +
+        '<div class="score-ring" style="--pct:' + Math.round(a.score) + '">' +
+          '<div><div class="score-num">' + Math.round(a.score) + '</div><div class="score-den">/ 100</div></div>' +
+        '</div>' +
+        '<div class="flex-1" style="min-width:200px">' +
+          (a.ai_reflection
+            ? '<div class="text-xs text-muted fw-700 mb-2" style="letter-spacing:.05em;text-transform:uppercase">MigPAL entendió</div>' +
+              '<div class="narrative">' + esc(a.ai_reflection) + '</div>'
+            : '') +
+        '</div>' +
+      '</div>' +
+      (findings ? '<h3 class="text-md mb-2">Hallazgos</h3>' + findings : '') +
+      (recs ? '<h3 class="text-md mb-2 mt-5">Recomendaciones</h3>' + recs : '') +
+      '<div class="row gap-2 wrapf mt-5">' +
+        '<span class="chip">Decision Engine v' + esc(a.decision_engine_version) + '</span>' +
+        '<span class="chip">Policy v' + esc(a.policy_version) + '</span>' +
+        '<span class="chip">Knowledge v' + esc(a.knowledge_version) + '</span>' +
+      '</div>' +
+      '<div class="hr"></div>' +
+      '<button class="btn btn-primary" id="recBtn">' +
+        (state.recommendation ? 'Regenerar mi ruta' : 'Ver mi ruta recomendada') +
+      '</button>';
+
+    document.getElementById('recBtn').addEventListener('click', requestRecommendation);
+  }
+
+  /* --------------------------------------------------------------- ruta */
+
+  function renderRecommendation(r) {
+    state.recommendation = r;
+    var statusKind = r.status === 'ACCEPTED' ? 'success' : r.status === 'DISCARDED' ? 'danger' : 'brand';
+    var statusText = r.status === 'ACCEPTED' ? 'Aceptada' : r.status === 'DISCARDED' ? 'Descartada' : 'Emitida';
+    setBadge('recBadge', statusText, statusKind);
+
+    var p = r.primary_evaluation;
+    var alts = (r.alternative_evaluations || []).map(function (a) {
+      return '<div class="alt-route"><span>' + esc(a.route.visa_type) + ' · ' + esc(a.route.country) + '</span>' +
+        '<span class="badge badge-neutral">' + Math.round(a.route.fit_score) + '/100</span></div>';
+    }).join('');
+
+    var rationale = (r.rationale || []).map(function (x) {
+      return '<div class="finding">' + esc(x) + '</div>';
+    }).join('');
+
+    var actions = r.status === 'ISSUED'
+      ? '<div class="row gap-2 wrapf mt-5">' +
+          '<button class="btn btn-success" id="acceptBtn">Aceptar esta ruta</button>' +
+          '<button class="btn btn-ghost btn-sm" id="discardBtn">Descartar</button>' +
+        '</div>'
+      : r.status === 'ACCEPTED'
+        ? '<div class="row gap-2 mt-5"><button class="btn btn-primary" id="planBtn">' +
+            (state.plan ? 'Ver mi plan' : 'Generar mi plan de pasos') + '</button></div>'
+        : '';
+
+    document.getElementById('recommendationBody').innerHTML =
+      '<div class="route-hero">' +
+        '<div><div class="route-name">' + esc(p.route.visa_type) + ' · ' + esc(p.route.country) + '</div>' +
+        '<div class="route-meta">Ajuste ' + Math.round(p.route.fit_score) + '/100 · Confianza ' + Math.round(r.confidence * 100) + '%</div></div>' +
+        '<span class="badge badge-' + statusKind + ' badge-dot">' + statusText + '</span>' +
+      '</div>' +
+      (r.narrative_summary ? '<div class="narrative mb-5">' + esc(r.narrative_summary) + '</div>' : '') +
+      '<h3 class="text-md mb-2">Por qué esta ruta</h3>' + rationale +
+      (p.required_documents && p.required_documents.length
+        ? '<h3 class="text-md mb-2 mt-5">Documentación que vas a necesitar</h3>' +
+          p.required_documents.map(function (d) { return '<div class="finding">' + esc(d) + '</div>'; }).join('')
+        : '') +
+      '<div class="next-step-box"><div class="kicker">Próximo paso</div>' +
+        '<div class="fw-700">' + esc(r.next_step.title) + '</div>' +
+        '<div class="text-sm mt-1" style="opacity:.85">' + esc(r.next_step.description) + '</div></div>' +
+      (alts ? '<h3 class="text-md mb-1 mt-5">Alternativas consideradas</h3>' + alts : '') +
+      actions;
+
+    var acceptBtn = document.getElementById('acceptBtn');
+    if (acceptBtn) acceptBtn.addEventListener('click', function () { decideRecommendation('accept', this); });
+    var discardBtn = document.getElementById('discardBtn');
+    if (discardBtn) discardBtn.addEventListener('click', function () { decideRecommendation('discard', this); });
+    var planBtn = document.getElementById('planBtn');
+    if (planBtn) planBtn.addEventListener('click', function () { state.plan ? scrollTo('stage-plan') : createPlan(this); });
+  }
+
+  /* --------------------------------------------------------------- plan */
+
+  function renderPlan(p) {
+    state.plan = p;
+    var pct = p.total_count ? Math.round((p.completed_count / p.total_count) * 100) : 0;
+    setBadge('planBadge', p.status === 'COMPLETED' ? 'Completado' : 'En curso',
+             p.status === 'COMPLETED' ? 'success' : 'brand');
+
+    var byId = {};
+    p.steps.forEach(function (s) { byId[s.id] = s; });
+
+    var steps = p.steps.slice().sort(function (a, b) { return a.sequence - b.sequence; })
+      .map(function (s) {
+        var cls = s.status === 'COMPLETED' ? 'is-done' : (s.blocked ? 'is-blocked' : '');
+        var blockedBy = (s.blocked_by || []).map(function (id) {
+          return byId[id] ? byId[id].title : ('#' + id);
+        }).join(', ');
+        return '<div class="plan-step ' + cls + '">' +
+          '<button class="plan-step-check" data-step="' + s.id + '"' +
+            (s.status === 'COMPLETED' || s.blocked ? ' disabled' : '') +
+            ' aria-label="Marcar como completado">' +
+            (s.status === 'COMPLETED' ? '✓' : (s.blocked ? '🔒' : '')) +
+          '</button>' +
+          '<div class="plan-step-body">' +
+            '<div class="plan-step-title">' + esc(s.title) + '</div>' +
+            '<div class="plan-step-desc">' + esc(s.description) + '</div>' +
+            (s.blocked ? '<div class="plan-step-lock"><span>🔒</span><span>Bloqueado hasta completar: ' + esc(blockedBy) + '</span></div>' : '') +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+    document.getElementById('planBody').innerHTML =
+      '<div class="row between mb-2" style="align-items:baseline">' +
+        '<span class="fw-700">' + p.completed_count + ' de ' + p.total_count + ' pasos completados</span>' +
+        '<span class="text-sm text-muted">' + pct + '%</span>' +
+      '</div>' +
+      '<div class="progress mb-5"><div class="progress-bar' + (p.status === 'COMPLETED' ? ' is-complete' : '') + '" style="width:' + pct + '%"></div></div>' +
+      steps +
+      (p.status === 'COMPLETED'
+        ? '<div class="alert alert-success mt-5"><span class="alert-icon">🎉</span><div>' +
+          '<strong>Completaste tu plan.</strong> Tu proyecto migratorio llegó al final de esta etapa.</div></div>'
+        : '');
+
+    document.querySelectorAll('.plan-step-check:not([disabled])').forEach(function (btn) {
+      btn.addEventListener('click', function () { completeStep(btn.dataset.step, btn); });
+    });
+  }
+
+  function scrollTo(id) {
+    document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* ------------------------------------------------------------ acciones */
+
+  async function requestAssessment() {
+    var btn = document.getElementById('assessBtn');
+    var text = document.getElementById('profileText').value.trim();
+    if (text.length < 20) { MigPAL.toast('Contanos un poco más sobre tu situación (al menos 20 caracteres).', 'error'); return; }
+
+    var restore = MigPAL.busy(btn, 'Analizando tu perfil…');
+    document.getElementById('assessmentBody').innerHTML = skeleton(4);
+    try {
+      renderAssessment(await api.createAssessment(text));
+      renderJourney();
+      MigPAL.toast('Evaluación lista.', 'success');
+      scrollTo('stage-evaluacion');
+    } catch (err) {
+      MigPAL.toast(err.detail || 'No se pudo generar la evaluación.', 'error');
+      document.getElementById('assessmentBody').innerHTML =
+        '<div class="empty"><div class="empty-icon">⚠️</div><h3>No se pudo generar</h3><p>' + esc(err.detail || '') + '</p></div>';
+    } finally { restore(); }
+  }
+
+  async function requestRecommendation() {
+    var btn = document.getElementById('recBtn');
+    var restore = MigPAL.busy(btn, 'Buscando tu mejor ruta…');
+    document.getElementById('recommendationBody').innerHTML = skeleton(4);
+    try {
+      renderRecommendation(await api.createRecommendation());
+      renderJourney();
+      MigPAL.toast('Ruta recomendada lista.', 'success');
+      scrollTo('stage-ruta');
+    } catch (err) {
+      MigPAL.toast(err.detail || 'No se pudo generar la ruta.', 'error');
+      if (state.recommendation) renderRecommendation(state.recommendation);
+    } finally { restore(); }
+  }
+
+  async function decideRecommendation(action, btn) {
+    var restore = MigPAL.busy(btn, action === 'accept' ? 'Aceptando…' : 'Descartando…');
+    try {
+      var r = action === 'accept'
+        ? await api.acceptRecommendation(state.recommendation.id)
+        : await api.discardRecommendation(state.recommendation.id);
+      renderRecommendation(r);
+      renderJourney();
+      MigPAL.toast(action === 'accept' ? 'Ruta aceptada. Ya podés generar tu plan.' : 'Ruta descartada.',
+                   action === 'accept' ? 'success' : 'info');
+      if (action === 'accept') scrollTo('stage-plan');
+    } catch (err) {
+      MigPAL.toast(err.detail || 'No se pudo completar la acción.', 'error');
+      restore();
+    }
+  }
+
+  async function createPlan(btn) {
+    var restore = MigPAL.busy(btn, 'Armando tu plan…');
+    document.getElementById('planBody').innerHTML = skeleton(4);
+    try {
+      renderPlan(await api.createPlan());
+      renderJourney();
+      MigPAL.toast('Tu plan está listo.', 'success');
+      scrollTo('stage-plan');
+    } catch (err) {
+      MigPAL.toast(err.detail || 'No se pudo generar el plan.', 'error');
+      await loadPlan();
+    } finally { restore(); }
+  }
+
+  async function completeStep(stepId, btn) {
+    btn.disabled = true;
+    try {
+      renderPlan(await api.completeStep(stepId));
+      renderJourney();
+      if (state.plan.status === 'COMPLETED') MigPAL.toast('¡Completaste todo tu plan! 🎉', 'success', 6000);
+    } catch (err) {
+      MigPAL.toast(err.detail || 'No se pudo completar el paso.', 'error');
+      await loadPlan();   // re-sincroniza con el estado real del backend
+    }
+  }
+
+  /* ---------------------------------------------------------------- chat */
+
+  document.getElementById('toggleChatBtn').addEventListener('click', function () {
+    var panel = document.getElementById('chatPanel');
+    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) document.getElementById('chatText').focus();
   });
-  const data = await res.json();
-  if(res.status === 200){
-    renderPlan(data);
-    setStatus('Plan generado y guardado en tu Case.');
-  } else {
-    setStatus('Error: ' + (data.detail || res.status));
-  }
-}
 
-async function loadPlan(){
-  setStatus('Buscando tu plan...');
-  const res = await fetch(`${API_BASE}/v1/execution-plan`, { headers:{Authorization:`Bearer ${TOKEN}`} });
-  const data = await res.json();
-  if(res.status === 200){
-    renderPlan(data);
-    setStatus('Plan recuperado.');
-  } else {
-    setStatus('Todavía no tienes un plan (' + res.status + ').');
+  function addMsg(role, text) {
+    var log = document.getElementById('chatLog');
+    var wrap = document.createElement('div');
+    wrap.className = 'msg msg-' + role;
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;          // textContent: nunca innerHTML
+    wrap.appendChild(bubble);
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+    return bubble;
   }
-}
 
-async function completeStep(stepId){
-  setStatus('Marcando paso como completado...');
-  const res = await fetch(`${API_BASE}/v1/execution-plan/steps/${stepId}/complete`, {
-    method:'POST',
-    headers:{Authorization:`Bearer ${TOKEN}`}
+  document.getElementById('chatForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var input = document.getElementById('chatText');
+    var message = input.value.trim();
+    if (!message) return;
+    addMsg('user', message);
+    input.value = '';
+
+    var thinking = addMsg('ai', 'MigPAL está pensando…');
+    try {
+      var data = await api.sendMessage(message);
+      thinking.textContent = data.reply;
+      // Lo conversado alimenta el textarea del perfil, que es lo que
+      // realmente se envía a la evaluación.
+      var pt = document.getElementById('profileText');
+      pt.value = (pt.value ? pt.value + ' ' : '') + message;
+    } catch (err) {
+      thinking.textContent = 'No se pudo responder: ' + (err.detail || 'error de red');
+    }
   });
-  const data = await res.json();
-  if(res.status === 200){
-    renderPlan(data);
-    setStatus('Paso completado.');
-  } else {
-    setStatus('Error: ' + (data.detail || res.status));
-    loadPlan();
+
+  document.getElementById('assessBtn').addEventListener('click', requestAssessment);
+
+  /* --------------------------------------------------------------- carga */
+
+  async function loadPlan() {
+    try {
+      renderPlan(await api.getPlan());
+    } catch (err) {
+      if (err.status === 404) { state.plan = null; }
+    }
   }
-}
+
+  /** Carga el estado real del caso al entrar: el usuario que vuelve ve todo
+      lo suyo sin apretar un solo botón (antes había que ir pidiendo cada
+      cosa a mano). Los 404 son estados válidos, no errores. */
+  async function loadAll(showToast) {
+    var results = await Promise.allSettled([
+      api.getAssessment(),
+      api.getRecommendation(),
+      api.getPlan()
+    ]);
+
+    var a = results[0], r = results[1], p = results[2];
+
+    if (a.status === 'fulfilled') renderAssessment(a.value);
+    else state.assessment = null;
+
+    if (r.status === 'fulfilled') renderRecommendation(r.value);
+    else state.recommendation = null;
+
+    if (p.status === 'fulfilled') renderPlan(p.value);
+    else state.plan = null;
+
+    renderJourney();
+
+    // Errores reales (no 404 de "todavía no existe") sí se avisan.
+    [a, r, p].forEach(function (res) {
+      if (res.status === 'rejected' && res.reason && res.reason.status && res.reason.status !== 404) {
+        MigPAL.toast(res.reason.detail || 'Error cargando tu caso.', 'error');
+      }
+    });
+
+    if (showToast) MigPAL.toast('Caso actualizado.', 'info', 2000);
+  }
+
+  document.getElementById('greeting').textContent =
+    MigPAL.session.username ? 'Hola, ' + MigPAL.session.username : 'Tu caso';
+
+  loadAll();
+})();
 </script>
 </body>
 </html>

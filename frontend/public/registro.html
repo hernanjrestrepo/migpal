@@ -3,91 +3,156 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MigPAL — Registro</title>
-<style>
-  :root{--ink:#0f172a;--ink-soft:#475569;--accent:#2454eb;--accent-dark:#1a3fc4;--bg:#f7f8fb;--border:#e2e6ee;}
-  body{font-family:-apple-system,'Segoe UI',sans-serif;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);}
-  .card{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(15,23,42,.06);padding:40px;max-width:400px;width:90%;}
-  .brand{font-size:14px;font-weight:700;color:var(--accent);margin:0 0 18px;}
-  .brand a{color:var(--accent);text-decoration:none;}
-  h1{color:var(--ink);margin:0 0 6px;font-size:22px;font-weight:800;letter-spacing:-0.01em;}
-  p.sub{color:var(--ink-soft);margin:0 0 24px;font-size:14px;}
-  label{display:block;font-size:13px;font-weight:600;color:#333;margin:14px 0 4px;}
-  input{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;}
-  button{width:100%;margin-top:22px;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:15px;font-weight:700;cursor:pointer;}
-  button:hover{background:var(--accent-dark);}
-  button:disabled{background:#aaa;cursor:not-allowed;}
-  #msg{margin-top:16px;font-size:13px;padding:10px;border-radius:6px;display:none;}
-  #msg.ok{display:block;background:#e6efe3;color:#3f7d54;}
-  #msg.err{display:block;background:#f4e2df;color:#a3423a;}
-  a{color:var(--accent);}
-</style>
+<title>Crear cuenta — MigPAL</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232454eb'/><text x='16' y='23' font-family='system-ui,sans-serif' font-size='19' font-weight='800' fill='white' text-anchor='middle'>M</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/app.css">
+<link rel="stylesheet" href="/assets/auth.css">
 </head>
-<body>
-<div class="card">
-  <p class="brand"><a href="/">← MigPAL</a></p>
-  <h1>Comenzá tu evaluación gratuita</h1>
-  <p class="sub">Creá tu cuenta para conversar con MigPAL y generar tu Assessment.</p>
+<body class="auth-body">
 
-  <form id="registerForm">
-    <label for="email">Email</label>
-    <input id="email" type="email" required>
+<main class="auth-shell">
+  <section class="auth-pane">
+    <div class="auth-form-wrap">
+      <a href="/" class="brand mb-8"><span class="brand-mark">M</span><span>MigPAL</span></a>
 
-    <label for="username">Usuario</label>
-    <input id="username" type="text" required minlength="3">
+      <h1 class="auth-title">Empezá tu evaluación</h1>
+      <p class="text-soft mb-6">Creá tu cuenta gratis. Sin tarjeta, sin compromiso.</p>
 
-    <label for="password">Contraseña</label>
-    <input id="password" type="password" required minlength="8">
+      <form id="registerForm" novalidate>
+        <div class="field">
+          <label class="label" for="email">Email</label>
+          <input class="input" id="email" type="email" autocomplete="email" required
+                 placeholder="vos@ejemplo.com">
+        </div>
 
-    <button type="submit" id="submitBtn">Registrarme</button>
-  </form>
-  <div id="msg"></div>
-</div>
+        <div class="field">
+          <label class="label" for="username">Usuario</label>
+          <input class="input" id="username" autocomplete="username" required minlength="3"
+                 placeholder="cómo querés que te llamemos">
+          <div class="hint">Mínimo 3 caracteres. Lo vas a usar para iniciar sesión.</div>
+        </div>
 
+        <div class="field">
+          <label class="label" for="password">Contraseña</label>
+          <div class="input-affix">
+            <input class="input" id="password" type="password" autocomplete="new-password"
+                   required minlength="8" placeholder="mínimo 8 caracteres">
+            <button type="button" class="affix-btn" id="togglePw" aria-label="Mostrar contraseña">👁</button>
+          </div>
+          <div class="pw-meter" aria-hidden="true">
+            <span class="pw-seg" data-seg="1"></span>
+            <span class="pw-seg" data-seg="2"></span>
+            <span class="pw-seg" data-seg="3"></span>
+            <span class="pw-seg" data-seg="4"></span>
+          </div>
+          <div class="pw-label" id="pwLabel">Usá al menos 8 caracteres.</div>
+        </div>
+
+        <button class="btn btn-primary btn-block btn-lg mt-5" type="submit" id="submitBtn">
+          Crear mi cuenta
+        </button>
+
+        <p class="hint mt-4" style="text-align:center">
+          Al crear tu cuenta entendés que MigPAL es una herramienta de
+          orientación y <strong>no constituye asesoría legal migratoria</strong>.
+        </p>
+      </form>
+
+      <p class="text-sm text-soft mt-6 auth-alt">
+        ¿Ya tenés cuenta? <a href="/login.html" class="auth-link">Iniciá sesión</a>
+      </p>
+    </div>
+  </section>
+
+  <aside class="auth-aside">
+    <div class="auth-aside-inner">
+      <div class="aside-quote">
+        Contás tu situación una vez.<br>Te llevás un plan que podés empezar hoy.
+      </div>
+      <ul class="list-check aside-list">
+        <li>Evaluación con reglas explícitas, no una opinión de chatbot</li>
+        <li>La ruta que mejor se ajusta, y por qué se eligió</li>
+        <li>Pasos concretos con dependencias y progreso guardado</li>
+      </ul>
+    </div>
+  </aside>
+</main>
+
+<script src="/assets/app.js"></script>
 <script>
-// Sprint 1, punto 5: conexión mínima real al backend -- no simulación.
-// API_BASE se apunta al puerto de host del backend (Foundation, docker-compose.yml).
-// Cuando exista el frontend Next.js real (Product Definition, UX Specification),
-// esto se vuelve una variable de entorno de build, no un literal.
-const API_BASE = 'http://localhost:8010';
+  if (MigPAL.session.isAuthenticated) window.location.replace('/caso.html');
 
-const form = document.getElementById('registerForm');
-const msg = document.getElementById('msg');
-const btn = document.getElementById('submitBtn');
+  var pw = document.getElementById('password');
+  var pwLabel = document.getElementById('pwLabel');
+  var segs = Array.prototype.slice.call(document.querySelectorAll('.pw-seg'));
 
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  btn.disabled = true;
-  msg.className = '';
-  msg.textContent = '';
+  document.getElementById('togglePw').addEventListener('click', function () {
+    pw.type = pw.type === 'password' ? 'text' : 'password';
+    this.textContent = pw.type === 'password' ? '👁' : '🙈';
+  });
 
-  const email = document.getElementById('email').value;
-  const username = document.getElementById('username').value;
-  const password = document.getElementById('password').value;
-
-  try {
-    const res = await fetch(`${API_BASE}/v1/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, username, password })
-    });
-    const data = await res.json();
-
-    if (res.status === 201) {
-      msg.className = 'ok';
-      msg.textContent = `Cuenta creada (id ${data.id}). Ya puedes iniciar sesión con "${username}".`;
-      form.reset();
-    } else {
-      msg.className = 'err';
-      msg.textContent = data.detail || `Error ${res.status}`;
-    }
-  } catch (err) {
-    msg.className = 'err';
-    msg.textContent = 'No se pudo contactar al backend (' + API_BASE + '). ¿Está corriendo docker compose up?';
-  } finally {
-    btn.disabled = false;
+  /** Fuerza orientativa: longitud + variedad de clases de caracteres.
+      Es feedback de UX, no una política de seguridad -- la validación real
+      vive en el backend. */
+  function passwordScore(value) {
+    var score = 0;
+    if (value.length >= 8) score++;
+    if (value.length >= 12) score++;
+    if (/[a-z]/.test(value) && /[A-Z]/.test(value)) score++;
+    if (/\d/.test(value) && /[^A-Za-z0-9]/.test(value)) score++;
+    return Math.min(score, 4);
   }
-});
+
+  pw.addEventListener('input', function () {
+    var score = passwordScore(pw.value);
+    var kind = score <= 1 ? 'weak' : score <= 2 ? 'medium' : 'strong';
+    var labels = {
+      0: 'Usá al menos 8 caracteres.',
+      1: 'Débil — sumá longitud o símbolos.',
+      2: 'Aceptable — podés hacerla más fuerte.',
+      3: 'Buena contraseña.',
+      4: 'Excelente contraseña.'
+    };
+    segs.forEach(function (seg, i) {
+      seg.className = 'pw-seg' + (i < score ? ' on-' + kind : '');
+    });
+    pwLabel.textContent = labels[score];
+  });
+
+  document.getElementById('registerForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var btn = document.getElementById('submitBtn');
+    var email = document.getElementById('email').value.trim();
+    var username = document.getElementById('username').value.trim();
+    var password = pw.value;
+
+    if (!email || !username || !password) { MigPAL.toast('Completá todos los campos.', 'error'); return; }
+    if (username.length < 3) { MigPAL.toast('El usuario necesita al menos 3 caracteres.', 'error'); return; }
+    if (password.length < 8) { MigPAL.toast('La contraseña necesita al menos 8 caracteres.', 'error'); return; }
+
+    var restore = MigPAL.busy(btn, 'Creando tu cuenta…');
+    try {
+      await MigPAL.api.register(email, username, password);
+      // Entrar directo: registrarse y tener que loguearse a mano es fricción
+      // innecesaria. Si el auto-login fallara, se cae al login normal.
+      try {
+        await MigPAL.api.login(username, password);
+        await MigPAL.api.openCase();
+        window.location.href = '/caso.html?welcome=1';
+        return;
+      } catch (loginErr) {
+        window.location.href = '/login.html?registered=1&u=' + encodeURIComponent(username);
+        return;
+      }
+    } catch (err) {
+      MigPAL.toast(err.detail || 'No se pudo crear la cuenta.', 'error');
+      restore();
+    }
+  });
 </script>
 </body>
 </html>

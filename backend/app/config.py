@@ -19,10 +19,15 @@ class Settings(BaseSettings):
     AUTH_ALGORITHM: str = "HS256"
     AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # AI
-    AI_PROVIDER: str = "ollama"
+    # AI -- proveedor por defecto: Kimi (Moonshot), API compatible con OpenAI.
+    # `ollama` queda como alternativa local (ver app/services/llm_client.py).
+    AI_PROVIDER: str = "kimi"
     AI_API_KEY: str = ""
-    AI_MODEL: str = "migpal:latest"
+    AI_MODEL: str = "kimi-k2.6"
+    KIMI_API_KEY: str = ""
+    KIMI_BASE_URL: str = "https://api.moonshot.ai/v1"
+    LLM_TIMEOUT_SECONDS: float = 60.0
+    LLM_MAX_ATTEMPTS: int = 2
     OLLAMA_URL: str = "http://127.0.0.1:11434"
 
     # Cache / infra

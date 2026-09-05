@@ -74,8 +74,14 @@ services:
       - environment=docker-compose
       - DATABASE_URL=postgresql://migpal:${POSTGRES_PASSWORD:-migpal_dev_password}@postgres:5432/migpal
       - REDIS_URL=redis://redis:6379/0
-      - AI_PROVIDER=ollama
-      - AI_MODEL=${AI_MODEL:-migpal:latest}
+      # IA: Kimi (Moonshot) por defecto — ver backend/app/services/llm_client.py.
+      # AI_PROVIDER=ollama vuelve al proveedor local sin tocar código.
+      - AI_PROVIDER=${AI_PROVIDER:-kimi}
+      - AI_MODEL=${AI_MODEL:-kimi-k2.6}
+      - KIMI_API_KEY=${KIMI_API_KEY:?KIMI_API_KEY es obligatorio con AI_PROVIDER=kimi — ver .env.example}
+      - KIMI_BASE_URL=${KIMI_BASE_URL:-https://api.moonshot.ai/v1}
+      - LLM_TIMEOUT_SECONDS=${LLM_TIMEOUT_SECONDS:-60}
+      - LLM_MAX_ATTEMPTS=${LLM_MAX_ATTEMPTS:-2}
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - AUTH_SECRET_KEY=${AUTH_SECRET_KEY:?AUTH_SECRET_KEY es obligatorio — ver .env.example}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}

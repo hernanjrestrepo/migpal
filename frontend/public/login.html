@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iniciar sesión — MigPAL</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232454eb'/><text x='16' y='23' font-family='system-ui,sans-serif' font-size='19' font-weight='800' fill='white' text-anchor='middle'>M</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/app.css">
+<link rel="stylesheet" href="/assets/auth.css">
+</head>
+<body class="auth-body">
+
+<main class="auth-shell">
+  <!-- Columna del formulario -->
+  <section class="auth-pane">
+    <div class="auth-form-wrap">
+      <a href="/" class="brand mb-8"><span class="brand-mark">M</span><span>MigPAL</span></a>
+
+      <h1 class="auth-title">Bienvenido de vuelta</h1>
+      <p class="text-soft mb-6">Entrá para retomar tu caso donde lo dejaste.</p>
+
+      <div id="expiredNotice" class="alert alert-warn mb-5 hidden">
+        <span class="alert-icon">⏱️</span>
+        <div>Tu sesión expiró por seguridad. Iniciá sesión de nuevo para continuar.</div>
+      </div>
+
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label class="label" for="username">Usuario</label>
+          <input class="input" id="username" name="username" autocomplete="username" required
+                 placeholder="el usuario que elegiste al registrarte">
+        </div>
+
+        <div class="field">
+          <label class="label" for="password">Contraseña</label>
+          <div class="input-affix">
+            <input class="input" id="password" name="password" type="password"
+                   autocomplete="current-password" required placeholder="••••••••">
+            <button type="button" class="affix-btn" id="togglePw" aria-label="Mostrar contraseña">👁</button>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-block btn-lg mt-5" type="submit" id="submitBtn">
+          Iniciar sesión
+        </button>
+      </form>
+
+      <p class="text-sm text-soft mt-6 auth-alt">
+        ¿Todavía no tenés cuenta?
+        <a href="/registro.html" class="auth-link">Creá una gratis</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- Columna de marca -->
+  <aside class="auth-aside">
+    <div class="auth-aside-inner">
+      <div class="aside-quote">
+        “La diferencia entre saber a dónde ir y saber cómo llegar.”
+      </div>
+      <ul class="list-check aside-list">
+        <li>Tu evaluación y tu ruta quedan guardadas</li>
+        <li>Retomás el plan exactamente donde lo dejaste</li>
+        <li>Cálculo determinístico: mismo perfil, mismo resultado</li>
+      </ul>
+    </div>
+  </aside>
+</main>
+
+<script src="/assets/app.js"></script>
+<script>
+  // Si ya hay sesión, no tiene sentido mostrar el login.
+  if (MigPAL.session.isAuthenticated) {
+    window.location.replace(new URLSearchParams(location.search).get('next') || '/caso.html');
+  }
+
+  var params = new URLSearchParams(location.search);
+  if (params.get('expired')) document.getElementById('expiredNotice').classList.remove('hidden');
+  if (params.get('registered')) {
+    MigPAL.toast('Cuenta creada. Ya podés iniciar sesión.', 'success');
+    var u = params.get('u');
+    if (u) document.getElementById('username').value = u;
+  }
+
+  document.getElementById('togglePw').addEventListener('click', function () {
+    var pw = document.getElementById('password');
+    pw.type = pw.type === 'password' ? 'text' : 'password';
+    this.textContent = pw.type === 'password' ? '👁' : '🙈';
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var btn = document.getElementById('submitBtn');
+    var username = document.getElementById('username').value.trim();
+    var password = document.getElementById('password').value;
+
+    if (!username || !password) {
+      MigPAL.toast('Completá usuario y contraseña.', 'error');
+      return;
+    }
+
+    var restore = MigPAL.busy(btn, 'Entrando…');
+    try {
+      await MigPAL.api.login(username, password);
+      // El caso se abre de forma idempotente: si ya existe, el backend
+      // devuelve el mismo. Así el usuario nunca aterriza en un estado vacío.
+      try { await MigPAL.api.openCase(); } catch (e) { /* no bloquea el login */ }
+      window.location.href = params.get('next') || '/caso.html';
+    } catch (err) {
+      MigPAL.toast(
+        err.status === 401 ? 'Usuario o contraseña incorrectos.' : (err.detail || 'No se pudo iniciar sesión.'),
+        'error'
+      );
+      restore();
+    }
+  });
+</script>
+</body>
+</html>
