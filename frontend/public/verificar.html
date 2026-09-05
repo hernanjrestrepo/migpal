@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verificar cuenta — MigPAL</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232454eb'/><text x='16' y='23' font-family='system-ui,sans-serif' font-size='19' font-weight='800' fill='white' text-anchor='middle'>M</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/app.css">
+<link rel="stylesheet" href="/assets/auth.css">
+</head>
+<body class="auth-body">
+
+<main class="auth-shell">
+  <section class="auth-pane">
+    <div class="auth-form-wrap" style="text-align:center">
+      <a href="/" class="brand mb-8" style="justify-content:center"><span class="brand-mark">M</span><span>MigPAL</span></a>
+
+      <!-- Estado: verificando -->
+      <div id="loading">
+        <div class="empty-icon" style="margin-bottom:var(--sp-5)">⏳</div>
+        <h1 class="auth-title">Verificando tu cuenta…</h1>
+        <p class="text-soft">Un segundo.</p>
+      </div>
+
+      <!-- Estado: verificada -->
+      <div id="success" class="hidden">
+        <div class="empty-icon" style="background:var(--success-bg);color:var(--success-fg);margin-bottom:var(--sp-5)">✓</div>
+        <h1 class="auth-title">¡Cuenta verificada!</h1>
+        <p class="text-soft mb-6">Ya podés usar MigPAL con tu cuenta confirmada.</p>
+        <a href="/caso.html" class="btn btn-primary btn-lg btn-block" id="goToCase">Ir a mi caso</a>
+      </div>
+
+      <!-- Estado: falló -->
+      <div id="error" class="hidden">
+        <div class="empty-icon" style="background:var(--warn-bg);color:var(--warn-fg);margin-bottom:var(--sp-5)">⚠️</div>
+        <h1 class="auth-title">No pudimos verificar</h1>
+        <p class="text-soft mb-5" id="errorDetail">El enlace no es válido.</p>
+
+        <form id="resendForm" class="mb-4" style="text-align:left">
+          <label class="label" for="email">Reenviar el enlace a tu email</label>
+          <input class="input" id="email" type="email" required placeholder="vos@ejemplo.com">
+          <button class="btn btn-secondary btn-block mt-3" type="submit" id="resendBtn">
+            Enviarme un enlace nuevo
+          </button>
+        </form>
+
+        <a href="/login.html" class="auth-link text-sm">Volver a iniciar sesión</a>
+      </div>
+    </div>
+  </section>
+
+  <aside class="auth-aside">
+    <div class="auth-aside-inner">
+      <div class="aside-quote">Verificar tu email protege tu cuenta.</div>
+      <ul class="list-check aside-list">
+        <li>Confirma que la dirección es tuya</li>
+        <li>Te permite recuperar el acceso si olvidás la contraseña</li>
+        <li>Evita que alguien registre una cuenta con tu email</li>
+      </ul>
+    </div>
+  </aside>
+</main>
+
+<script src="/assets/app.js"></script>
+<script>
+(function () {
+  var token = new URLSearchParams(location.search).get('token');
+
+  function mostrar(id) {
+    ['loading', 'success', 'error'].forEach(function (s) {
+      document.getElementById(s).classList.toggle('hidden', s !== id);
+    });
+  }
+
+  function fallo(mensaje) {
+    document.getElementById('errorDetail').textContent = mensaje;
+    mostrar('error');
+  }
+
+  if (!token) {
+    fallo('El enlace no incluye un token. Revisá que lo hayas copiado completo desde el email.');
+  } else {
+    MigPAL.api.post('/v1/auth/verify-email', { json: { token: token }, auth: false })
+      .then(function () {
+        mostrar('success');
+        // Si no hay sesión activa, el botón lleva al login en vez de a un
+        // caso al que no va a poder entrar.
+        if (!MigPAL.session.isAuthenticated) {
+          var btn = document.getElementById('goToCase');
+          btn.href = '/login.html';
+          btn.textContent = 'Iniciar sesión';
+        }
+      })
+      .catch(function (err) {
+        fallo(err.detail || 'El enlace no es válido o ya venció.');
+      });
+  }
+
+  document.getElementById('resendForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var btn = document.getElementById('resendBtn');
+    var email = document.getElementById('email').value.trim();
+    if (!email) return;
+
+    var restore = MigPAL.busy(btn, 'Enviando…');
+    try {
+      var res = await MigPAL.api.post('/v1/auth/resend-verification', {
+        json: { email: email }, auth: false
+      });
+      MigPAL.toast(res.message, 'success', 6000);
+    } catch (err) {
+      MigPAL.toast(err.detail || 'No se pudo reenviar el enlace.', 'error');
+    } finally {
+      restore();
+    }
+  });
+})();
+</script>
+</body>
+</html>

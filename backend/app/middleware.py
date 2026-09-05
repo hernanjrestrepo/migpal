@@ -42,6 +42,12 @@ _RATE_LIMITED_PATHS: dict[str, tuple[int, int]] = {
     # ruta: (máximo de intentos, ventana en segundos)
     "/api/v1/auth/token": (10, 60),
     "/v1/auth/register": (5, 300),
+    # Recuperación y reenvío: sin límite serían un vector de spam hacia
+    # la casilla de un tercero, además de enumeración por temporización.
+    "/v1/auth/forgot-password": (5, 300),
+    "/v1/auth/resend-verification": (5, 300),
+    "/v1/auth/reset-password": (10, 300),
+    "/v1/auth/verify-email": (20, 300),
 }
 
 # ip -> path -> timestamps de los intentos dentro de la ventana

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Política de privacidad — MigPAL</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232454eb'/><text x='16' y='23' font-family='system-ui,sans-serif' font-size='19' font-weight='800' fill='white' text-anchor='middle'>M</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/app.css">
+<style>
+  .legal { padding: var(--sp-12) 0 var(--sp-20); }
+  .legal-doc { max-width: 720px; margin: 0 auto; }
+  .legal-doc h1 { font-size: var(--text-3xl); margin-bottom: var(--sp-2); }
+  .legal-doc h2 { font-size: var(--text-xl); margin: var(--sp-8) 0 var(--sp-3); }
+  .legal-doc h3 { font-size: var(--text-md); margin: var(--sp-5) 0 var(--sp-2); }
+  .legal-doc p { margin-bottom: var(--sp-3); color: var(--text-soft); line-height: 1.7; }
+  .legal-doc ul, .legal-doc ol { margin: 0 0 var(--sp-4); padding-left: var(--sp-5); color: var(--text-soft); line-height: 1.7; }
+  .legal-doc li { margin-bottom: 6px; }
+  .legal-doc strong { color: var(--text); }
+  .legal-doc table { width: 100%; border-collapse: collapse; margin-bottom: var(--sp-4); font-size: var(--text-sm); }
+  .legal-doc th, .legal-doc td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border-soft); color: var(--text-soft); }
+  .legal-doc th { color: var(--text); font-weight: 650; }
+  .legal-meta { font-size: var(--text-sm); color: var(--text-muted); margin-bottom: var(--sp-6); }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><span class="brand-mark">M</span><span>MigPAL</span></a>
+    <div class="header-actions">
+      <button class="icon-btn" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema">◐</button>
+      <a href="/" class="btn btn-ghost btn-sm">← Volver</a>
+    </div>
+  </div>
+</header>
+
+<main class="legal">
+  <div class="wrap">
+    <article class="legal-doc">
+      <h1>Política de privacidad</h1>
+      <p class="legal-meta">Última actualización: 5 de septiembre de 2026</p>
+
+      <div class="alert alert-warn mb-6">
+        <span class="alert-icon">⚠️</span>
+        <div>
+          <strong>Borrador pendiente de revisión legal.</strong> Este texto se
+          redactó para reflejar con precisión cómo funciona MigPAL hoy, pero
+          todavía no lo revisó un profesional habilitado y contiene marcadores
+          entre corchetes que hay que completar. No lo publiques como
+          definitivo sin esa revisión.
+        </div>
+      </div>
+
+      <h2>QuÃ© datos recogemos y para quÃ©</h2>
+
+      <p>En MigPAL te pedimos solo lo que necesitamos para ayudarte con tu evaluaciÃ³n migratoria. Estos son los datos que tratamos:</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Dato</th>
+            <th>Â¿Para quÃ© lo usamos?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Email, nombre de usuario, contraseÃ±a (hasheada con bcrypt)</td>
+            <td>Para crear tu cuenta, identificarte y proteger el acceso. Nunca guardamos tu contraseÃ±a en texto claro.</td>
+          </tr>
+          <tr>
+            <td>Texto libre de tu perfil migratorio: profesiÃ³n, aÃ±os de experiencia, educaciÃ³n, situaciÃ³n familiar, paÃ­s de destino, situaciÃ³n financiera declarada</td>
+            <td>Para evaluar tu perfil, calcular tu puntaje, detectar fortalezas y debilidades, y armarte una ruta personalizada. Es informaciÃ³n sensible porque revela tu situaciÃ³n migratoria.</td>
+          </tr>
+          <tr>
+            <td>EvaluaciÃ³n generada (puntaje, hallazgos), ruta recomendada y plan de pasos con su progreso</td>
+            <td>Para que veas dÃ³nde estÃ¡s parado/a, quÃ© caminos tenÃ©s y cÃ³mo avanzÃ¡s.</td>
+          </tr>
+          <tr>
+            <td>Registro de eventos del sistema (log append-only con IDs y fechas)</td>
+            <td>Para detectar errores, problemas de seguridad y mantener el servicio funcionando. No incluye el contenido de tu perfil.</td>
+          </tr>
+          <tr>
+            <td>Tokens de verificaciÃ³n de email y recuperaciÃ³n de contraseÃ±a (hasheados con SHA-256, con vencimiento: 24 horas y 1 hora respectivamente)</td>
+            <td>Para confirmar que tu email es tuyo y para que puedas recuperar el acceso si te olvidÃ¡s la contraseÃ±a.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>Base para tratar tus datos</h2>
+
+      <p>Tratamos tus datos porque nos das tu consentimiento explÃ­cito al crear la cuenta y completar tu perfil. TambiÃ©n porque es necesario para cumplir con el contrato de servicio que aceptÃ¡s con nosotros: sin estos datos no podemos evaluarte ni armarte una ruta.</p>
+
+      <h2>Con quiÃ©n compartimos tus datos</h2>
+
+      <p>Somos claros: no vendemos tus datos, no hay publicidad y no usamos analytics de terceros. Pero sÃ­ necesitamos compartir datos con dos proveedores para que MigPAL funcione:</p>
+
+      <ul>
+        <li><strong>Moonshot AI (Kimi):</strong> Le enviamos <strong>el texto de tu perfil migratorio</strong> para que redacte un resumen en lenguaje natural que vos podÃ©s leer. TambiÃ©n le enviamos un resumen de la ruta que ya decidimos para tu caso, para que te la explique de forma clara. <strong>No le enviamos tu email, tu nombre de usuario ni tu contraseÃ±a.</strong> Kimi es un proveedor de inteligencia artificial externo con sede fuera de tu regiÃ³n.</li>
+        <li><strong>Proveedor de email (SMTP):</strong> Le enviamos tu direcciÃ³n de email para que te lleguen los mensajes de verificaciÃ³n de cuenta y recuperaciÃ³n de contraseÃ±a.</li>
+      </ul>
+
+      <h2>CuÃ¡nto tiempo conservamos tus datos</h2>
+
+      <p>Conservamos tus datos mientras tengas una cuenta activa en MigPAL. Si pedÃ­s eliminar tu cuenta, borramos tu perfil migratorio, tu evaluaciÃ³n, tu ruta y tu progreso en un plazo razonable (generalmente dentro de los 30 dÃ­as). Los logs del sistema pueden conservarse mÃ¡s tiempo por razones de seguridad, pero sin contenido de tu perfil.</p>
+
+      <p>Los tokens de verificaciÃ³n y recuperaciÃ³n se invalidan automÃ¡ticamente: a las 24 horas (verificaciÃ³n de email) o a la 1 hora (recuperaciÃ³n de contraseÃ±a), o antes si los usÃ¡s.</p>
+
+      <h2>Tus derechos</h2>
+
+      <p>TenÃ©s estos derechos sobre tus datos y los podÃ©s ejercer cuando quieras:</p>
+
+      <ul>
+        <li><strong>Acceso:</strong> podÃ©s pedirnos que te digamos quÃ© datos tenemos de vos.</li>
+        <li><strong>RectificaciÃ³n:</strong> si algÃºn dato estÃ¡ mal o incompleto, lo corregimos.</li>
+        <li><strong>EliminaciÃ³n:</strong> podÃ©s pedirnos que borremos tu cuenta y todos tus datos personales.</li>
+        <li><strong>Portabilidad:</strong> podÃ©s pedirnos que te entreguemos tus datos en un formato estÃ¡ndar para que los lleves a otro servicio.</li>
+      </ul>
+
+      <p>Para ejercer cualquiera de estos derechos, escribinos al correo que figura al final de esta polÃ­tica.</p>
+
+      <h2>Seguridad</h2>
+
+      <p>Hacemos esto para proteger tu informaciÃ³n:</p>
+
+      <ul>
+        <li>Tus contraseÃ±as se guardan <strong>hasheadas con bcrypt</strong>: ni nosotros ni nadie puede leerlas en texto claro.</li>
+        <li>Los tokens de verificaciÃ³n y recuperaciÃ³n se guardan <strong>hasheados con SHA-256</strong> y vencen rÃ¡pido (24 horas o 1 hora).</li>
+        <li>Toda la comunicaciÃ³n entre tu dispositivo y nuestros servidores va por <strong>HTTPS</strong> encriptado.</li>
+        <li>Los logs del sistema son <em>append-only</em> (no se pueden modificar) y no contienen el texto de tu perfil migratorio.</li>
+      </ul>
+
+      <h2>Cookies y almacenamiento local</h2>
+
+      <p>MigPAL no usa cookies de rastreo ni de publicidad. Lo que sÃ­ usamos:</p>
+
+      <ul>
+        <li><strong>localStorage</strong> para guardar tu <strong>token de sesiÃ³n</strong> (para que no tengas que iniciar sesiÃ³n cada vez que entrÃ¡s).</li>
+        <li><strong>localStorage</strong> para guardar tu <strong>preferencia de tema</strong> (claro u oscuro).</li>
+      </ul>
+
+      <p>Ambas cosas quedan guardadas en tu navegador, no en nuestros servidores. PodÃ©s borrarlas cuando quieras desde la configuraciÃ³n de tu navegador.</p>
+
+      <h2>Menores de edad</h2>
+
+      <p>MigPAL no estÃ¡ pensado para personas menores de 18 aÃ±os. No recopilamos datos a sabiendas de menores. Si sos padre, madre o tutor y creÃ©s que un menor nos dio datos, escribinos para que los eliminemos.</p>
+
+      <h2>Transferencias internacionales</h2>
+
+      <p>Tu perfil migratorio se procesa fuera de tu paÃ­s por <strong>Moonshot AI (Kimi)</strong>, que opera desde China. Entendemos que esto puede generarte dudas. Elegimos este proveedor porque nos permite ofrecerte explicaciones claras de tu situaciÃ³n migratoria, pero significa que tu informaciÃ³n personal sensible viaja a servidores internacionales. Tomamos medidas contractuales para protegerla, pero las leyes de privacidad de ese paÃ­s son diferentes a las de tu jurisdicciÃ³n.</p>
+
+      <h2>Cambios en esta polÃ­tica</h2>
+
+      <p>Si cambiamos algo importante en cÃ³mo tratamos tus datos, te avisamos por email o con un aviso visible en la plataforma antes de que los cambios entren en vigencia. La fecha de la Ãºltima actualizaciÃ³n va al final de esta pÃ¡gina.</p>
+
+      <h2>Contacto</h2>
+
+      <p>Si tenÃ©s preguntas sobre esta polÃ­tica, querÃ©s ejercer tus derechos o tenÃ©s alguna inquietud sobre tus datos, escribinos:</p>
+
+      <ul>
+        <li>Email: [EMAIL DE CONTACTO A COMPLETAR]</li>
+        <li>Responsable del tratamiento: [RAZÃ“N SOCIAL A COMPLETAR]</li>
+        <li>JurisdicciÃ³n: [JURISDICCIÃ“N A DEFINIR]</li>
+      </ul>
+
+      <p><small>Ãšltima actualizaciÃ³n: [FECHA A COMPLETAR]</small></p>
+
+    </article>
+  </div>
+</main>
+
+<script src="/assets/app.js"></script>
+<script>
+  document.getElementById('themeToggle').addEventListener('click', function () { MigPAL.theme.toggle(); });
+</script>
+</body>
+</html>

@@ -14,3 +14,19 @@ class RegisterUserCommand:
 class AuthenticateCommand:
     username: str
     password: str
+
+
+@dataclass(frozen=True)
+class VerifyEmailCommand:
+    token: str
+
+
+@dataclass(frozen=True)
+class RequestPasswordResetCommand:
+    email: str
+
+
+@dataclass(frozen=True)
+class ResetPasswordCommand:
+    token: str
+    new_password: str

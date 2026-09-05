@@ -12,7 +12,11 @@ from main import app
 
 client = TestClient(app)
 
-EXPECTED_SUCCESS_SCHEMA = {"id", "email", "username"}
+# `email_verified` y `verification_email_sent` se sumaron al incorporar la
+# verificación de email. `verification_email_sent` informa si el correo
+# llegó a salir (puede ser false si SMTP no está configurado) -- nunca
+# expone el token, que solo viaja dentro del email.
+EXPECTED_SUCCESS_SCHEMA = {"id", "email", "username", "email_verified", "verification_email_sent"}
 
 
 def _unique_email() -> str:
@@ -35,6 +39,11 @@ def test_register_success_status_and_schema():
     assert isinstance(body["id"], int)
     assert body["email"] == email
     assert isinstance(body["username"], str)
+    # Una cuenta recién creada nunca nace verificada.
+    assert body["email_verified"] is False
+    # El token de verificación no debe aparecer en la respuesta bajo ningún
+    # nombre: solo existe dentro del email.
+    assert "token" not in response.text.lower()
 
 
 def test_register_duplicate_returns_409_not_500():

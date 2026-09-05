@@ -27,7 +27,18 @@ class User(SQLModel, table=True):
     username: str = Field(index=True, unique=True)
     hashed_password: str
     role: str = Field(default="user", index=True)  # user, admin
+
+    # --- Verificación de email y recuperación de contraseña ---
+    # Los tokens se guardan HASHEADOS (SHA-256), nunca en claro: si alguien
+    # se lleva una copia de la base, no puede usarlos para tomar cuentas.
+    # El token en claro solo existe en el email que recibe la persona.
+    # Ver core/identity/domain/rules.py.
     email_verified: bool = Field(default=False)
-    email_verification_token: str | None = Field(default=None)
+    email_verification_token: str | None = Field(default=None, index=True)
+    email_verification_expires_at: datetime | None = Field(default=None)
+
+    password_reset_token: str | None = Field(default=None, index=True)
+    password_reset_expires_at: datetime | None = Field(default=None)
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

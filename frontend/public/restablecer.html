@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nueva contraseña — MigPAL</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232454eb'/><text x='16' y='23' font-family='system-ui,sans-serif' font-size='19' font-weight='800' fill='white' text-anchor='middle'>M</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/app.css">
+<link rel="stylesheet" href="/assets/auth.css">
+</head>
+<body class="auth-body">
+
+<main class="auth-shell">
+  <section class="auth-pane">
+    <div class="auth-form-wrap">
+      <a href="/" class="brand mb-8"><span class="brand-mark">M</span><span>MigPAL</span></a>
+
+      <div id="formStep">
+        <h1 class="auth-title">Creá tu contraseña nueva</h1>
+        <p class="text-soft mb-6">Elegí una contraseña que no uses en otro sitio.</p>
+
+        <form id="resetForm" novalidate>
+          <div class="field">
+            <label class="label" for="password">Contraseña nueva</label>
+            <div class="input-affix">
+              <input class="input" id="password" type="password" autocomplete="new-password"
+                     required minlength="8" placeholder="mínimo 8 caracteres">
+              <button type="button" class="affix-btn" id="togglePw" aria-label="Mostrar contraseña">👁</button>
+            </div>
+            <div class="pw-meter" aria-hidden="true">
+              <span class="pw-seg"></span><span class="pw-seg"></span>
+              <span class="pw-seg"></span><span class="pw-seg"></span>
+            </div>
+            <div class="pw-label" id="pwLabel">Usá al menos 8 caracteres.</div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="password2">Repetí la contraseña</label>
+            <input class="input" id="password2" type="password" autocomplete="new-password"
+                   required placeholder="escribila de nuevo">
+          </div>
+
+          <button class="btn btn-primary btn-block btn-lg mt-4" type="submit" id="submitBtn">
+            Guardar contraseña
+          </button>
+        </form>
+      </div>
+
+      <div id="doneStep" class="hidden" style="text-align:center">
+        <div class="empty-icon" style="background:var(--success-bg);color:var(--success-fg);margin-bottom:var(--sp-5)">✓</div>
+        <h1 class="auth-title">Contraseña actualizada</h1>
+        <p class="text-soft mb-6">Ya podés entrar con tu contraseña nueva.</p>
+        <a href="/login.html" class="btn btn-primary btn-lg btn-block">Iniciar sesión</a>
+      </div>
+
+      <div id="invalidStep" class="hidden" style="text-align:center">
+        <div class="empty-icon" style="background:var(--warn-bg);color:var(--warn-fg);margin-bottom:var(--sp-5)">⚠️</div>
+        <h1 class="auth-title">Enlace no válido</h1>
+        <p class="text-soft mb-6" id="invalidDetail">
+          El enlace venció o ya se usó. Pedí uno nuevo.
+        </p>
+        <a href="/recuperar.html" class="btn btn-primary btn-lg btn-block">Pedir un enlace nuevo</a>
+      </div>
+    </div>
+  </section>
+
+  <aside class="auth-aside">
+    <div class="auth-aside-inner">
+      <div class="aside-quote">Una contraseña nueva, y seguís donde estabas.</div>
+      <ul class="list-check aside-list">
+        <li>Tu caso y tu progreso quedan intactos</li>
+        <li>El enlace solo funciona una vez</li>
+        <li>Tu contraseña se guarda cifrada, nunca en texto plano</li>
+      </ul>
+    </div>
+  </aside>
+</main>
+
+<script src="/assets/app.js"></script>
+<script>
+(function () {
+  var token = new URLSearchParams(location.search).get('token');
+  var pw = document.getElementById('password');
+  var pw2 = document.getElementById('password2');
+  var segs = Array.prototype.slice.call(document.querySelectorAll('.pw-seg'));
+
+  if (!token) {
+    document.getElementById('formStep').classList.add('hidden');
+    document.getElementById('invalidDetail').textContent =
+      'El enlace no incluye un token. Revisá que lo hayas copiado completo desde el email.';
+    document.getElementById('invalidStep').classList.remove('hidden');
+    return;
+  }
+
+  document.getElementById('togglePw').addEventListener('click', function () {
+    pw.type = pw.type === 'password' ? 'text' : 'password';
+    this.textContent = pw.type === 'password' ? '👁' : '🙈';
+  });
+
+  function score(v) {
+    var s = 0;
+    if (v.length >= 8) s++;
+    if (v.length >= 12) s++;
+    if (/[a-z]/.test(v) && /[A-Z]/.test(v)) s++;
+    if (/\d/.test(v) && /[^A-Za-z0-9]/.test(v)) s++;
+    return Math.min(s, 4);
+  }
+
+  pw.addEventListener('input', function () {
+    var s = score(pw.value);
+    var kind = s <= 1 ? 'weak' : s <= 2 ? 'medium' : 'strong';
+    var labels = ['Usá al menos 8 caracteres.', 'Débil — sumá longitud o símbolos.',
+                  'Aceptable — podés hacerla más fuerte.', 'Buena contraseña.', 'Excelente contraseña.'];
+    segs.forEach(function (seg, i) { seg.className = 'pw-seg' + (i < s ? ' on-' + kind : ''); });
+    document.getElementById('pwLabel').textContent = labels[s];
+  });
+
+  document.getElementById('resetForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var btn = document.getElementById('submitBtn');
+
+    if (pw.value.length < 8) { MigPAL.toast('La contraseña necesita al menos 8 caracteres.', 'error'); return; }
+    if (pw.value !== pw2.value) { MigPAL.toast('Las dos contraseñas no coinciden.', 'error'); return; }
+
+    var restore = MigPAL.busy(btn, 'Guardando…');
+    try {
+      await MigPAL.api.post('/v1/auth/reset-password', {
+        json: { token: token, new_password: pw.value }, auth: false
+      });
+      // Por si había una sesión vieja abierta con la contraseña anterior.
+      MigPAL.session.clear();
+      document.getElementById('formStep').classList.add('hidden');
+      document.getElementById('doneStep').classList.remove('hidden');
+    } catch (err) {
+      if (err.status === 400) {
+        document.getElementById('formStep').classList.add('hidden');
+        document.getElementById('invalidDetail').textContent = err.detail;
+        document.getElementById('invalidStep').classList.remove('hidden');
+      } else {
+        MigPAL.toast(err.detail || 'No se pudo actualizar la contraseña.', 'error');
+        restore();
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>
