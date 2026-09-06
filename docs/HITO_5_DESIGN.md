@@ -32,8 +32,8 @@ riesgo/tamaño.
 | 3 | Traslado y remesas | extiende `core/budget` | ✅ **Cerrado** — ver abajo |
 | 4 | Planificación familiar ampliada (encuesta, cascada geográfica, colegios/vivienda) | `core/family_planning` (nuevo) | ✅ **Cerrado** — ver abajo |
 | 5 | Comunidad (feed social) | `core/community` (nuevo) | ✅ **Cerrado** — ver abajo |
-| 6 | Mercado (marketplace + comisión) | `core/marketplace` (nuevo) | Próximo — requiere verificación de antecedentes antes de exponerse a producción |
-| 7 | Gamificación (niveles, XP, insignias) | transversal, probablemente vive en `core/case_engine` o un nuevo `core/progression` | Pendiente |
+| 6 | Mercado (marketplace + comisión) | `core/marketplace` (nuevo) | ✅ **Cerrado** — ver abajo |
+| 7 | Gamificación (niveles, XP, insignias) | transversal, probablemente vive en `core/case_engine` o un nuevo `core/progression` | Próximo |
 | 8 | Modelo de precios / facturación real ($1.000 grupo familiar + $200 extra) | integración con pasarela de pago (Stripe u otra) | Pendiente — requiere credenciales reales del negocio, no solo código |
 | 9 | Sistema de agentes (Angela + especialistas, dictado, adjuntar documentos con enrutamiento) | rediseño de `core/conversation` | Pendiente — el más grande y de mayor riesgo técnico |
 | 10 | Integraciones reales con ADAN y JobXeeker | adapters nuevos en `core/negocio`/`core/empleo` | Bloqueado en la madurez de esos dos productos, fuera del control de este repo |
@@ -181,10 +181,40 @@ like/unlike, rechazos por no-membresía y duplicados). Migración
 `f4d5e6f7a8b9`. Suite completa: **278 passed**, cero regresión. `ruff
 check` limpio.
 
+## Sprint 6 — Mercado ✅
+
+**Bounded context:** `backend/core/marketplace/` -- listados de servicio y
+transacciones con comisión.
+
+**Decisión de negocio de Hernán, 6 sept 2026:** cuidado infantil queda
+incluido en el catálogo de categorías. MigPAL es intermediario, no una
+agencia de contratación, y no verifica antecedentes ni referencias -- esa
+responsabilidad es de la parte contratante. `LIABILITY_DISCLAIMER` vive en
+`domain/rules.py` y viaja con **cada** listado y con el catálogo de
+categorías (`GET /v1/marketplace/categories`) -- no es un aviso que el
+frontend pueda olvidar mostrar, es parte de la respuesta del backend.
+
+**Invariantes reales:** no podés iniciar una transacción sobre un listado
+inactivo ni sobre tu propio listado; una transacción solo pasa de PENDING
+a COMPLETED o CANCELLED una vez (no hay revertir un estado terminal). La
+comisión (`DEFAULT_COMMISSION_RATE = 8%`) es un valor de partida explícito,
+no una cifra que Hernán ya validó -- queda documentado como pendiente de
+confirmación de negocio, a diferencia del $1.000 de `core/budget` que sí
+está confirmado.
+
+**API:** `GET /v1/marketplace/categories`, `POST`/`GET /listings`,
+`POST /transactions`, `POST /transactions/{id}/complete`,
+`POST /transactions/{id}/cancel`, `GET /transactions` (mías, como
+comprador o vendedor).
+
+**Verificación:** 12 tests unitarios + 8 de contrato (incluye que el
+catálogo trae "CUIDADO_INFANTIL" y el disclaimer, y que cada listado lo
+lleva consigo). Migración `a5b6c7d8e9f0`. Suite completa: **298 passed**,
+cero regresión. `ruff check` limpio.
+
 ## Siguiente paso
 
-Sprint 6 (Mercado) — marketplace de servicios entre migrantes con comisión
-por transacción. Requiere resolver primero verificación de antecedentes
-para servicios sensibles (cuidado infantil) antes de exponerse a
-producción real -- se construye la estructura, pero el lanzamiento público
-queda condicionado a eso.
+Sprint 7 (Gamificación) — niveles con nombre, XP atado a hitos reales
+(nunca a abrir la app), insignias. El diseño ya existe en el Blueprint;
+falta decidir dónde vive el estado (¿extiende `case_engine` o es un
+bounded context propio?) antes de escribir código.

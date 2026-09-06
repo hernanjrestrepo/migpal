@@ -47,3 +47,12 @@ class CommunityGroupNotFound(DomainError):
 
 class CommunityPostNotFound(DomainError):
     pass
+
+
+class MarketplaceListingNotFound(DomainError):
+    pass
+
+
+class MarketplaceTransactionNotFound(DomainError):
+    """No existe, o no pertenece (ni como comprador ni como vendedor) al
+    usuario autenticado -- ver core/marketplace/application/handlers.py."""
