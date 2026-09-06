@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=20260906">
+<link rel="stylesheet" href="/assets/app.css?v=20260906c">
 <style>
   .app-main { padding: var(--sp-8) 0 var(--sp-20); }
 
@@ -281,11 +281,33 @@
       </div>
     </section>
 
+    <!-- =================== PRESUPUESTO Y ROI (Hito 5) =================== -->
+    <section class="stage" id="stage-presupuesto">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step-num">💰</span>
+            <div>
+              <h2 data-i18n="budget.title">Presupuesto y ROI</h2>
+              <div class="card-sub" data-i18n="budget.sub">Cuánto cuesta migrar y en cuánto tiempo se recupera la inversión.</div>
+            </div>
+          </div>
+        </div>
+        <div id="budgetBody">
+          <div class="empty">
+            <div class="empty-icon">💰</div>
+            <h3 data-i18n="budget.emptyTitle">Todavía no calculaste tu presupuesto</h3>
+            <p data-i18n="budget.emptyBody">Completa los campos y calcula cuánto cuesta tu proyecto migratorio.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </div>
 </main>
 
-<script src="/assets/i18n.js?v=20260906"></script>
-<script src="/assets/app.js?v=20260906"></script>
+<script src="/assets/i18n.js?v=20260906c"></script>
+<script src="/assets/app.js?v=20260906c"></script>
 <script>
 (function () {
   'use strict';
@@ -295,7 +317,7 @@
   var api = MigPAL.api;
 
   /* Estado local del caso: lo que el backend ya sabe de este usuario. */
-  var state = { assessment: null, recommendation: null, plan: null };
+  var state = { assessment: null, recommendation: null, plan: null, budget: null };
 
   /* ------------------------------------------------------------ chrome */
 
@@ -575,6 +597,93 @@
     document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  /* ---------------------------------------------- presupuesto (Hito 5) */
+
+  var BUDGET_FIELDS = [
+    ['family_size', 'budget.familySize', '1'],
+    ['origin_monthly_income', 'budget.originIncome', '0'],
+    ['destination_monthly_income', 'budget.destIncome', '0'],
+    ['government_fee', 'budget.govFee', '0'],
+    ['relocation_cost_low', 'budget.relocationLow', '0'],
+    ['relocation_cost_high', 'budget.relocationHigh', '0'],
+    ['settlement_cost', 'budget.settlementCost', '0'],
+    ['legal_fee_low', 'budget.legalLow', '0'],
+    ['legal_fee_high', 'budget.legalHigh', '0']
+  ];
+
+  function renderBudgetForm(prefill) {
+    prefill = prefill || {};
+    var fields = BUDGET_FIELDS.map(function (f) {
+      var key = f[0], labelKey = f[1], def = f[2];
+      var val = prefill[key] !== undefined ? prefill[key] : def;
+      var min = key === 'family_size' ? '1' : '0';
+      return '<div class="field">' +
+        '<label class="label" for="bf_' + key + '">' + esc(MigPAL.t(labelKey)) + '</label>' +
+        '<input class="input" type="number" min="' + min + '" step="any" id="bf_' + key + '" value="' + esc(val) + '">' +
+      '</div>';
+    }).join('');
+
+    document.getElementById('budgetBody').innerHTML =
+      '<div class="grid grid-2">' + fields + '</div>' +
+      '<div class="hint mb-4">' + esc(MigPAL.t('budget.hint')) + '</div>' +
+      '<button class="btn btn-primary" id="budgetSubmitBtn">' + esc(MigPAL.t('budget.submit')) + '</button>';
+
+    document.getElementById('budgetSubmitBtn').addEventListener('click', submitBudget);
+  }
+
+  // Intl.NumberFormat con el tag genérico "es" (sin región) agrupa de forma
+  // inconsistente según el navegador -- "1000" sin separador pero "10300"
+  // con uno, encontrado probando el formulario en vivo. Un locale con
+  // región fija siempre agrupa igual.
+  var NUMBER_LOCALE = { es: 'es-CO', pt: 'pt-BR', en: 'en-US' };
+  function renderBudgetResult(b) {
+    state.budget = b;
+    var fmt = function (n) { return '$' + Math.round(n).toLocaleString(NUMBER_LOCALE[MigPAL.lang] || 'es-CO'); };
+
+    document.getElementById('budgetBody').innerHTML =
+      '<h3 class="text-md mb-2">' + esc(MigPAL.t('budget.breakdownTitle')) + '</h3>' +
+      '<div class="finding"><span>' + esc(MigPAL.t('budget.feeMigpal')) + '</span> — ' + fmt(b.migpal_service_fee) + '</div>' +
+      '<div class="finding"><span>' + esc(MigPAL.t('budget.feeGov')) + '</span> — ' + fmt(b.government_fee) + '</div>' +
+      '<div class="finding"><span>' + esc(MigPAL.t('budget.feeRelocation')) + '</span> — ' + fmt(b.relocation_cost_low) + ' – ' + fmt(b.relocation_cost_high) + '</div>' +
+      '<div class="finding"><span>' + esc(MigPAL.t('budget.feeSettlement')) + '</span> — ' + fmt(b.settlement_cost) + '</div>' +
+      (b.legal_fee_low || b.legal_fee_high
+        ? '<div class="finding"><span>' + esc(MigPAL.t('budget.feeLegal')) + '</span> — ' + fmt(b.legal_fee_low) + ' – ' + fmt(b.legal_fee_high) + '</div>'
+        : '') +
+      '<div class="hr"></div>' +
+      '<div class="row between" style="align-items:baseline"><span class="fw-700">' + esc(MigPAL.t('budget.total')) + '</span>' +
+        '<span class="text-xl fw-800">' + fmt(b.total_low) + ' – ' + fmt(b.total_high) + '</span></div>' +
+      '<div class="next-step-box mt-5">' +
+        '<div class="kicker">' + esc(MigPAL.t('budget.balanceTitle')) + '</div>' +
+        '<div class="row gap-5 wrapf mt-2">' +
+          '<div><div class="text-xs" style="opacity:.75">' + esc(MigPAL.t('budget.monthlyDiff')) + '</div>' +
+            '<div class="fw-700">' + fmt(b.monthly_differential) + '</div></div>' +
+          '<div><div class="text-xs" style="opacity:.75">' + esc(MigPAL.t('budget.breakeven')) + '</div>' +
+            '<div class="fw-700">' + (b.breakeven_months != null
+              ? Math.round(b.breakeven_months) : esc(MigPAL.t('budget.breakevenNone'))) + '</div></div>' +
+        '</div>' +
+      '</div>' +
+      '<button class="btn btn-ghost btn-sm mt-5" id="budgetRecalcBtn">' + esc(MigPAL.t('budget.recalculate')) + '</button>';
+
+    document.getElementById('budgetRecalcBtn').addEventListener('click', function () { renderBudgetForm(b); });
+  }
+
+  async function submitBudget() {
+    var btn = document.getElementById('budgetSubmitBtn');
+    var payload = {};
+    for (var i = 0; i < BUDGET_FIELDS.length; i++) {
+      var key = BUDGET_FIELDS[i][0];
+      payload[key] = Number(document.getElementById('bf_' + key).value) || 0;
+    }
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      renderBudgetResult(await api.calculateBudget(payload));
+      MigPAL.toast(MigPAL.t('toast.budgetReady'), 'success');
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+      restore();
+    }
+  }
+
   /* ------------------------------------------------------------ acciones */
 
   async function requestAssessment() {
@@ -728,10 +837,11 @@
     var results = await Promise.allSettled([
       api.getAssessment(),
       api.getRecommendation(),
-      api.getPlan()
+      api.getPlan(),
+      api.getBudget()
     ]);
 
-    var a = results[0], r = results[1], p = results[2];
+    var a = results[0], r = results[1], p = results[2], bud = results[3];
 
     if (a.status === 'fulfilled') renderAssessment(a.value);
     else state.assessment = null;
@@ -742,10 +852,13 @@
     if (p.status === 'fulfilled') renderPlan(p.value);
     else state.plan = null;
 
+    if (bud.status === 'fulfilled') renderBudgetResult(bud.value);
+    else { state.budget = null; renderBudgetForm(); }
+
     renderJourney();
 
     // Errores reales (no 404 de "todavía no existe") sí se avisan.
-    [a, r, p].forEach(function (res) {
+    [a, r, p, bud].forEach(function (res) {
       if (res.status === 'rejected' && res.reason && res.reason.status && res.reason.status !== 404) {
         MigPAL.toast(res.reason.detail || MigPAL.t('toast.genericError'), 'error');
       }
@@ -769,6 +882,7 @@
     if (state.assessment) renderAssessment(state.assessment);
     if (state.recommendation) renderRecommendation(state.recommendation);
     if (state.plan) renderPlan(state.plan);
+    if (state.budget) renderBudgetResult(state.budget); else renderBudgetForm();
     renderJourney();
   });
 

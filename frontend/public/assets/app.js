@@ -199,7 +199,11 @@ window.MigPAL = (function () {
     getPlan:      function () { return api.get('/v1/execution-plan'); },
     completeStep: function (stepId) {
       return api.post('/v1/execution-plan/steps/' + encodeURIComponent(stepId) + '/complete');
-    }
+    },
+
+    /* — Hito 5: Presupuesto y ROI — */
+    getBudget:        function () { return api.get('/v1/budget'); },
+    calculateBudget:  function (payload) { return api.post('/v1/budget', { json: payload }); }
   };
 
   /* ----------------------------------------------------------------- toast */
