@@ -42,6 +42,7 @@ PERSISTED_EVENT_NAMES = {
     "CommunityPostPublished",
     "MarketplaceTransactionCompleted",
     "NegocioIntegrationConnected",
+    "EmpleoIntegrationConnected",
 }
 
 

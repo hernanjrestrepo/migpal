@@ -348,10 +348,55 @@ modelo local de ADAN, qwen2.5:0.5b, no siempre devuelve JSON bien
 formado) -- eso es un problema de calidad del lado de ADAN, ya reconocido
 por Hernán como su propia responsabilidad. Migración `b6c7d8e9f0a1`.
 
+## Sprint 10b — Empleo (integración real con JobXeeker) ✅
+
+**Bounded context:** `backend/core/empleo/`. A diferencia de ADAN,
+JobXeeker sí expone `POST /api/auth/refresh` con un refresh token
+rotativo (verificado en vivo) -- por eso acá **no se guarda ninguna
+contraseña**, ni siquiera temporalmente más allá del registro inicial.
+Mejor postura de seguridad que Negocio, documentada como contraste
+deliberado en el docstring del aggregate.
+
+**Dos hallazgos reales de la investigación en vivo, no asumidos de la
+documentación:**
+- `POST /api/profiles/` crea un perfil **sin reclamar** (otro `user_id`,
+  no el de la cuenta autenticada) -- el camino correcto para el perfil
+  propio es `PUT /api/profiles/{user_id}` con el `user_id` que devuelve el
+  registro. Usar el endpoint equivocado hubiera hecho que MigPAL le hablara
+  a un perfil que nadie ve.
+- `POST /api/matches/run/{user_id}` puede devolver 200 con
+  `success: false, analysis_status: "degraded_mode"` y un error interno de
+  JobXeeker (`'<' not supported between instances of 'NoneType' and
+  'float'`) -- un bug real del lado de JobXeeker, no de esta integración.
+  El cliente lo propaga tal cual (no lo esconde ni lo convierte en
+  excepción) para que el usuario final vea que el matching no está
+  disponible en vez de un silencio o un dato inventado.
+
+**API:** `POST /v1/empleo/connect`, `POST /v1/empleo/matches` (corre el
+matching + devuelve la lista, con `matching_disponible: bool` explícito).
+
+**Puerto real usado para pruebas:** JobXeeker no estaba corriendo:
+se levantó localmente con `uvicorn` en el puerto 8012 (su propio default,
+8010, colisiona con el mapeo de host de MigPAL; 8011 estaba ocupado por
+otro proceso ajeno -- no tocado). `JOBXEEKER_BASE_URL` usa
+`host.docker.internal`, mismo criterio que ADAN.
+
+**Verificación:** 9 tests unitarios (`JobXeekerClient` falso) + 3 de
+contrato **contra JobXeeker real** (incluye el caso `degraded_mode` sin
+que la prueba falle -- se afirma que la respuesta es coherente, no que el
+matching tenga éxito). Migración `c7d8e9f0a1b2`.
+
+## Sprint 10 — cerrado (10a + 10b)
+
+Negocio y Empleo, los dos con integración real verificada en vivo, no
+solo diseñada. Ambos anotan deuda de seguridad/calidad explícita en vez de
+esconderla: contraseña en texto plano para ADAN (sin refresh del otro
+lado), y un bug de matching real en JobXeeker que Hernán va a resolver
+ahora que la integración expone el problema en vez de ocultarlo.
+
 ## Siguiente paso
 
-Sprint 10b (Empleo, integración con JobXeeker) -- en construcción. Después:
-abrir el ADR de Recommendation (explicabilidad + elección de ruta, 18% de
-peso, ya autorizado) y arrancar la validación de documentos por IA vía
-OCR (decisión de Hernán, 7 sept: usar una librería de OCR en vez de
+Abrir el ADR de Recommendation (explicabilidad + elección de ruta, 18% de
+peso, ya autorizado por Hernán) y arrancar la validación de documentos por
+IA vía OCR (decisión de Hernán, 7 sept: usar una librería de OCR en vez de
 investigación de IA desde cero).

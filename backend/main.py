@@ -14,6 +14,7 @@ from core.case_engine.adapters.api import router as case_router
 from core.community.adapters.api import router as community_router
 from core.conversation.adapters.api import router as conversation_router
 from core.decision_engine.adapters.api import router as decision_engine_router
+from core.empleo.adapters.api import router as empleo_router
 from core.execution_plan.adapters.api import router as execution_plan_router
 from core.family_planning.adapters.api import router as family_planning_router
 from core.identity.adapters.api import router as identity_router
@@ -108,6 +109,10 @@ app.include_router(progression_router)
 # Hito 5, Sprint 10a: integración real con ADAN (Board Room) para negocio
 # propio (docs/HITO_5_DESIGN.md §2).
 app.include_router(negocio_router)
+
+# Hito 5, Sprint 10b: integración real con JobXeeker (perfil + matching)
+# para empleo (docs/HITO_5_DESIGN.md §2).
+app.include_router(empleo_router)
 
 
 @app.get("/")
