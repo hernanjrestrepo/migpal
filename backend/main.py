@@ -11,6 +11,7 @@ from app.middleware import RateLimitMiddleware, RequestIdMiddleware, SecurityHea
 from app.utils.logging_config import get_api_logger, setup_logging
 from core.budget.adapters.api import router as budget_router
 from core.case_engine.adapters.api import router as case_router
+from core.community.adapters.api import router as community_router
 from core.conversation.adapters.api import router as conversation_router
 from core.decision_engine.adapters.api import router as decision_engine_router
 from core.execution_plan.adapters.api import router as execution_plan_router
@@ -88,6 +89,10 @@ app.include_router(settlement_router)
 # Hito 5, Sprint 4: encuesta familiar, cascada geográfica y opciones de
 # colegio/vivienda (docs/HITO_5_DESIGN.md §2).
 app.include_router(family_planning_router)
+
+# Hito 5, Sprint 5: comunidad -- grupos, publicaciones, comentarios, likes
+# (docs/HITO_5_DESIGN.md §2).
+app.include_router(community_router)
 
 
 @app.get("/")

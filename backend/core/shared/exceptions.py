@@ -39,3 +39,11 @@ class SettlementNotFound(DomainError):
     """No existe, o no pertenece al caso del usuario autenticado -- ver
     core/settlement/application/handlers.py. Misma categoría que
     ExecutionPlanNotFound."""
+
+
+class CommunityGroupNotFound(DomainError):
+    pass
+
+
+class CommunityPostNotFound(DomainError):
+    pass

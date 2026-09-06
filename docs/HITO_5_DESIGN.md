@@ -31,8 +31,8 @@ riesgo/tamaño.
 | 2 | Trámites de instalación | `core/settlement` (nuevo) | ✅ **Cerrado** — ver abajo |
 | 3 | Traslado y remesas | extiende `core/budget` | ✅ **Cerrado** — ver abajo |
 | 4 | Planificación familiar ampliada (encuesta, cascada geográfica, colegios/vivienda) | `core/family_planning` (nuevo) | ✅ **Cerrado** — ver abajo |
-| 5 | Comunidad (feed social) | `core/community` (nuevo) | Próximo |
-| 6 | Mercado (marketplace + comisión) | `core/marketplace` (nuevo) | Pendiente — requiere verificación de antecedentes antes de exponerse a producción |
+| 5 | Comunidad (feed social) | `core/community` (nuevo) | ✅ **Cerrado** — ver abajo |
+| 6 | Mercado (marketplace + comisión) | `core/marketplace` (nuevo) | Próximo — requiere verificación de antecedentes antes de exponerse a producción |
 | 7 | Gamificación (niveles, XP, insignias) | transversal, probablemente vive en `core/case_engine` o un nuevo `core/progression` | Pendiente |
 | 8 | Modelo de precios / facturación real ($1.000 grupo familiar + $200 extra) | integración con pasarela de pago (Stripe u otra) | Pendiente — requiere credenciales reales del negocio, no solo código |
 | 9 | Sistema de agentes (Angela + especialistas, dictado, adjuntar documentos con enrutamiento) | rediseño de `core/conversation` | Pendiente — el más grande y de mayor riesgo técnico |
@@ -154,8 +154,37 @@ no posee):
 Ollama/Kimi). Migración `e3c4d5e6f7a8`. Suite completa: **261 passed**,
 cero regresión. `ruff check` limpio.
 
+## Sprint 5 — Comunidad ✅
+
+**Bounded context:** `backend/core/community/` -- cinco tablas
+independientes (grupo, membresía, publicación, comentario, like), cada una
+operada por su propio repositorio, sin un aggregate compuesto que cargue
+todo el feed en memoria por request.
+
+- Crear un grupo une automáticamente al creador -- no tendría sentido que
+  no pudiera publicar en su propio grupo sin un paso extra.
+- Invariantes reales: no podés publicar ni comentar ni dar "me gusta" sin
+  ser miembro del grupo; no podés unirte dos veces; no podés darle "me
+  gusta" dos veces a la misma publicación ni sacarlo si nunca lo diste.
+- **Nota de alcance explícita:** este sprint NO incluye moderación de
+  contenido, ni humana ni por IA. Un post ofensivo queda visible hasta que
+  alguien lo borre a mano -- es backlog real, no un olvido (ver
+  `core/community/domain/rules.py`, docstring del módulo).
+
+**API:** `POST`/`GET /v1/community/groups`, `POST /groups/{id}/join`,
+`POST`/`GET /groups/{id}/posts`, `POST`/`GET /posts/{id}/comments`,
+`POST`/`DELETE /posts/{id}/like`.
+
+**Verificación:** 9 tests unitarios (invariantes puras) + 8 de contrato
+(flujo completo contra Postgres real: crear grupo, publicar, comentar,
+like/unlike, rechazos por no-membresía y duplicados). Migración
+`f4d5e6f7a8b9`. Suite completa: **278 passed**, cero regresión. `ruff
+check` limpio.
+
 ## Siguiente paso
 
-Sprint 5 (Comunidad) — feed social por ciudad/grupo. El Mercado (Sprint 6)
-queda deliberadamente aparte por su propio riesgo (verificación de
-antecedentes antes de exponerse a producción).
+Sprint 6 (Mercado) — marketplace de servicios entre migrantes con comisión
+por transacción. Requiere resolver primero verificación de antecedentes
+para servicios sensibles (cuidado infantil) antes de exponerse a
+producción real -- se construye la estructura, pero el lanzamiento público
+queda condicionado a eso.
