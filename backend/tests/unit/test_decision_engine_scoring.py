@@ -37,7 +37,36 @@ def test_empty_profile_scores_at_base_with_no_signals():
 
     assert score == 20.0  # BASE_SCORE, cero señales
     assert confidence == 0.0
-    assert findings == ["No se detectaron señales claras de perfil en el mensaje."]
+    assert findings[0] == "No se detectaron señales claras de perfil en el mensaje."
+    # A-ADR-009: explicabilidad -- cero señales detectadas implica las 5
+    # categorías reportadas como faltantes.
+    assert len(findings) == 1 + 5
+    assert all(f.startswith("Señal no detectada:") for f in findings[1:])
+
+
+def test_missing_signals_are_reported_for_explicability():
+    """A-ADR-009 -- `findings` ahora expone también lo que NO se detectó,
+    no solo lo detectado (antes, el usuario no tenía forma de saber qué le
+    faltaba para mejorar su score)."""
+    text = "Soy ingeniero con 6 años de experiencia."
+    _, _, findings = score_profile_text(text)
+
+    assert "Señal detectada: experience" in findings
+    assert "Señal no detectada: education" in findings
+    assert "Señal no detectada: destination" in findings
+    assert "Señal no detectada: family" in findings
+    assert "Señal no detectada: financial" in findings
+
+
+def test_missing_signals_from_findings_is_symmetric_to_matched():
+    from core.decision_engine.infrastructure.scoring import missing_signals_from_findings
+
+    findings = [
+        "Señal detectada: experience",
+        "Señal no detectada: education",
+        "Señal no detectada: family",
+    ]
+    assert missing_signals_from_findings(findings) == {"education", "family"}
 
 
 def test_recommendation_thresholds_are_deterministic():

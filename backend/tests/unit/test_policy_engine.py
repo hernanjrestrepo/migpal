@@ -48,6 +48,26 @@ def test_objective_country_gives_a_bonus_to_the_matching_route():
     assert with_destination[0].route.country == "Canadá"
 
 
+def test_missing_signals_reports_what_the_profile_lacks_for_each_route():
+    """A-ADR-009 -- explicabilidad: cada RouteEvaluation expone qué señales
+    requeridas por ESA ruta el perfil no tiene, no una lista genérica."""
+    evaluations = evaluate_candidate_routes(matched_signals={"experience"}, objective_country=None)
+
+    for ev in evaluations:
+        expected_missing = {s for s in ev.missing_signals}
+        assert "experience" not in expected_missing  # ya la tiene, no puede faltarle
+        assert all(isinstance(s, str) for s in ev.missing_signals)
+
+
+def test_route_fully_matched_has_no_missing_signals():
+    canada = next(
+        ev
+        for ev in evaluate_candidate_routes(matched_signals={"experience", "education"}, objective_country=None)
+        if ev.route.country == "Canadá"
+    )
+    assert canada.missing_signals == []
+
+
 def test_same_inputs_produce_the_same_output():
     first = evaluate_candidate_routes(matched_signals={"experience", "education"}, objective_country="España")
     second = evaluate_candidate_routes(matched_signals={"experience", "education"}, objective_country="España")

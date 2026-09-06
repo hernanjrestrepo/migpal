@@ -40,6 +40,7 @@ def evaluate_candidate_routes(
             objective_country=objective_country,
         )
         signal_hits = sum(1 for signal in entry["required_signals"] if signal in matched_signals)
+        missing = [signal for signal in entry["required_signals"] if signal not in matched_signals]
 
         route = MigrationRoute(visa_type=entry["visa_type"], country=entry["country"], fit_score=fit)
         evaluation = RouteEvaluation(
@@ -53,6 +54,8 @@ def evaluate_candidate_routes(
                 url=entry["source_url"],
                 verified_at=entry["verified_at"],
             ),
+            # Explicabilidad: qué le falta al perfil PARA ESTA ruta (A-ADR-009).
+            missing_signals=missing,
         )
         scored.append((evaluation, signal_hits))
 

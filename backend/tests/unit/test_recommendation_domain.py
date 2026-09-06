@@ -16,6 +16,7 @@ from core.recommendation.domain.rules import (
     build_recommendation,
     discard,
     issue,
+    select_route,
 )
 from core.recommendation.domain.value_objects import (
     MigrationRoute,
@@ -219,3 +220,67 @@ def test_discard_fails_if_not_issued():
     rec = accept(issue(build_recommendation(**_base_kwargs())))
     with pytest.raises(RecommendationTransitionError):
         discard(rec)
+
+
+# -- select_route (A-ADR-009) --
+
+ALT_ROUTE_A = MigrationRoute(visa_type="Express Entry", country="Canadá", fit_score=60.0)
+ALT_EVAL_A = RouteEvaluation(route=ALT_ROUTE_A, strengths=["..."], risks=["..."], required_documents=["..."])
+ALT_ROUTE_B = MigrationRoute(visa_type="Subclass 189", country="Australia", fit_score=40.0)
+ALT_EVAL_B = RouteEvaluation(route=ALT_ROUTE_B, strengths=["..."], risks=["..."], required_documents=["..."])
+
+
+def _issued_with_alternatives():
+    rec = build_recommendation(**_base_kwargs(alternative_evaluations=[ALT_EVAL_A, ALT_EVAL_B]))
+    return issue(rec)
+
+
+def test_select_route_promotes_alternative_to_primary_and_demotes_previous_primary():
+    rec = _issued_with_alternatives()
+
+    updated = select_route(rec, alternative_index=0)
+
+    assert updated.primary_route_evaluation() == ALT_EVAL_A
+    remaining = updated.alternative_route_evaluations()
+    assert ALT_EVAL_B in remaining
+    assert EVALUATION in remaining  # la primaria original queda como alternativa
+    assert len(remaining) == 2
+
+
+def test_select_route_appends_a_deterministic_manual_choice_note_to_rationale():
+    rec = _issued_with_alternatives()
+    original_rationale = list(rec.rationale)
+
+    updated = select_route(rec, alternative_index=1)
+
+    assert updated.rationale[: len(original_rationale)] == original_rationale
+    assert "Elegiste esta ruta manualmente" in updated.rationale[-1]
+
+
+def test_select_route_does_not_change_confidence():
+    rec = _issued_with_alternatives()
+    original_confidence = rec.confidence
+
+    updated = select_route(rec, alternative_index=0)
+
+    assert updated.confidence == original_confidence
+
+
+def test_select_route_fails_outside_issued():
+    draft = build_recommendation(**_base_kwargs(alternative_evaluations=[ALT_EVAL_A]))
+    with pytest.raises(RecommendationTransitionError):
+        select_route(draft, alternative_index=0)
+
+    accepted = accept(_issued_with_alternatives())
+    with pytest.raises(RecommendationTransitionError):
+        select_route(accepted, alternative_index=0)
+
+
+def test_select_route_rejects_out_of_range_index():
+    rec = _issued_with_alternatives()
+
+    with pytest.raises(RecommendationInvariantError):
+        select_route(rec, alternative_index=99)
+
+    with pytest.raises(RecommendationInvariantError):
+        select_route(rec, alternative_index=-1)

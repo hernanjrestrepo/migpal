@@ -13,3 +13,10 @@ class AcceptRecommendationCommand:
 class DiscardRecommendationCommand:
     recommendation_id: int
     case_id: int
+
+
+@dataclass(frozen=True)
+class SelectRouteCommand:
+    recommendation_id: int
+    case_id: int
+    alternative_index: int

@@ -11,10 +11,14 @@ from __future__ import annotations
 
 from core.case_engine.domain.aggregates import MigrationCase
 from core.decision_engine.domain.aggregates import Assessment
-from core.recommendation.application.commands import AcceptRecommendationCommand, DiscardRecommendationCommand
+from core.recommendation.application.commands import (
+    AcceptRecommendationCommand,
+    DiscardRecommendationCommand,
+    SelectRouteCommand,
+)
 from core.recommendation.application.orchestrator import attach_narrative, generate_recommendation
 from core.recommendation.domain.aggregates import Recommendation
-from core.recommendation.domain.rules import accept, discard
+from core.recommendation.domain.rules import accept, discard, select_route
 from core.recommendation.infrastructure.ai_adapter import RecommendationAIAdapter
 from core.recommendation.infrastructure.repository import RecommendationRepository
 from core.shared.exceptions import RecommendationNotFound
@@ -57,3 +61,20 @@ def handle_discard_recommendation(
     rec = _get_owned_recommendation(cmd.recommendation_id, cmd.case_id, repo)
     discard(rec)
     return repo.save(rec)
+
+
+async def handle_select_route(
+    cmd: SelectRouteCommand,
+    repo: RecommendationRepository,
+    ai_adapter: RecommendationAIAdapter,
+) -> Recommendation:
+    """A-ADR-009 -- promueve una alternativa a `primary_evaluation`. Vuelve
+    a redactar `narrative_summary` (mismo AI Adapter de `attach_narrative`,
+    Sprint 4) para que describa la ruta que el usuario efectivamente
+    eligió, no la que el sistema había sugerido -- si el LLM falla, cae al
+    mismo fallback ya existente, la decisión ya quedó tomada de forma
+    determinística antes de esta llamada."""
+    rec = _get_owned_recommendation(cmd.recommendation_id, cmd.case_id, repo)
+    select_route(rec, cmd.alternative_index)
+    rec = await attach_narrative(rec, ai_adapter)
+    return repo.save_route_selection(rec)

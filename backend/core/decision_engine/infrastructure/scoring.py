@@ -74,6 +74,9 @@ def score_profile_text(text: str) -> tuple[float, float, list[str]]:
     if not findings:
         findings = ["No se detectaron señales claras de perfil en el mensaje."]
 
+    missing = [category for category in SIGNAL_KEYWORDS if category not in matched]
+    findings += [f"Señal no detectada: {category}" for category in missing]
+
     return score, confidence, findings
 
 
@@ -94,6 +97,13 @@ def matched_signals_from_findings(findings: list[str]) -> set[str]:
     detectadas a partir de `Assessment.findings` (formato "Señal detectada:
     {categoría}", ver `score_profile_text`), sin volver a tocar texto libre."""
     return {f.split(":", 1)[1].strip() for f in findings if f.startswith("Señal detectada:")}
+
+
+def missing_signals_from_findings(findings: list[str]) -> set[str]:
+    """Simétrica a `matched_signals_from_findings` (A-ADR-009) -- reconstruye
+    las categorías que el Assessment NO detectó, a partir del mismo formato
+    de `findings` ("Señal no detectada: {categoría}", ver `score_profile_text`)."""
+    return {f.split(":", 1)[1].strip() for f in findings if f.startswith("Señal no detectada:")}
 
 
 DESTINATION_BONUS = 20.0

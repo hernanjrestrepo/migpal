@@ -63,7 +63,11 @@ class RouteEvaluation(BaseModel):
     `source` es opcional y aditivo (A-ADR-008): las Recommendation ya
     persistidas, cuyo JSON no tiene la clave, siguen validando sin migración.
     No participa de ninguna decisión -- es metadato de procedencia, no entra
-    en `fit_score` ni en `confidence`."""
+    en `fit_score` ni en `confidence`.
+
+    `missing_signals` es opcional y aditivo (A-ADR-009): señales que esta
+    ruta requiere y que el perfil del usuario no tiene -- explicabilidad de
+    por qué el `fit_score` no es más alto, no participa en ningún cálculo."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -72,6 +76,7 @@ class RouteEvaluation(BaseModel):
     risks: list[str] = []
     required_documents: list[str] = []
     source: RouteSource | None = None
+    missing_signals: list[str] = []
 
 
 class NextStep(BaseModel):

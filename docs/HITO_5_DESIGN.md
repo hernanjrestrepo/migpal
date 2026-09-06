@@ -394,9 +394,45 @@ esconderla: contraseña en texto plano para ADAN (sin refresh del otro
 lado), y un bug de matching real en JobXeeker que Hernán va a resolver
 ahora que la integración expone el problema en vez de ocultarlo.
 
+## A-ADR-009 — Explicabilidad y elección de ruta ✅
+
+Ver [`docs/adr/A-ADR-009-explicabilidad-y-eleccion-de-ruta.md`](adr/A-ADR-009-explicabilidad-y-eleccion-de-ruta.md)
+(Aceptado, 2026-09-06) — reabre el Recommendation Baseline v1.0 congelado
+desde Hito 3, con el procedimiento formal que la regla de congelamiento
+exige (mismo criterio que A-ADR-008).
+
+**Dos cambios, ambos aditivos/retrocompatibles:**
+
+1. **Explicabilidad de señales faltantes.** `score_profile_text` (Decision
+   Engine) ahora reporta también qué categorías NO detectó ("Señal no
+   detectada: X"), simétrico a "Señal detectada: X". Policy Engine calcula,
+   por cada `RouteEvaluation`, qué `required_signals` de esa ruta concreta
+   le faltan al perfil (`missing_signals: list[str]`, default `[]`) —
+   expuesto en `RouteEvaluationRead`. Ya no hay caja negra en el ranking: un
+   usuario con `fit_score` bajo puede ver exactamente qué le falta declarar
+   para esa ruta específica.
+2. **Elección de ruta por el usuario.** Nuevo endpoint
+   `POST /v1/recommendation/{id}/select-route` (`{"alternative_index": int}`)
+   promueve una alternativa a `primary_evaluation` mientras la Recommendation
+   sigue en `ISSUED` — la anterior primaria queda como alternativa. No
+   recalcula `confidence` (sigue cumpliendo la invariante 3 sin tocarla) ni
+   inventa una ruta fuera de las ya evaluadas por Policy Engine. Vuelve a
+   generar `narrative_summary` vía el AI Adapter para describir la ruta que
+   el usuario efectivamente eligió. Nuevo evento `RecommendationRouteSelected`
+   (event log), señal de negocio para medir cuándo el usuario prefiere una
+   ruta distinta a la que el sistema ordenó primero.
+
+**Verificación:** 17 tests nuevos — 4 unitarios en Decision Engine
+(missing signals + simetría de parseo), 2 en Policy Engine, 5 en dominio de
+Recommendation (`select_route`: promoción, rationale, confidence sin tocar,
+transición inválida, índice fuera de rango), 4 en handlers
+(`handle_select_route` con AI Adapter falso), 4 de contrato **contra
+Postgres + Ollama reales** (promoción end-to-end, índice fuera de rango
+→ 409, bloqueado tras `accept` → 409, `missing_signals` presente en la
+respuesta real). Suite completa: 372 tests, cero regresión (antes: 355).
+
 ## Siguiente paso
 
-Abrir el ADR de Recommendation (explicabilidad + elección de ruta, 18% de
-peso, ya autorizado por Hernán) y arrancar la validación de documentos por
-IA vía OCR (decisión de Hernán, 7 sept: usar una librería de OCR en vez de
-investigación de IA desde cero).
+Validación de documentos por IA vía OCR (decisión de Hernán: usar una
+librería de OCR en vez de investigación de IA desde cero) — sprint propio,
+siguiente en la secuencia acordada.

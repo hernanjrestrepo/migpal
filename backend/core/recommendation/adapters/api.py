@@ -22,11 +22,16 @@ from core.case_engine.application.queries import GetCaseForUserQuery, handle_get
 from core.case_engine.infrastructure.repository import CaseRepository
 from core.decision_engine.infrastructure.repository import AssessmentRepository
 from core.identity.domain.aggregates import User
-from core.recommendation.application.commands import AcceptRecommendationCommand, DiscardRecommendationCommand
+from core.recommendation.application.commands import (
+    AcceptRecommendationCommand,
+    DiscardRecommendationCommand,
+    SelectRouteCommand,
+)
 from core.recommendation.application.handlers import (
     handle_accept_recommendation,
     handle_discard_recommendation,
     handle_request_recommendation,
+    handle_select_route,
 )
 from core.recommendation.application.queries import (
     GetLatestRecommendationQuery,
@@ -63,6 +68,9 @@ class RouteEvaluationRead(BaseModel):
     risks: list[str]
     required_documents: list[str]
     source: RouteSourceRead | None = None
+    # Explicabilidad (A-ADR-009): señales que esta ruta requiere y el perfil
+    # no tiene -- default vacío, retrocompatible con Recommendations viejas.
+    missing_signals: list[str] = []
 
 
 class NextStepRead(BaseModel):
@@ -167,6 +175,40 @@ def accept_recommendation(
     try:
         saved = handle_accept_recommendation(
             AcceptRecommendationCommand(recommendation_id=recommendation_id, case_id=case.id), recommendation_repo
+        )
+    except RecommendationNotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except (RecommendationTransitionError, RecommendationInvariantError) as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    return _to_read(saved)
+
+
+class SelectRouteRequest(BaseModel):
+    """A-ADR-009 -- `alternative_index` referencia una posición dentro de la
+    lista `alternative_evaluations` ya devuelta por GET/POST, no un id
+    propio: el usuario elige entre las rutas que ya vio evaluadas."""
+
+    alternative_index: int
+
+
+@router.post("/{recommendation_id}/select-route", response_model=RecommendationRead)
+async def select_route(
+    recommendation_id: int,
+    body: SelectRouteRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    case = _get_case_or_404(current_user, session)
+    recommendation_repo = RecommendationRepository(session)
+
+    try:
+        saved = await handle_select_route(
+            SelectRouteCommand(
+                recommendation_id=recommendation_id, case_id=case.id, alternative_index=body.alternative_index
+            ),
+            recommendation_repo,
+            RecommendationAIAdapter(),
         )
     except RecommendationNotFound as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

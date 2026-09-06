@@ -33,6 +33,13 @@ class RecommendationRepository(Protocol):
         dominio debe declararlo, no solo `add()`."""
         ...
 
+    def save_route_selection(self, recommendation: Recommendation) -> Recommendation:
+        """Persiste una Recommendation tras `domain.rules.select_route`
+        (A-ADR-009) y dispara `RecommendationRouteSelected`. Separado de
+        `save()` porque la Recommendation sigue en ISSUED (no hay transición
+        de estado que `_EVENT_BY_STATUS` pueda mapear correctamente)."""
+        ...
+
     def get_latest_for_case(self, case_id: int) -> Recommendation | None:
         """Última Recommendation del caso, sin importar su status."""
         ...

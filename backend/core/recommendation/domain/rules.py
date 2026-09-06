@@ -140,6 +140,44 @@ def accept(recommendation: Recommendation, *, existing_accepted: Recommendation 
     return recommendation
 
 
+def select_route(recommendation: Recommendation, alternative_index: int) -> Recommendation:
+    """ISSUED -> ISSUED (A-ADR-009). Promueve
+    `alternative_evaluations[alternative_index]` a `primary_evaluation` y
+    reinserta la anterior primaria como alternativa -- el usuario elige entre
+    las rutas ya evaluadas para su caso, no una libre.
+
+    Solo permitida desde ISSUED: una vez ACCEPTED/DISCARDED el ciclo ya está
+    cerrado (mismo criterio que `accept`/`discard`). No recalcula
+    `confidence` (ver A-ADR-009, "por qué no se recalcula confidence") ni
+    reconstruye `rationale` desde el Assessment -- se le agrega una entrada
+    determinística que dice que la elección fue manual, preservando la
+    invariante 5 (rationale no vacío)."""
+
+    if recommendation.status != RecommendationStatus.ISSUED:
+        raise RecommendationTransitionError(
+            f"Solo se puede elegir una ruta distinta desde ISSUED, no desde {recommendation.status}."
+        )
+
+    alternatives = recommendation.alternative_route_evaluations()
+    if not (0 <= alternative_index < len(alternatives)):
+        raise RecommendationInvariantError(
+            f"alternative_index {alternative_index} fuera de rango -- "
+            f"solo hay {len(alternatives)} rutas alternativas evaluadas para este caso."
+        )
+
+    previous_primary = recommendation.primary_route_evaluation()
+    new_primary = alternatives.pop(alternative_index)
+    alternatives.append(previous_primary)
+
+    recommendation.primary_evaluation = new_primary.model_dump(mode="json")
+    recommendation.alternative_evaluations = [ev.model_dump(mode="json") for ev in alternatives]
+    recommendation.rationale = [
+        *recommendation.rationale,
+        "Elegiste esta ruta manualmente entre las evaluadas para tu caso.",
+    ]
+    return recommendation
+
+
 def discard(recommendation: Recommendation) -> Recommendation:
     """ISSUED -> DISCARDED. No se permite reabrir una Recommendation
     descartada (§2) -- se genera una nueva versión en su lugar."""

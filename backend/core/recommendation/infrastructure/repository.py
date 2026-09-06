@@ -59,6 +59,30 @@ class RecommendationRepository:
             )
         return recommendation
 
+    def save_route_selection(self, recommendation: Recommendation) -> Recommendation:
+        """Persiste una Recommendation tras `domain.rules.select_route`
+        (A-ADR-009). No reutiliza `save()`: la Recommendation sigue en
+        ISSUED (no hay transición de estado), y `_EVENT_BY_STATUS` mapea
+        ISSUED a "RecommendationIssued" -- reusar `save()` acá emitiría ese
+        evento de nuevo como si se hubiera vuelto a emitir la Recommendation,
+        lo cual no es lo que pasó. Se dispara "RecommendationRouteSelected"
+        explícitamente en su lugar."""
+        self._session.add(recommendation)
+        self._session.commit()
+        self._session.refresh(recommendation)
+
+        primary = recommendation.primary_route_evaluation()
+        persist_event(
+            self._session,
+            name="RecommendationRouteSelected",
+            payload={
+                "case_id": recommendation.case_id,
+                "recommendation_id": recommendation.id,
+                "chosen_route": {"visa_type": primary.route.visa_type, "country": primary.route.country},
+            },
+        )
+        return recommendation
+
     def get_latest_for_case(self, case_id: int) -> Recommendation | None:
         return self._session.exec(
             select(Recommendation)

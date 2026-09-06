@@ -10,10 +10,15 @@ tests/contracts/test_recommendation_contract.py.
 
 import pytest
 
-from core.recommendation.application.commands import AcceptRecommendationCommand, DiscardRecommendationCommand
+from core.recommendation.application.commands import (
+    AcceptRecommendationCommand,
+    DiscardRecommendationCommand,
+    SelectRouteCommand,
+)
 from core.recommendation.application.handlers import (
     handle_accept_recommendation,
     handle_discard_recommendation,
+    handle_select_route,
 )
 from core.recommendation.domain.rules import (
     RecommendationInvariantError,
@@ -48,6 +53,10 @@ class _InMemoryRecommendationRepository:
         self._by_id[recommendation.id] = recommendation
         return recommendation
 
+    def save_route_selection(self, recommendation):
+        self._by_id[recommendation.id] = recommendation
+        return recommendation
+
     def get_latest_for_case(self, case_id):
         matches = [r for r in self._by_id.values() if r.case_id == case_id]
         return max(matches, key=lambda r: r.id) if matches else None
@@ -62,12 +71,22 @@ class _InMemoryRecommendationRepository:
         return None
 
 
-def _issued(case_id=5, assessment_id=2):
+ALT_ROUTE = MigrationRoute(visa_type="Express Entry", country="Canadá", fit_score=60.0)
+ALT_EVALUATION = RouteEvaluation(route=ALT_ROUTE, strengths=[], risks=[], required_documents=[])
+
+
+class _StubAIAdapter:
+    async def narrate(self, *, primary, rationale):
+        return f"Narrativa para {primary.route.visa_type}."
+
+
+def _issued(case_id=5, assessment_id=2, alternative_evaluations=None):
     rec = build_recommendation(
         case_id=case_id,
         assessment_id=assessment_id,
         assessment_confidence=1.0,
         primary_evaluation=EVALUATION,
+        alternative_evaluations=alternative_evaluations,
         next_step=NEXT_STEP,
         confidence=0.8,
         rationale=["Señal detectada: experience"],
@@ -152,4 +171,63 @@ def test_handle_discard_raises_not_found_for_wrong_case_id():
     with pytest.raises(RecommendationNotFound):
         handle_discard_recommendation(
             DiscardRecommendationCommand(recommendation_id=rec.id, case_id=999), repo
+        )
+
+
+# -- handle_select_route (A-ADR-009) --
+
+
+@pytest.mark.asyncio
+async def test_handle_select_route_promotes_alternative_and_rewrites_narrative():
+    repo = _InMemoryRecommendationRepository()
+    rec = repo.add(_issued(alternative_evaluations=[ALT_EVALUATION]))
+
+    result = await handle_select_route(
+        SelectRouteCommand(recommendation_id=rec.id, case_id=rec.case_id, alternative_index=0),
+        repo,
+        _StubAIAdapter(),
+    )
+
+    assert result.primary_route_evaluation() == ALT_EVALUATION
+    assert "Express Entry" in result.narrative_summary
+    assert repo.get_by_id(rec.id).primary_route_evaluation() == ALT_EVALUATION
+
+
+@pytest.mark.asyncio
+async def test_handle_select_route_raises_not_found_for_wrong_case_id():
+    repo = _InMemoryRecommendationRepository()
+    rec = repo.add(_issued(case_id=5, alternative_evaluations=[ALT_EVALUATION]))
+
+    with pytest.raises(RecommendationNotFound):
+        await handle_select_route(
+            SelectRouteCommand(recommendation_id=rec.id, case_id=999, alternative_index=0),
+            repo,
+            _StubAIAdapter(),
+        )
+
+
+@pytest.mark.asyncio
+async def test_handle_select_route_raises_invariant_error_for_bad_index():
+    repo = _InMemoryRecommendationRepository()
+    rec = repo.add(_issued(alternative_evaluations=[ALT_EVALUATION]))
+
+    with pytest.raises(RecommendationInvariantError):
+        await handle_select_route(
+            SelectRouteCommand(recommendation_id=rec.id, case_id=rec.case_id, alternative_index=7),
+            repo,
+            _StubAIAdapter(),
+        )
+
+
+@pytest.mark.asyncio
+async def test_handle_select_route_fails_after_accept():
+    repo = _InMemoryRecommendationRepository()
+    rec = repo.add(_issued(alternative_evaluations=[ALT_EVALUATION]))
+    handle_accept_recommendation(AcceptRecommendationCommand(recommendation_id=rec.id, case_id=rec.case_id), repo)
+
+    with pytest.raises(RecommendationTransitionError):
+        await handle_select_route(
+            SelectRouteCommand(recommendation_id=rec.id, case_id=rec.case_id, alternative_index=0),
+            repo,
+            _StubAIAdapter(),
         )

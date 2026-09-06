@@ -12,7 +12,7 @@ BudgetEstimateCalculated, SettlementChecklistCreated,
 SettlementItemStatusUpdated, GeographicSelectionUpdated,
 FamilySurveyResponseSubmitted, CommunityPostPublished,
 MarketplaceTransactionCompleted -- Sprint 7 los consume para calcular
-niveles/XP, ver core/progression/).
+niveles/XP, ver core/progression/. A-ADR-009: RecommendationRouteSelected).
 
 Regla 10 (Constitución): un evento nunca se modifica, solo se agrega uno
 nuevo. Esta tabla es append-only por diseño -- no hay UPDATE ni DELETE en
@@ -43,6 +43,7 @@ PERSISTED_EVENT_NAMES = {
     "MarketplaceTransactionCompleted",
     "NegocioIntegrationConnected",
     "EmpleoIntegrationConnected",
+    "RecommendationRouteSelected",
 }
 
 

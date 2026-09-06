@@ -143,6 +143,79 @@ def test_discard_recommendation():
     assert again.status_code == 409
 
 
+def test_select_route_promotes_an_alternative_to_primary():
+    """A-ADR-009 -- el usuario puede elegir una ruta distinta a la que el
+    sistema puso primero, y esa elección queda reflejada en /GET."""
+    _, headers = _register_login_open_case_and_assess()
+
+    created = client.post("/v1/recommendation", headers=headers)
+    assert created.status_code == 200, created.text
+    body = created.json()
+    rec_id = body["id"]
+    alternatives = body["alternative_evaluations"]
+
+    if not alternatives:
+        # El perfil de prueba puede calificar para una sola ruta -- el
+        # comportamiento de "no hay alternativa que elegir" también se
+        # prueba explícitamente (índice fuera de rango -> 409).
+        conflict = client.post(
+            f"/v1/recommendation/{rec_id}/select-route", headers=headers, json={"alternative_index": 0}
+        )
+        assert conflict.status_code == 409
+        return
+
+    original_primary_visa = body["primary_evaluation"]["route"]["visa_type"]
+    chosen_alternative = alternatives[0]
+
+    selected = client.post(
+        f"/v1/recommendation/{rec_id}/select-route", headers=headers, json={"alternative_index": 0}
+    )
+    assert selected.status_code == 200, selected.text
+    selected_body = selected.json()
+
+    assert selected_body["primary_evaluation"]["route"]["visa_type"] == chosen_alternative["route"]["visa_type"]
+    assert any(
+        alt["route"]["visa_type"] == original_primary_visa for alt in selected_body["alternative_evaluations"]
+    )
+    assert "Elegiste esta ruta manualmente" in selected_body["rationale"][-1]
+
+    read_back = client.get("/v1/recommendation", headers=headers)
+    assert read_back.json()["primary_evaluation"]["route"]["visa_type"] == chosen_alternative["route"]["visa_type"]
+
+
+def test_select_route_rejects_out_of_range_index():
+    _, headers = _register_login_open_case_and_assess()
+    rec_id = client.post("/v1/recommendation", headers=headers).json()["id"]
+
+    response = client.post(
+        f"/v1/recommendation/{rec_id}/select-route", headers=headers, json={"alternative_index": 999}
+    )
+    assert response.status_code == 409
+
+
+def test_select_route_fails_after_accept():
+    _, headers = _register_login_open_case_and_assess()
+    rec_id = client.post("/v1/recommendation", headers=headers).json()["id"]
+    client.post(f"/v1/recommendation/{rec_id}/accept", headers=headers)
+
+    response = client.post(
+        f"/v1/recommendation/{rec_id}/select-route", headers=headers, json={"alternative_index": 0}
+    )
+    assert response.status_code == 409
+
+
+def test_route_evaluation_exposes_missing_signals_for_explicability():
+    """A-ADR-009 -- cada RouteEvaluation dice qué le falta al perfil para
+    esa ruta en concreto, no solo su fit_score."""
+    _, headers = _register_login_open_case_and_assess()
+    body = client.post("/v1/recommendation", headers=headers).json()
+
+    assert "missing_signals" in body["primary_evaluation"]
+    assert isinstance(body["primary_evaluation"]["missing_signals"], list)
+    for alt in body["alternative_evaluations"]:
+        assert "missing_signals" in alt
+
+
 def test_get_recommendation_before_any_request_returns_404():
     suffix = uuid.uuid4().hex[:8]
     email = f"contract_noget_{suffix}@example.com"

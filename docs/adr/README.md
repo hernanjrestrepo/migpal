@@ -9,6 +9,7 @@ documenta como un ADR nuevo que reemplaza al anterior, no como una edición.
 | [A-ADR-006](A-ADR-006-separar-casos-de-uso-llm.md) | Separar los casos de uso conversacionales de los casos de uso analíticos del LLM | Aceptado | 2026-07-30 |
 | [A-ADR-007](A-ADR-007-desacoplar-policy-engine-recommendation.md) | Desacoplamiento entre Policy Engine y Recommendation | Propuesta | 2026-07-31 |
 | [A-ADR-008](A-ADR-008-procedencia-de-datos-del-catalogo.md) | Procedencia verificable de los datos del catálogo de rutas | Aceptado | 2026-09-04 |
+| [A-ADR-009](A-ADR-009-explicabilidad-y-eleccion-de-ruta.md) | Explicabilidad de señales faltantes y elección de ruta por el usuario | Aceptado | 2026-09-06 |
 
 ## Regla de congelamiento — Recommendation Baseline v1.0
 
