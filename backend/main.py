@@ -16,6 +16,7 @@ from core.decision_engine.adapters.api import router as decision_engine_router
 from core.execution_plan.adapters.api import router as execution_plan_router
 from core.identity.adapters.api import router as identity_router
 from core.recommendation.adapters.api import router as recommendation_router
+from core.settlement.adapters.api import router as settlement_router
 
 setup_logging(
     level=settings.LOG_LEVEL,
@@ -78,6 +79,10 @@ app.include_router(execution_plan_router)
 # Hito 5, Sprint 1: presupuesto total de migrar y punto de equilibrio
 # (docs/HITO_5_DESIGN.md §2).
 app.include_router(budget_router)
+
+# Hito 5, Sprint 2: checklist de trámites de instalación, 4 configuraciones
+# fijas de país (docs/HITO_5_DESIGN.md §2).
+app.include_router(settlement_router)
 
 
 @app.get("/")

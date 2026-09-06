@@ -33,3 +33,9 @@ class ExecutionPlanNotFound(DomainError):
     core/execution_plan/application/handlers.py. Misma categoría que
     RecommendationNotFound: regla de acceso/consulta, no una invariante del
     aggregate (eso vive en core/execution_plan/domain/rules.py)."""
+
+
+class SettlementNotFound(DomainError):
+    """No existe, o no pertenece al caso del usuario autenticado -- ver
+    core/settlement/application/handlers.py. Misma categoría que
+    ExecutionPlanNotFound."""

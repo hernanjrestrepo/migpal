@@ -28,8 +28,8 @@ riesgo/tamaño.
 | # | Sprint | Bounded context | Estado |
 |---|---|---|---|
 | 1 | Presupuesto y ROI | `core/budget` (nuevo) | ✅ **Cerrado** — ver abajo |
-| 2 | Trámites de instalación | `core/settlement` (nuevo) | Próximo |
-| 3 | Traslado y remesas | extiende `core/budget` o `core/settlement` | Pendiente |
+| 2 | Trámites de instalación | `core/settlement` (nuevo) | ✅ **Cerrado** — ver abajo |
+| 3 | Traslado y remesas | extiende `core/budget` o `core/settlement` | Próximo |
 | 4 | Planificación familiar ampliada (encuesta, cascada geográfica, colegios/vivienda) | `core/family_planning` (nuevo) | Pendiente |
 | 5 | Comunidad (feed social) | `core/community` (nuevo) | Pendiente |
 | 6 | Mercado (marketplace + comisión) | `core/marketplace` (nuevo) | Pendiente — requiere verificación de antecedentes antes de exponerse a producción |
@@ -71,8 +71,36 @@ por persona adicional.
   3, diferencial $6.500/mes, punto de equilibrio ≈ 7.5 meses.
 - `ruff check` limpio.
 
+## Sprint 2 — Trámites de instalación ✅
+
+**Bounded context:** `backend/core/settlement/` (domain/application/adapters/infrastructure).
+
+**Decisión de diseño:** 4 configuraciones fijas (`COUNTRY_TEMPLATES`),
+indexadas por el mismo string de `country` que usa `policy_engine/catalog.py`
+y que expone `recommendation.primary_route_evaluation().route.country` —
+no un motor genérico, porque el catálogo del piloto está congelado en 4
+países (blueprint §0). Cada item nombra la institución real que administra
+el trámite (SSA, Service Canada/CRA, ATO, Extranjería/Agencia Tributaria) —
+hechos estables de dominio público, a diferencia de las tasas de gobierno
+de `core/budget` (que sí cambian seguido y por eso no se hardcodean).
+
+**API:**
+- `POST /v1/settlement` — genera el checklist a partir del país de la
+  Recommendation ACCEPTED del caso (404 si no hay ninguna; 409 si el caso
+  ya tiene un checklist -- invariante de unicidad, a diferencia de Budget).
+- `GET /v1/settlement` — checklist con `done_count`/`total_count`.
+- `POST /v1/settlement/items/{item_id}/status` — actualiza un item
+  (`PENDING`/`IN_PROGRESS`/`DONE`/`NOT_APPLICABLE`).
+
+**Verificación:**
+- Migración `d2b3c4e5f6a7` aplicada contra Postgres real.
+- 17 tests unitarios + 6 de contrato (estos sí dependen de Ollama/Kimi vía
+  `/v1/assessment` + `/v1/recommendation`, igual que ExecutionPlan).
+- Suite completa: **217 passed**, cero regresión.
+- `ruff check` limpio.
+
 ## Siguiente paso
 
-Sprint 2 (Trámites de instalación) — 4 configuraciones fijas de país
-(SSN/SIN/TFN/NIE), no un motor genérico, porque el catálogo del piloto está
-congelado en 4 países (blueprint §0).
+Sprint 3 (Traslado y remesas) — cotizador de traslado + comparación de
+remesas, mismo criterio de "estimados del usuario, no cifras inventadas"
+que Budget.
