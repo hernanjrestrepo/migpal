@@ -9,6 +9,7 @@ from app.config import settings
 from app.db.session import engine
 from app.middleware import RateLimitMiddleware, RequestIdMiddleware, SecurityHeadersMiddleware
 from app.utils.logging_config import get_api_logger, setup_logging
+from core.budget.adapters.api import router as budget_router
 from core.case_engine.adapters.api import router as case_router
 from core.conversation.adapters.api import router as conversation_router
 from core.decision_engine.adapters.api import router as decision_engine_router
@@ -73,6 +74,10 @@ app.include_router(recommendation_router)
 # Hito 4: Recommendation ACCEPTED -> Execution Plan (pasos a seguir, con
 # dependencias y progreso).
 app.include_router(execution_plan_router)
+
+# Hito 5, Sprint 1: presupuesto total de migrar y punto de equilibrio
+# (docs/HITO_5_DESIGN.md §2).
+app.include_router(budget_router)
 
 
 @app.get("/")
