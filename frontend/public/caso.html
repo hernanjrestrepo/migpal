@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=20260906d">
+<link rel="stylesheet" href="/assets/app.css?v=20260906e">
 <style>
   .app-main { padding: var(--sp-8) 0 var(--sp-20); }
 
@@ -325,11 +325,42 @@
       </div>
     </section>
 
+    <!-- =================== PLANIFICACIÓN FAMILIAR (Hito 5) =================== -->
+    <section class="stage" id="stage-family">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step-num">🏡</span>
+            <div>
+              <h2 data-i18n="family.title">Planificación familiar</h2>
+              <div class="card-sub" data-i18n="family.sub">Dónde te vas a instalar y qué necesita tu familia para llegar bien.</div>
+            </div>
+          </div>
+        </div>
+
+        <h3 data-i18n="family.geoTitle">Geografía</h3>
+        <p class="hint mb-4" data-i18n="family.geoSub">Elige en orden: país, luego estado/provincia, luego ciudad, luego barrio.</p>
+        <div id="familyGeoBody"></div>
+
+        <div class="hr"></div>
+
+        <h3 data-i18n="family.surveyTitle">Encuesta familiar</h3>
+        <p class="hint mb-4" data-i18n="family.surveySub">Cuéntanos qué es importante para ustedes al elegir dónde vivir.</p>
+        <div id="familySurveyBody"></div>
+
+        <div class="hr"></div>
+
+        <h3 data-i18n="family.optionsTitle">Colegios y vivienda</h3>
+        <p class="hint mb-4" data-i18n="family.optionsSub">Guarda las opciones que vayas encontrando, con su costo y contacto.</p>
+        <div id="familyOptionsBody"></div>
+      </div>
+    </section>
+
   </div>
 </main>
 
-<script src="/assets/i18n.js?v=20260906d"></script>
-<script src="/assets/app.js?v=20260906d"></script>
+<script src="/assets/i18n.js?v=20260906e"></script>
+<script src="/assets/app.js?v=20260906e"></script>
 <script>
 (function () {
   'use strict';
@@ -339,7 +370,10 @@
   var api = MigPAL.api;
 
   /* Estado local del caso: lo que el backend ya sabe de este usuario. */
-  var state = { assessment: null, recommendation: null, plan: null, budget: null, settlement: null };
+  var state = {
+    assessment: null, recommendation: null, plan: null, budget: null, settlement: null,
+    familyPlanning: null, placeOptions: []
+  };
 
   /* ------------------------------------------------------------ chrome */
 
@@ -784,6 +818,178 @@
     }
   }
 
+  /* ------------------------------------------- planificación familiar (Hito 5) */
+
+  var GEO_LEVELS = [
+    ['country', null],
+    ['state', 'country'],
+    ['city', 'state'],
+    ['neighborhood', 'city']
+  ];
+  var GEO_API = {
+    country: api.selectCountry, state: api.selectState, city: api.selectCity, neighborhood: api.selectNeighborhood
+  };
+
+  function renderFamilyGeo(fp) {
+    state.familyPlanning = fp;
+    var html = GEO_LEVELS.map(function (pair) {
+      var key = pair[0], dependsOn = pair[1];
+      var enabled = !dependsOn || !!fp[dependsOn];
+      return '<div class="field">' +
+        '<label class="label">' + esc(MigPAL.t('family.' + key)) + '</label>' +
+        '<div class="row gap-2">' +
+          '<input class="input" data-geo="' + key + '" value="' + esc(fp[key] || '') + '"' + (enabled ? '' : ' disabled') + '>' +
+          '<button class="btn btn-secondary btn-sm" data-geo-save="' + key + '"' + (enabled ? '' : ' disabled') + '>' +
+            esc(MigPAL.t('family.save')) + '</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    document.getElementById('familyGeoBody').innerHTML = '<div class="grid grid-2">' + html + '</div>';
+    document.querySelectorAll('[data-geo-save]').forEach(function (btn) {
+      btn.addEventListener('click', function () { saveGeoLevel(btn.dataset.geoSave, btn); });
+    });
+
+    renderFamilySurvey(fp);
+  }
+
+  async function saveGeoLevel(level, btn) {
+    var input = document.querySelector('[data-geo="' + level + '"]');
+    var value = input.value.trim();
+    if (!value) return;
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      await GEO_API[level](value);
+      renderFamilyGeo(await api.getFamilyPlanning());
+      MigPAL.toast(MigPAL.t('toast.familyGeoSaved'), 'success');
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+      restore();
+    }
+  }
+
+  /** Encuesta del titular únicamente (ver caso.html: sin endpoint para
+      listar los integrantes ya creados, la encuesta por integrante queda
+      fuera de este alcance -- simplificación deliberada). El backend
+      rechaza una segunda respuesta del titular (invariante) -- se detecta
+      ese mensaje puntual para pasar a una vista de "ya respondiste" en vez
+      de mostrar un error genérico. */
+  function renderFamilySurvey(fp) {
+    document.getElementById('familySurveyBody').innerHTML =
+      '<div class="grid grid-2">' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('family.climate')) + '</label>' +
+          '<input class="input" id="fs_climate"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('family.topPriority')) + '</label>' +
+          '<input class="input" id="fs_priority"></div>' +
+      '</div>' +
+      '<div class="field"><label class="label">' + esc(MigPAL.t('family.notes')) + '</label>' +
+        '<textarea class="textarea" id="fs_notes"></textarea></div>' +
+      '<button class="btn btn-primary" id="fs_submit">' + esc(MigPAL.t('family.surveySubmit')) + '</button>' +
+      '<div class="hint mt-4">' + esc(MigPAL.t('family.surveyProgress', {
+        done: fp.survey_completed_count, total: fp.survey_total_count
+      })) + '</div>';
+
+    document.getElementById('fs_submit').addEventListener('click', submitFamilySurvey);
+  }
+
+  function renderFamilySurveyDone(fp) {
+    document.getElementById('familySurveyBody').innerHTML =
+      '<div class="finding">✓ ' + esc(MigPAL.t('toast.familySurveySaved')) + '</div>' +
+      '<div class="hint mt-2">' + esc(MigPAL.t('family.surveyProgress', {
+        done: fp.survey_completed_count, total: fp.survey_total_count
+      })) + '</div>';
+  }
+
+  async function submitFamilySurvey() {
+    var btn = document.getElementById('fs_submit');
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      var fp = await api.submitFamilySurvey({
+        is_primary_applicant: true,
+        climate_preference: document.getElementById('fs_climate').value.trim() || null,
+        top_priority: document.getElementById('fs_priority').value.trim() || null,
+        notes: document.getElementById('fs_notes').value.trim() || null
+      });
+      state.familyPlanning = fp;
+      renderFamilySurveyDone(fp);
+      MigPAL.toast(MigPAL.t('toast.familySurveySaved'), 'success');
+    } catch (err) {
+      if (err.detail && err.detail.indexOf('ya tiene una respuesta') !== -1) {
+        renderFamilySurveyDone(state.familyPlanning);
+      } else {
+        MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+        restore();
+      }
+    }
+  }
+
+  function renderFamilyOptions(options) {
+    state.placeOptions = options;
+    var groups = { SCHOOL: [], HOUSING: [] };
+    options.forEach(function (o) { groups[o.option_type].push(o); });
+    var numLocale = NUMBER_LOCALE[MigPAL.lang] || 'es-CO';
+
+    function list(type) {
+      if (!groups[type].length) return '<p class="hint">' + esc(MigPAL.t('family.noOptions')) + '</p>';
+      return groups[type].map(function (o) {
+        return '<div class="finding"><span class="fw-700">' + esc(o.name) + '</span>' +
+          (o.cost_amount != null
+            ? ' — $' + Math.round(o.cost_amount).toLocaleString(numLocale) + (o.cost_period ? '/' + esc(o.cost_period) : '')
+            : '') +
+          (o.website ? ' · <a href="' + esc(o.website) + '" target="_blank" rel="noopener noreferrer">' + esc(o.website) + '</a>' : '') +
+          (o.phone ? ' · ' + esc(o.phone) : '') +
+          (o.requirements ? '<div class="text-xs text-muted">' + esc(o.requirements) + '</div>' : '') +
+        '</div>';
+      }).join('');
+    }
+
+    document.getElementById('familyOptionsBody').innerHTML =
+      '<div class="grid grid-2 mb-5">' +
+        '<div><h4 class="text-md mb-2">' + esc(MigPAL.t('family.optionType.SCHOOL')) + '</h4>' + list('SCHOOL') + '</div>' +
+        '<div><h4 class="text-md mb-2">' + esc(MigPAL.t('family.optionType.HOUSING')) + '</h4>' + list('HOUSING') + '</div>' +
+      '</div>' +
+      '<div class="hr"></div>' +
+      '<div class="grid grid-2">' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('family.optionType')) + '</label>' +
+          '<select class="select" id="fo_type">' +
+            '<option value="SCHOOL">' + esc(MigPAL.t('family.optionType.SCHOOL')) + '</option>' +
+            '<option value="HOUSING">' + esc(MigPAL.t('family.optionType.HOUSING')) + '</option>' +
+          '</select></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('family.optionName')) + '</label><input class="input" id="fo_name"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('family.optionWebsite')) + '</label><input class="input" id="fo_website"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('family.optionPhone')) + '</label><input class="input" id="fo_phone"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('family.optionCost')) + '</label><input class="input" type="number" id="fo_cost"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('family.optionCostPeriod')) + '</label><input class="input" id="fo_period"></div>' +
+      '</div>' +
+      '<div class="field"><label class="label">' + esc(MigPAL.t('family.optionRequirements')) + '</label><textarea class="textarea" id="fo_reqs"></textarea></div>' +
+      '<button class="btn btn-secondary" id="fo_submit">' + esc(MigPAL.t('family.addOption')) + '</button>';
+
+    document.getElementById('fo_submit').addEventListener('click', submitPlaceOption);
+  }
+
+  async function submitPlaceOption() {
+    var btn = document.getElementById('fo_submit');
+    var name = document.getElementById('fo_name').value.trim();
+    if (!name) { MigPAL.toast(MigPAL.t('toast.fillFields'), 'error'); return; }
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      var cost = document.getElementById('fo_cost').value;
+      await api.addPlaceOption({
+        option_type: document.getElementById('fo_type').value,
+        name: name,
+        website: document.getElementById('fo_website').value.trim() || null,
+        phone: document.getElementById('fo_phone').value.trim() || null,
+        requirements: document.getElementById('fo_reqs').value.trim() || null,
+        cost_amount: cost ? Number(cost) : null,
+        cost_period: document.getElementById('fo_period').value.trim() || null
+      });
+      renderFamilyOptions(await api.listPlaceOptions());
+      MigPAL.toast(MigPAL.t('toast.familyOptionAdded'), 'success');
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+    } finally { restore(); }
+  }
+
   /* ------------------------------------------------------------ acciones */
 
   async function requestAssessment() {
@@ -940,10 +1146,13 @@
       api.getRecommendation(),
       api.getPlan(),
       api.getBudget(),
-      api.getSettlement()
+      api.getSettlement(),
+      api.getFamilyPlanning(),
+      api.listPlaceOptions()
     ]);
 
-    var a = results[0], r = results[1], p = results[2], bud = results[3], settle = results[4];
+    var a = results[0], r = results[1], p = results[2], bud = results[3], settle = results[4],
+        fam = results[5], opts = results[6];
 
     if (a.status === 'fulfilled') renderAssessment(a.value);
     else state.assessment = null;
@@ -960,10 +1169,13 @@
     if (settle.status === 'fulfilled') renderSettlementChecklist(settle.value);
     else { state.settlement = null; renderSettlementGate(); }
 
+    if (fam.status === 'fulfilled') renderFamilyGeo(fam.value);
+    renderFamilyOptions(opts.status === 'fulfilled' ? opts.value : []);
+
     renderJourney();
 
     // Errores reales (no 404 de "todavía no existe") sí se avisan.
-    [a, r, p, bud, settle].forEach(function (res) {
+    [a, r, p, bud, settle, fam, opts].forEach(function (res) {
       if (res.status === 'rejected' && res.reason && res.reason.status && res.reason.status !== 404) {
         MigPAL.toast(res.reason.detail || MigPAL.t('toast.genericError'), 'error');
       }
@@ -989,6 +1201,8 @@
     if (state.plan) renderPlan(state.plan);
     if (state.budget) renderBudgetResult(state.budget); else renderBudgetForm();
     if (state.settlement) renderSettlementChecklist(state.settlement); else renderSettlementGate();
+    if (state.familyPlanning) renderFamilyGeo(state.familyPlanning);
+    renderFamilyOptions(state.placeOptions);
     renderJourney();
   });
 

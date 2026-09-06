@@ -210,6 +210,18 @@ window.MigPAL = (function () {
     generateSettlement: function () { return api.post('/v1/settlement'); },
     updateSettlementItem: function (itemId, status) {
       return api.post('/v1/settlement/items/' + encodeURIComponent(itemId) + '/status', { json: { status: status } });
+    },
+
+    /* — Hito 5: Planificación familiar — */
+    getFamilyPlanning:   function () { return api.get('/v1/family-planning'); },
+    selectCountry:       function (country) { return api.post('/v1/family-planning/geography/country', { json: { country: country } }); },
+    selectState:         function (state) { return api.post('/v1/family-planning/geography/state', { json: { state: state } }); },
+    selectCity:          function (city) { return api.post('/v1/family-planning/geography/city', { json: { city: city } }); },
+    selectNeighborhood:  function (neighborhood) { return api.post('/v1/family-planning/geography/neighborhood', { json: { neighborhood: neighborhood } }); },
+    submitFamilySurvey:  function (payload) { return api.post('/v1/family-planning/survey', { json: payload }); },
+    addPlaceOption:      function (payload) { return api.post('/v1/family-planning/options', { json: payload }); },
+    listPlaceOptions:    function (optionType) {
+      return api.get('/v1/family-planning/options' + (optionType ? '?option_type=' + encodeURIComponent(optionType) : ''));
     }
   };
 
