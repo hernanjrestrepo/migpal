@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=20260906e">
+<link rel="stylesheet" href="/assets/app.css?v=20260906f">
 <style>
   .app-main { padding: var(--sp-8) 0 var(--sp-20); }
 
@@ -356,11 +356,27 @@
       </div>
     </section>
 
+    <!-- ========================= COMUNIDAD (Hito 5) ========================= -->
+    <section class="stage" id="stage-community">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step-num">💬</span>
+            <div>
+              <h2 data-i18n="community.title">Comunidad</h2>
+              <div class="card-sub" data-i18n="community.sub">Conecta con otros migrantes en tu ciudad de destino.</div>
+            </div>
+          </div>
+        </div>
+        <div id="communityBody"></div>
+      </div>
+    </section>
+
   </div>
 </main>
 
-<script src="/assets/i18n.js?v=20260906e"></script>
-<script src="/assets/app.js?v=20260906e"></script>
+<script src="/assets/i18n.js?v=20260906f"></script>
+<script src="/assets/app.js?v=20260906f"></script>
 <script>
 (function () {
   'use strict';
@@ -372,7 +388,8 @@
   /* Estado local del caso: lo que el backend ya sabe de este usuario. */
   var state = {
     assessment: null, recommendation: null, plan: null, budget: null, settlement: null,
-    familyPlanning: null, placeOptions: []
+    familyPlanning: null, placeOptions: [],
+    communityGroups: [], communitySelectedGroupId: null, communityPosts: [], communityOpenComments: {}
   };
 
   /* ------------------------------------------------------------ chrome */
@@ -990,6 +1007,202 @@
     } finally { restore(); }
   }
 
+  /* --------------------------------------------------- comunidad (Hito 5) */
+
+  function renderCommunityGroupList() {
+    var rows = state.communityGroups.map(function (g) {
+      return '<div class="finding" style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
+        '<div><span class="fw-700">' + esc(g.name) + '</span>' +
+          (g.city || g.country ? ' <span class="text-muted">· ' + esc([g.city, g.country].filter(Boolean).join(', ')) + '</span>' : '') +
+          '<div class="text-xs text-muted">' + esc(MigPAL.t('community.members', { n: g.member_count })) + '</div></div>' +
+        '<div class="row gap-2">' +
+          (g.is_member
+            ? '<span class="badge badge-success">' + esc(MigPAL.t('community.member')) + '</span>'
+            : '<button class="btn btn-secondary btn-sm" data-join-group="' + g.id + '">' + esc(MigPAL.t('community.join')) + '</button>') +
+          '<button class="btn btn-ghost btn-sm" data-view-group="' + g.id + '">' + esc(MigPAL.t('community.viewPosts')) + '</button>' +
+        '</div>' +
+      '</div>';
+    }).join('') || '<p class="hint">' + esc(MigPAL.t('community.noGroups')) + '</p>';
+
+    document.getElementById('communityBody').innerHTML =
+      rows +
+      '<div class="hr"></div>' +
+      '<div class="grid grid-2">' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('community.groupName')) + '</label><input class="input" id="cg_name"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('community.groupCity')) + '</label><input class="input" id="cg_city"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('community.groupCountry')) + '</label><input class="input" id="cg_country"></div>' +
+      '</div>' +
+      '<div class="field"><label class="label">' + esc(MigPAL.t('community.groupDesc')) + '</label><textarea class="textarea" id="cg_desc"></textarea></div>' +
+      '<button class="btn btn-secondary" id="cg_submit">' + esc(MigPAL.t('community.createGroup')) + '</button>';
+
+    document.querySelectorAll('[data-join-group]').forEach(function (btn) {
+      btn.addEventListener('click', function () { joinCommunityGroup(Number(btn.dataset.joinGroup), btn); });
+    });
+    document.querySelectorAll('[data-view-group]').forEach(function (btn) {
+      btn.addEventListener('click', function () { openCommunityGroup(Number(btn.dataset.viewGroup)); });
+    });
+    document.getElementById('cg_submit').addEventListener('click', createCommunityGroup);
+  }
+
+  async function loadCommunity() {
+    try { state.communityGroups = await api.listCommunityGroups(); } catch (err) { state.communityGroups = []; }
+    renderCommunityGroupList();
+  }
+
+  async function createCommunityGroup() {
+    var name = document.getElementById('cg_name').value.trim();
+    if (!name) { MigPAL.toast(MigPAL.t('toast.fillFields'), 'error'); return; }
+    var btn = document.getElementById('cg_submit');
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      await api.createCommunityGroup({
+        name: name,
+        description: document.getElementById('cg_desc').value.trim() || null,
+        city: document.getElementById('cg_city').value.trim() || null,
+        country: document.getElementById('cg_country').value.trim() || null
+      });
+      state.communityGroups = await api.listCommunityGroups();
+      renderCommunityGroupList();
+      MigPAL.toast(MigPAL.t('toast.groupCreated'), 'success');
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+    } finally { restore(); }
+  }
+
+  async function joinCommunityGroup(groupId, btn) {
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      await api.joinCommunityGroup(groupId);
+      state.communityGroups = await api.listCommunityGroups();
+      renderCommunityGroupList();
+      MigPAL.toast(MigPAL.t('toast.groupJoined'), 'success');
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+      restore();
+    }
+  }
+
+  function currentCommunityGroup() {
+    return state.communityGroups.filter(function (g) { return g.id === state.communitySelectedGroupId; })[0];
+  }
+
+  async function openCommunityGroup(groupId) {
+    state.communitySelectedGroupId = groupId;
+    state.communityOpenComments = {};
+    state.communityPosts = await api.listCommunityPosts(groupId);
+    renderCommunityPosts();
+  }
+
+  function renderCommunityPosts() {
+    var group = currentCommunityGroup();
+    var isMember = !!(group && group.is_member);
+
+    var posts = state.communityPosts.map(function (p) {
+      var openComments = state.communityOpenComments[p.id];
+      var commentsHtml = openComments
+        ? openComments.map(function (c) {
+            return '<div class="text-sm" style="padding:4px 0 4px 14px;border-left:2px solid var(--border-soft)">' + esc(c.body) + '</div>';
+          }).join('')
+        : '';
+      return '<div class="card" style="margin-bottom:12px">' +
+        '<div>' + esc(p.body) + '</div>' +
+        '<div class="row gap-3 mt-2">' +
+          '<button class="btn btn-ghost btn-sm" data-like-post="' + p.id + '" data-liked="' + p.liked_by_me + '">' +
+            esc(MigPAL.t(p.liked_by_me ? 'community.liked' : 'community.like')) + ' (' + p.like_count + ')' +
+          '</button>' +
+          '<button class="btn btn-ghost btn-sm" data-toggle-comments="' + p.id + '">' +
+            esc(MigPAL.t('community.comments', { n: p.comment_count })) +
+          '</button>' +
+        '</div>' +
+        (commentsHtml ? '<div class="mt-2">' + commentsHtml + '</div>' : '') +
+        (openComments
+          ? '<div class="row gap-2 mt-2">' +
+              '<input class="input" data-comment-input="' + p.id + '" placeholder="' + esc(MigPAL.t('community.commentPlaceholder')) + '">' +
+              '<button class="btn btn-secondary btn-sm" data-send-comment="' + p.id + '">' + esc(MigPAL.t('community.send')) + '</button>' +
+            '</div>'
+          : '') +
+      '</div>';
+    }).join('') || '<p class="hint">' + esc(MigPAL.t('community.noPosts')) + '</p>';
+
+    document.getElementById('communityBody').innerHTML =
+      '<button class="btn btn-ghost btn-sm mb-4" id="community_back">' + esc(MigPAL.t('community.back')) + '</button>' +
+      '<h3 class="text-md mb-4">' + esc(group ? group.name : '') + '</h3>' +
+      (isMember
+        ? '<div class="field"><textarea class="textarea" id="cp_body" placeholder="' + esc(MigPAL.t('community.postPlaceholder')) + '"></textarea></div>' +
+          '<button class="btn btn-primary mb-5" id="cp_submit">' + esc(MigPAL.t('community.publish')) + '</button>'
+        : '<p class="hint mb-5">' + esc(MigPAL.t('community.joinToPost')) + '</p>') +
+      posts;
+
+    document.getElementById('community_back').addEventListener('click', function () {
+      state.communitySelectedGroupId = null;
+      renderCommunityGroupList();
+    });
+    var pubBtn = document.getElementById('cp_submit');
+    if (pubBtn) pubBtn.addEventListener('click', publishCommunityPost);
+
+    document.querySelectorAll('[data-like-post]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        toggleCommunityLike(Number(btn.dataset.likePost), btn.dataset.liked === 'true', btn);
+      });
+    });
+    document.querySelectorAll('[data-toggle-comments]').forEach(function (btn) {
+      btn.addEventListener('click', function () { toggleCommunityComments(Number(btn.dataset.toggleComments)); });
+    });
+    document.querySelectorAll('[data-send-comment]').forEach(function (btn) {
+      btn.addEventListener('click', function () { sendCommunityComment(Number(btn.dataset.sendComment)); });
+    });
+  }
+
+  async function publishCommunityPost() {
+    var btn = document.getElementById('cp_submit');
+    var body = document.getElementById('cp_body').value.trim();
+    if (!body) return;
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      await api.publishCommunityPost(state.communitySelectedGroupId, body);
+      state.communityPosts = await api.listCommunityPosts(state.communitySelectedGroupId);
+      renderCommunityPosts();
+      MigPAL.toast(MigPAL.t('toast.postPublished'), 'success');
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+      restore();
+    }
+  }
+
+  async function toggleCommunityLike(postId, currentlyLiked, btn) {
+    btn.disabled = true;
+    try {
+      if (currentlyLiked) await api.unlikeCommunityPost(postId);
+      else await api.likeCommunityPost(postId);
+      state.communityPosts = await api.listCommunityPosts(state.communitySelectedGroupId);
+      renderCommunityPosts();
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+      btn.disabled = false;
+    }
+  }
+
+  async function toggleCommunityComments(postId) {
+    if (state.communityOpenComments[postId]) delete state.communityOpenComments[postId];
+    else state.communityOpenComments[postId] = await api.listCommunityComments(postId);
+    renderCommunityPosts();
+  }
+
+  async function sendCommunityComment(postId) {
+    var input = document.querySelector('[data-comment-input="' + postId + '"]');
+    var body = input.value.trim();
+    if (!body) return;
+    try {
+      await api.addCommunityComment(postId, body);
+      state.communityOpenComments[postId] = await api.listCommunityComments(postId);
+      state.communityPosts = await api.listCommunityPosts(state.communitySelectedGroupId);
+      renderCommunityPosts();
+      MigPAL.toast(MigPAL.t('toast.commentAdded'), 'success');
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+    }
+  }
+
   /* ------------------------------------------------------------ acciones */
 
   async function requestAssessment() {
@@ -1203,10 +1416,12 @@
     if (state.settlement) renderSettlementChecklist(state.settlement); else renderSettlementGate();
     if (state.familyPlanning) renderFamilyGeo(state.familyPlanning);
     renderFamilyOptions(state.placeOptions);
+    if (state.communitySelectedGroupId) renderCommunityPosts(); else renderCommunityGroupList();
     renderJourney();
   });
 
   loadAll();
+  loadCommunity();
 })();
 </script>
 </body>

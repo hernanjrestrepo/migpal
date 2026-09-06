@@ -222,7 +222,22 @@ window.MigPAL = (function () {
     addPlaceOption:      function (payload) { return api.post('/v1/family-planning/options', { json: payload }); },
     listPlaceOptions:    function (optionType) {
       return api.get('/v1/family-planning/options' + (optionType ? '?option_type=' + encodeURIComponent(optionType) : ''));
-    }
+    },
+
+    /* — Hito 5: Comunidad — */
+    listCommunityGroups: function () { return api.get('/v1/community/groups'); },
+    createCommunityGroup: function (payload) { return api.post('/v1/community/groups', { json: payload }); },
+    joinCommunityGroup: function (groupId) { return api.post('/v1/community/groups/' + encodeURIComponent(groupId) + '/join'); },
+    listCommunityPosts: function (groupId) { return api.get('/v1/community/groups/' + encodeURIComponent(groupId) + '/posts'); },
+    publishCommunityPost: function (groupId, body) {
+      return api.post('/v1/community/groups/' + encodeURIComponent(groupId) + '/posts', { json: { body: body } });
+    },
+    listCommunityComments: function (postId) { return api.get('/v1/community/posts/' + encodeURIComponent(postId) + '/comments'); },
+    addCommunityComment: function (postId, body) {
+      return api.post('/v1/community/posts/' + encodeURIComponent(postId) + '/comments', { json: { body: body } });
+    },
+    likeCommunityPost: function (postId) { return api.post('/v1/community/posts/' + encodeURIComponent(postId) + '/like'); },
+    unlikeCommunityPost: function (postId) { return api.request('/v1/community/posts/' + encodeURIComponent(postId) + '/like', { method: 'DELETE' }); }
   };
 
   /* ----------------------------------------------------------------- toast */
