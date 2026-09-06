@@ -18,6 +18,7 @@ from core.execution_plan.adapters.api import router as execution_plan_router
 from core.family_planning.adapters.api import router as family_planning_router
 from core.identity.adapters.api import router as identity_router
 from core.marketplace.adapters.api import router as marketplace_router
+from core.progression.adapters.api import router as progression_router
 from core.recommendation.adapters.api import router as recommendation_router
 from core.settlement.adapters.api import router as settlement_router
 
@@ -98,6 +99,10 @@ app.include_router(community_router)
 # Hito 5, Sprint 6: mercado -- listados de servicio y transacciones con
 # comisión (docs/HITO_5_DESIGN.md §2).
 app.include_router(marketplace_router)
+
+# Hito 5, Sprint 7: niveles, XP e insignias derivados del event log
+# compartido -- sin tabla propia (docs/HITO_5_DESIGN.md §2).
+app.include_router(progression_router)
 
 
 @app.get("/")

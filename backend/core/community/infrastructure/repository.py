@@ -11,6 +11,7 @@ from core.community.domain.aggregates import (
     CommunityPost,
     GroupMembership,
 )
+from core.shared.event_log import persist_event
 
 
 class CommunityGroupRepository:
@@ -64,6 +65,12 @@ class PostRepository:
         self._session.add(post)
         self._session.commit()
         self._session.refresh(post)
+
+        persist_event(
+            self._session,
+            name="CommunityPostPublished",
+            payload={"user_id": post.author_user_id, "group_id": post.group_id, "post_id": post.id},
+        )
         return post
 
     def get_by_id(self, post_id: int) -> CommunityPost | None:

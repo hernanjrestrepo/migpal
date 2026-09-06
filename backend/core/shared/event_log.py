@@ -5,10 +5,14 @@ Hasta ahora `core/shared/events.py` (EventBus) solo mantenía el historial en
 memoria de un proceso -- útil para desacoplar publishers de subscribers,
 inútil para auditoría real (se pierde al reiniciar). Este módulo agrega una
 tabla real. No reemplaza EventBus -- se suscribe a él y persiste cada
-evento que decide guardar (hoy: CaseCreated, AssessmentCompleted,
+evento que decide guardar (Hito 2-4: CaseCreated, AssessmentCompleted,
 RecommendationIssued, RecommendationAccepted, RecommendationDiscarded,
-ExecutionPlanCreated, PlanStepCompleted, ExecutionPlanCompleted --
-Anexo B completo se conecta progresivamente).
+ExecutionPlanCreated, PlanStepCompleted, ExecutionPlanCompleted. Hito 5:
+BudgetEstimateCalculated, SettlementChecklistCreated,
+SettlementItemStatusUpdated, GeographicSelectionUpdated,
+FamilySurveyResponseSubmitted, CommunityPostPublished,
+MarketplaceTransactionCompleted -- Sprint 7 los consume para calcular
+niveles/XP, ver core/progression/).
 
 Regla 10 (Constitución): un evento nunca se modifica, solo se agrega uno
 nuevo. Esta tabla es append-only por diseño -- no hay UPDATE ni DELETE en
@@ -30,6 +34,13 @@ PERSISTED_EVENT_NAMES = {
     "ExecutionPlanCreated",
     "PlanStepCompleted",
     "ExecutionPlanCompleted",
+    "BudgetEstimateCalculated",
+    "SettlementChecklistCreated",
+    "SettlementItemStatusUpdated",
+    "GeographicSelectionUpdated",
+    "FamilySurveyResponseSubmitted",
+    "CommunityPostPublished",
+    "MarketplaceTransactionCompleted",
 }
 
 

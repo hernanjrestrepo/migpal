@@ -33,8 +33,8 @@ riesgo/tamaño.
 | 4 | Planificación familiar ampliada (encuesta, cascada geográfica, colegios/vivienda) | `core/family_planning` (nuevo) | ✅ **Cerrado** — ver abajo |
 | 5 | Comunidad (feed social) | `core/community` (nuevo) | ✅ **Cerrado** — ver abajo |
 | 6 | Mercado (marketplace + comisión) | `core/marketplace` (nuevo) | ✅ **Cerrado** — ver abajo |
-| 7 | Gamificación (niveles, XP, insignias) | transversal, probablemente vive en `core/case_engine` o un nuevo `core/progression` | Próximo |
-| 8 | Modelo de precios / facturación real ($1.000 grupo familiar + $200 extra) | integración con pasarela de pago (Stripe u otra) | Pendiente — requiere credenciales reales del negocio, no solo código |
+| 7 | Gamificación (niveles, XP, insignias) | `core/progression` (nuevo, sin tabla propia) | ✅ **Cerrado** — ver abajo |
+| 8 | Modelo de precios / facturación real ($1.000 grupo familiar + $200 extra) | integración con pasarela de pago (Stripe u otra) | Próximo — requiere credenciales reales del negocio, no solo código |
 | 9 | Sistema de agentes (Angela + especialistas, dictado, adjuntar documentos con enrutamiento) | rediseño de `core/conversation` | Pendiente — el más grande y de mayor riesgo técnico |
 | 10 | Integraciones reales con ADAN y JobXeeker | adapters nuevos en `core/negocio`/`core/empleo` | Bloqueado en la madurez de esos dos productos, fuera del control de este repo |
 
@@ -212,9 +212,45 @@ catálogo trae "CUIDADO_INFANTIL" y el disclaimer, y que cada listado lo
 lleva consigo). Migración `a5b6c7d8e9f0`. Suite completa: **298 passed**,
 cero regresión. `ruff check` limpio.
 
+## Sprint 7 — Gamificación ✅
+
+**Bounded context:** `backend/core/progression/` -- **sin tabla propia**.
+Decisión de diseño: todo se deriva en el momento de leer, del event log
+compartido (`core/shared/event_log.py`) más una consulta de estado directa
+a Settlement para "trámites 100%" (no hay un evento por cada avance
+porcentual). Progression no persiste nada -- es un agregador de lectura
+sobre lo que los otros 6 sprints ya escribieron.
+
+**Corrección necesaria antes de construirlo:** Comunidad y Mercado (Sprints
+5-6) habían quedado sin emitir eventos al log compartido -- inconsistente
+con el resto (Budget, Settlement, Family Planning sí lo hacían desde su
+propio sprint). Se agregó `CommunityPostPublished` y
+`MarketplaceTransactionCompleted`, y se actualizó `PERSISTED_EVENT_NAMES`
+para que el registro documentado coincida con lo que el código realmente
+emite.
+
+**11 hitos definidos**, cada uno de una sola vez (repetir el evento no
+duplica el XP): evaluación completa, ruta elegida, presupuesto calculado,
+trámites iniciados, trámites 100% completos, país elegido, encuesta
+familiar respondida, plan de ejecución generado/completado, primera
+publicación en comunidad, primera transacción en el Mercado. Niveles con
+nombre ("Nivel 2 · Rumbo trazado", etc.), sin ningún concepto de racha --
+principio explícito del Blueprint: el XP premia logros reales, nunca abrir
+la app.
+
+**API:** `GET /v1/progression` (xp, nivel, próximo nivel, insignias
+ganadas/pendientes).
+
+**Verificación:** 9 tests unitarios (dominio puro) + 5 de contrato (estos
+sí dependen de Ollama/Kimi para el hito de ruta elegida). Sin migración
+nueva -- no hay tabla. Suite completa: **312 passed**, cero regresión.
+`ruff check` limpio.
+
 ## Siguiente paso
 
-Sprint 7 (Gamificación) — niveles con nombre, XP atado a hitos reales
-(nunca a abrir la app), insignias. El diseño ya existe en el Blueprint;
-falta decidir dónde vive el estado (¿extiende `case_engine` o es un
-bounded context propio?) antes de escribir código.
+Sprint 8 (Facturación real) — requiere credenciales de una pasarela de
+pago real de Hernán antes de poder escribir código de integración; el
+cálculo del monto ya existe y está probado (`core/budget`, Sprint 1).
+Alternativa: reconectar el scraping dormido (Zillow/BizBuySell/USCIS/
+GreatSchools, ver Blueprint v2.3) mientras se resuelve el tema de
+facturación.

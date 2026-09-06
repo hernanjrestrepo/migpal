@@ -5,7 +5,8 @@ from __future__ import annotations
 from sqlmodel import Session, select
 
 from core.marketplace.domain.aggregates import ServiceListing, ServiceTransaction
-from core.marketplace.domain.value_objects import ServiceCategory
+from core.marketplace.domain.value_objects import ServiceCategory, TransactionStatus
+from core.shared.event_log import persist_event
 
 
 class ListingRepository:
@@ -44,6 +45,18 @@ class TransactionRepository:
         self._session.add(transaction)
         self._session.commit()
         self._session.refresh(transaction)
+
+        if transaction.status == TransactionStatus.COMPLETED:
+            persist_event(
+                self._session,
+                name="MarketplaceTransactionCompleted",
+                payload={
+                    "buyer_user_id": transaction.buyer_user_id,
+                    "seller_user_id": transaction.seller_user_id,
+                    "transaction_id": transaction.id,
+                    "commission_amount": transaction.commission_amount,
+                },
+            )
         return transaction
 
     def get_by_id(self, transaction_id: int) -> ServiceTransaction | None:
