@@ -18,8 +18,16 @@ from app.auth import get_current_user
 from app.db.session import get_session
 from core.case_engine.application.queries import GetCaseForUserQuery, handle_get_case_for_user
 from core.case_engine.infrastructure.repository import CaseRepository
-from core.conversation.application.commands import RequestAssessmentCommand, SendMessageCommand
-from core.conversation.application.handlers import handle_request_assessment, handle_send_message
+from core.conversation.application.commands import (
+    ChatConEspecialistaCommand,
+    RequestAssessmentCommand,
+    SendMessageCommand,
+)
+from core.conversation.application.handlers import (
+    handle_chat_con_especialista,
+    handle_request_assessment,
+    handle_send_message,
+)
 from core.conversation.infrastructure.ai_adapter import AIAdapter
 from core.decision_engine.infrastructure.repository import AssessmentRepository
 from core.identity.domain.aggregates import User
@@ -102,4 +110,40 @@ async def request_assessment(
         policy_version=assessment.policy_version,
         knowledge_version=assessment.knowledge_version,
         ai_reflection=ai_reflection,
+    )
+
+
+class ChatConEspecialistaRequest(BaseModel):
+    context: str
+    message: str
+
+
+class SpecialistReplyRead(BaseModel):
+    persona_id: str
+    persona_name: str
+    text: str
+
+
+class ChatConEspecialistaResponse(BaseModel):
+    replies: list[SpecialistReplyRead]
+
+
+@router.post("/conversation/chat", response_model=ChatConEspecialistaResponse)
+async def chat_con_especialista(
+    body: ChatConEspecialistaRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+    ai_adapter: AIAdapter = Depends(_ai_adapter),
+):
+    case_repo = CaseRepository(session)
+    try:
+        case = handle_get_case_for_user(GetCaseForUserQuery(user_id=current_user.id), case_repo)
+    except CaseNotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    replies = await handle_chat_con_especialista(
+        ChatConEspecialistaCommand(case_id=case.id, context=body.context, message=body.message), ai_adapter
+    )
+    return ChatConEspecialistaResponse(
+        replies=[SpecialistReplyRead(persona_id=r.persona_id, persona_name=r.persona_name, text=r.text) for r in replies]
     )

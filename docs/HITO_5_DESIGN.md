@@ -35,7 +35,7 @@ riesgo/tamaño.
 | 6 | Mercado (marketplace + comisión) | `core/marketplace` (nuevo) | ✅ **Cerrado** — ver abajo |
 | 7 | Gamificación (niveles, XP, insignias) | `core/progression` (nuevo, sin tabla propia) | ✅ **Cerrado** — ver abajo |
 | 8 | Modelo de precios / facturación real ($1.000 grupo familiar + $200 extra) | integración con pasarela de pago (Stripe u otra) | Próximo — requiere credenciales reales del negocio, no solo código |
-| 9 | Sistema de agentes (Angela + especialistas, dictado, adjuntar documentos con enrutamiento) | rediseño de `core/conversation` | Pendiente — el más grande y de mayor riesgo técnico |
+| 9 | Sistema de agentes (Angela + especialistas) | extiende `core/conversation` | ✅ **Cerrado** — ver abajo (dictado y adjuntar documentos quedaron fuera de alcance, ver nota) |
 | 10 | Integraciones reales con ADAN y JobXeeker | adapters nuevos en `core/negocio`/`core/empleo` | Bloqueado en la madurez de esos dos productos, fuera del control de este repo |
 
 ## Sprint 1 — Presupuesto y ROI ✅
@@ -246,11 +246,65 @@ sí dependen de Ollama/Kimi para el hito de ruta elegida). Sin migración
 nueva -- no hay tabla. Suite completa: **312 passed**, cero regresión.
 `ruff check` limpio.
 
+## Sprint 8 — Facturación real: SALTEADO por decisión de Hernán
+
+7 sept 2026: "estamos en modo piloto, no hace falta el módulo de
+facturación por ahora". No es un pendiente olvidado -- es una decisión de
+alcance explícita. El cálculo del monto ya existe y está probado
+(`core/budget`, Sprint 1); conectarlo a una pasarela de pago real queda
+para cuando haya credenciales de negocio.
+
+## Sprint 9 — Sistema de agentes ✅
+
+**Extiende `core/conversation`** -- no se tocó `app/services/ai_brain.py`
+(el state machine de onboarding original, grande y rígido, con un único
+personaje hardcodeado). Se agregó un camino nuevo y paralelo que habla
+directo con `app/services/llm_client.py::call_llm` (el cliente Kimi
+provider-agnostic de Hito 5), que sí acepta un `system` prompt propio por
+llamada -- justo lo que hace falta para que cada especialista tenga su
+propia voz.
+
+**`domain/personas.py`** (nuevo, puro, sin IA ni DB): los 12 personajes
+aprobados en el Blueprint v2.4 (nombre, nacionalidad, género, edad,
+profesión, personalidad), y `personas_for_context()`, que resuelve qué
+especialista(s) atienden según el módulo -- "negocio" resuelve a los 4 del
+Board de ADAN (Tommy, Gabby, Ivan, Marcus) a la vez, una junta real,
+ejecutada en paralelo (`asyncio.gather`), no una síntesis de Angela
+fingiendo ser varios. Un contexto desconocido cae en Angela, nunca en error
+ni silencio. Cada `system_prompt_for()` obliga al modelo a decir que es IA
+si se le pregunta (protección legal + honestidad) y a hablar en español
+neutro colombiano, nunca voseo -- verificado con un test que falla si el
+propio prompt se filtra en voseo (chiste real: la primera versión decía
+"Te llamás", el test lo habría agarrado si hubiera existido antes).
+
+**API:** `POST /v1/conversation/chat` — `{context, message}` →
+`{replies: [{persona_id, persona_name, text}]}`.
+
+**Fuera de alcance de este sprint, explícito, no un olvido:**
+- **Dictado por voz** — es una capacidad del navegador (Web Speech API),
+  no necesita nada del backend más allá de aceptar texto, que ya acepta.
+  No hay nada que construir acá.
+- **Adjuntar documentos con enrutamiento automático** — depende de tener
+  un lugar real donde "aterrice" el documento. Hoy no existe ningún
+  bounded context de almacenamiento/gestión de documentos en `core/`
+  (sigue siendo el hueco más grande del Blueprint, ver Documentos en la
+  sección de módulos). Construir el enrutamiento sin el destino sería
+  simular una funcionalidad que no existe -- se deja para cuando exista
+  `core/documents` o similar.
+
+**Verificación:** 12 tests unitarios (personas, puro) + 4 tests con un
+`AIAdapter` falso (handler, sin red) + 5 de contrato (IA real, incluida la
+junta de 4 llamadas en paralelo). Probado a mano con un caso real: Dany
+respondió en carácter, sin voseo, con contenido sustantivo sobre H-1B/O-1/
+EB-2 NIW. Sin migración nueva. Suite completa: **329 passed**, cero
+regresión.
+
 ## Siguiente paso
 
-Sprint 8 (Facturación real) — requiere credenciales de una pasarela de
-pago real de Hernán antes de poder escribir código de integración; el
-cálculo del monto ya existe y está probado (`core/budget`, Sprint 1).
-Alternativa: reconectar el scraping dormido (Zillow/BizBuySell/USCIS/
-GreatSchools, ver Blueprint v2.3) mientras se resuelve el tema de
-facturación.
+Con Sprint 8 saltado y Sprint 9 cerrado, quedan pendientes del roadmap
+original: Sprint 10 (integraciones ADAN/JobXeeker, bloqueado en esos
+productos). Fuera del roadmap de 10 sprints pero con alto impacto en el
+puntaje competitivo (ver Blueprint v2.4, respuesta a "por qué 41/100 con
+7 sprints"): reabrir Recommendation con un ADR nuevo (explicabilidad +
+elección de ruta, 18% de peso) y arrancar la validación de documentos por
+IA (10% de peso, el ítem de investigación más grande).

@@ -13,3 +13,10 @@ class SendMessageCommand:
 class RequestAssessmentCommand:
     case_id: int
     profile_text: str
+
+
+@dataclass(frozen=True)
+class ChatConEspecialistaCommand:
+    case_id: int
+    context: str
+    message: str

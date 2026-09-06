@@ -20,6 +20,9 @@ from __future__ import annotations
 
 from app.services.ai_assessment import summarize_profile
 from app.services.ai_brain import process_message
+from app.services.llm_client import call_llm
+
+FALLBACK_REPLY = "No pude responder en este momento -- probá de nuevo en unos segundos."
 
 
 class AIAdapter:
@@ -28,6 +31,18 @@ class AIAdapter:
     async def chat(self, message: str, conversation_history: list[str] | None = None) -> str:
         """Respuesta conversacional -- lo que el usuario ve en el chat."""
         return await process_message(message, user_data={}, conversation_history=conversation_history or [])
+
+    async def chat_as_persona(self, *, system_prompt: str, message: str) -> str:
+        """Sistema de agentes (Sprint 9, Hito 5) -- pasa por alto el state
+        machine de onboarding de `ai_brain.py` (rígido, con un único
+        personaje hardcodeado) y habla directo con `llm_client.call_llm`,
+        que sí acepta un `system` prompt propio por llamada. `chat()` (de
+        arriba) no se toca -- sigue siendo el camino de onboarding
+        original; este es un camino nuevo y paralelo para la conversación
+        persistente multi-agente."""
+
+        reply = await call_llm(system=system_prompt, prompt=message, max_tokens=400)
+        return reply or FALLBACK_REPLY
 
     async def understand(self, profile_text: str) -> str:
         """
