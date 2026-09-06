@@ -203,7 +203,14 @@ window.MigPAL = (function () {
 
     /* — Hito 5: Presupuesto y ROI — */
     getBudget:        function () { return api.get('/v1/budget'); },
-    calculateBudget:  function (payload) { return api.post('/v1/budget', { json: payload }); }
+    calculateBudget:  function (payload) { return api.post('/v1/budget', { json: payload }); },
+
+    /* — Hito 5: Trámites de instalación — */
+    getSettlement:      function () { return api.get('/v1/settlement'); },
+    generateSettlement: function () { return api.post('/v1/settlement'); },
+    updateSettlementItem: function (itemId, status) {
+      return api.post('/v1/settlement/items/' + encodeURIComponent(itemId) + '/status', { json: { status: status } });
+    }
   };
 
   /* ----------------------------------------------------------------- toast */

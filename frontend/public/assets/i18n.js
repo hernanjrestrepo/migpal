@@ -388,6 +388,18 @@ window.MigPALi18n = (function () {
     'budget.breakevenNone': { es: 'No aplica — el ingreso proyectado no supera al actual', pt: 'Não aplicável — a renda projetada não supera a atual', en: 'Not applicable — projected income doesn’t exceed current' },
     'toast.budgetReady': { es: 'Presupuesto calculado.', pt: 'Orçamento calculado.', en: 'Budget calculated.' },
 
+    /* ------------------------------------------------ trámites (Hito 5) */
+    'settlement.title': { es: 'Trámites de instalación', pt: 'Trâmites de instalação', en: 'Settlement paperwork' },
+    'settlement.sub': { es: 'Los trámites que necesitas resolver al llegar a tu destino.', pt: 'Os trâmites que você precisa resolver ao chegar no seu destino.', en: 'The paperwork you need to sort out once you arrive.' },
+    'settlement.emptyTitle': { es: 'Todavía no puedes generar tu checklist', pt: 'Você ainda não pode gerar seu checklist', en: 'You can’t generate your checklist yet' },
+    'settlement.emptyBody': { es: 'Acepta una ruta recomendada primero — el checklist depende del país de destino.', pt: 'Aceite uma rota recomendada primeiro — o checklist depende do país de destino.', en: 'Accept a recommended route first — the checklist depends on the destination country.' },
+    'settlement.generate': { es: 'Generar mi checklist', pt: 'Gerar meu checklist', en: 'Generate my checklist' },
+    'settlement.progress': { es: '{done} de {total} trámites resueltos', pt: '{done} de {total} trâmites resolvidos', en: '{done} of {total} steps resolved' },
+    'settlement.status.PENDING': { es: 'Pendiente', pt: 'Pendente', en: 'Pending' },
+    'settlement.status.IN_PROGRESS': { es: 'En curso', pt: 'Em andamento', en: 'In progress' },
+    'settlement.status.DONE': { es: 'Resuelto', pt: 'Resolvido', en: 'Done' },
+    'settlement.status.NOT_APPLICABLE': { es: 'No aplica', pt: 'Não se aplica', en: 'Not applicable' },
+
     'toast.welcome': { es: '¡Bienvenido! Cuéntanos tu situación para empezar.', pt: 'Bem-vindo! Conte sua situação para começar.', en: 'Welcome! Tell us your situation to get started.' },
     'toast.assessReady': { es: 'Evaluación lista.', pt: 'Avaliação pronta.', en: 'Assessment ready.' },
     'toast.routeReady': { es: 'Ruta recomendada lista.', pt: 'Rota recomendada pronta.', en: 'Recommended route ready.' },

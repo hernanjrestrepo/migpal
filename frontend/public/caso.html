@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=20260906c">
+<link rel="stylesheet" href="/assets/app.css?v=20260906d">
 <style>
   .app-main { padding: var(--sp-8) 0 var(--sp-20); }
 
@@ -303,11 +303,33 @@
       </div>
     </section>
 
+    <!-- ================ TRÁMITES DE INSTALACIÓN (Hito 5) ================ -->
+    <section class="stage" id="stage-settlement">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step-num">🛂</span>
+            <div>
+              <h2 data-i18n="settlement.title">Trámites de instalación</h2>
+              <div class="card-sub" data-i18n="settlement.sub">Los trámites que necesitas resolver al llegar a tu destino.</div>
+            </div>
+          </div>
+        </div>
+        <div id="settlementBody">
+          <div class="empty">
+            <div class="empty-icon">🛂</div>
+            <h3 data-i18n="settlement.emptyTitle">Todavía no puedes generar tu checklist</h3>
+            <p data-i18n="settlement.emptyBody">Acepta una ruta recomendada primero — el checklist depende del país de destino.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </div>
 </main>
 
-<script src="/assets/i18n.js?v=20260906c"></script>
-<script src="/assets/app.js?v=20260906c"></script>
+<script src="/assets/i18n.js?v=20260906d"></script>
+<script src="/assets/app.js?v=20260906d"></script>
 <script>
 (function () {
   'use strict';
@@ -317,7 +339,7 @@
   var api = MigPAL.api;
 
   /* Estado local del caso: lo que el backend ya sabe de este usuario. */
-  var state = { assessment: null, recommendation: null, plan: null, budget: null };
+  var state = { assessment: null, recommendation: null, plan: null, budget: null, settlement: null };
 
   /* ------------------------------------------------------------ chrome */
 
@@ -684,6 +706,84 @@
     }
   }
 
+  /* ------------------------------------------ trámites de instalación (Hito 5) */
+
+  var SETTLEMENT_STATUSES = ['PENDING', 'IN_PROGRESS', 'DONE', 'NOT_APPLICABLE'];
+
+  function settlementStatusOptions(current) {
+    return SETTLEMENT_STATUSES.map(function (s) {
+      return '<option value="' + s + '"' + (s === current ? ' selected' : '') + '>' +
+        esc(MigPAL.t('settlement.status.' + s)) + '</option>';
+    }).join('');
+  }
+
+  function renderSettlementChecklist(c) {
+    state.settlement = c;
+    var pct = c.total_count ? Math.round((c.done_count / c.total_count) * 100) : 0;
+    var items = c.items.slice().sort(function (a, b) { return a.sequence - b.sequence; }).map(function (it) {
+      return '<div class="plan-step">' +
+        '<div class="plan-step-body">' +
+          '<div class="plan-step-title">' + esc(it.title) + '</div>' +
+          '<div class="plan-step-desc">' + esc(it.description) + '</div>' +
+        '</div>' +
+        '<select class="select" style="width:auto;flex:none" data-settlement-item="' + it.id + '">' +
+          settlementStatusOptions(it.status) +
+        '</select>' +
+      '</div>';
+    }).join('');
+
+    document.getElementById('settlementBody').innerHTML =
+      '<div class="row between mb-2" style="align-items:baseline">' +
+        '<span class="fw-700">' + esc(MigPAL.t('settlement.progress', { done: c.done_count, total: c.total_count })) + '</span>' +
+        '<span class="chip">' + esc(c.country) + '</span>' +
+      '</div>' +
+      '<div class="progress mb-5"><div class="progress-bar' + (pct === 100 ? ' is-complete' : '') + '" style="width:' + pct + '%"></div></div>' +
+      items;
+
+    document.querySelectorAll('[data-settlement-item]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        updateSettlementStatus(Number(sel.dataset.settlementItem), sel.value, sel);
+      });
+    });
+  }
+
+  /** Sin checklist todavía: bloqueado hasta aceptar una ruta (el checklist
+      depende del país de la ruta ACCEPTED), o listo para generarse. */
+  function renderSettlementGate() {
+    if (state.settlement) return;
+    var accepted = state.recommendation && state.recommendation.status === 'ACCEPTED';
+    document.getElementById('settlementBody').innerHTML = accepted
+      ? '<div class="empty"><div class="empty-icon">🛂</div>' +
+        '<button class="btn btn-primary" id="settlementGenBtn">' + esc(MigPAL.t('settlement.generate')) + '</button></div>'
+      : '<div class="empty"><div class="empty-icon">🛂</div>' +
+        '<h3>' + esc(MigPAL.t('settlement.emptyTitle')) + '</h3>' +
+        '<p>' + esc(MigPAL.t('settlement.emptyBody')) + '</p></div>';
+
+    var genBtn = document.getElementById('settlementGenBtn');
+    if (genBtn) genBtn.addEventListener('click', generateSettlementChecklist);
+  }
+
+  async function generateSettlementChecklist() {
+    var btn = document.getElementById('settlementGenBtn');
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      renderSettlementChecklist(await api.generateSettlement());
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+      restore();
+    }
+  }
+
+  async function updateSettlementStatus(itemId, newStatus, sel) {
+    sel.disabled = true;
+    try {
+      renderSettlementChecklist(await api.updateSettlementItem(itemId, newStatus));
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+      sel.disabled = false;
+    }
+  }
+
   /* ------------------------------------------------------------ acciones */
 
   async function requestAssessment() {
@@ -728,6 +828,7 @@
         : await api.discardRecommendation(state.recommendation.id);
       renderRecommendation(r);
       renderJourney();
+      if (action === 'accept') renderSettlementGate();
       MigPAL.toast(MigPAL.t(action === 'accept' ? 'toast.routeAccepted' : 'toast.routeDiscarded'),
                    action === 'accept' ? 'success' : 'info');
       if (action === 'accept') scrollTo('stage-plan');
@@ -838,10 +939,11 @@
       api.getAssessment(),
       api.getRecommendation(),
       api.getPlan(),
-      api.getBudget()
+      api.getBudget(),
+      api.getSettlement()
     ]);
 
-    var a = results[0], r = results[1], p = results[2], bud = results[3];
+    var a = results[0], r = results[1], p = results[2], bud = results[3], settle = results[4];
 
     if (a.status === 'fulfilled') renderAssessment(a.value);
     else state.assessment = null;
@@ -855,10 +957,13 @@
     if (bud.status === 'fulfilled') renderBudgetResult(bud.value);
     else { state.budget = null; renderBudgetForm(); }
 
+    if (settle.status === 'fulfilled') renderSettlementChecklist(settle.value);
+    else { state.settlement = null; renderSettlementGate(); }
+
     renderJourney();
 
     // Errores reales (no 404 de "todavía no existe") sí se avisan.
-    [a, r, p, bud].forEach(function (res) {
+    [a, r, p, bud, settle].forEach(function (res) {
       if (res.status === 'rejected' && res.reason && res.reason.status && res.reason.status !== 404) {
         MigPAL.toast(res.reason.detail || MigPAL.t('toast.genericError'), 'error');
       }
@@ -883,6 +988,7 @@
     if (state.recommendation) renderRecommendation(state.recommendation);
     if (state.plan) renderPlan(state.plan);
     if (state.budget) renderBudgetResult(state.budget); else renderBudgetForm();
+    if (state.settlement) renderSettlementChecklist(state.settlement); else renderSettlementGate();
     renderJourney();
   });
 
