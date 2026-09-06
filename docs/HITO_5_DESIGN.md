@@ -29,8 +29,8 @@ riesgo/tamaño.
 |---|---|---|---|
 | 1 | Presupuesto y ROI | `core/budget` (nuevo) | ✅ **Cerrado** — ver abajo |
 | 2 | Trámites de instalación | `core/settlement` (nuevo) | ✅ **Cerrado** — ver abajo |
-| 3 | Traslado y remesas | extiende `core/budget` o `core/settlement` | Próximo |
-| 4 | Planificación familiar ampliada (encuesta, cascada geográfica, colegios/vivienda) | `core/family_planning` (nuevo) | Pendiente |
+| 3 | Traslado y remesas | extiende `core/budget` | ✅ **Cerrado** — ver abajo |
+| 4 | Planificación familiar ampliada (encuesta, cascada geográfica, colegios/vivienda) | `core/family_planning` (nuevo) | Próximo |
 | 5 | Comunidad (feed social) | `core/community` (nuevo) | Pendiente |
 | 6 | Mercado (marketplace + comisión) | `core/marketplace` (nuevo) | Pendiente — requiere verificación de antecedentes antes de exponerse a producción |
 | 7 | Gamificación (niveles, XP, insignias) | transversal, probablemente vive en `core/case_engine` o un nuevo `core/progression` | Pendiente |
@@ -99,8 +99,31 @@ de `core/budget` (que sí cambian seguido y por eso no se hardcodean).
 - Suite completa: **217 passed**, cero regresión.
 - `ruff check` limpio.
 
+## Sprint 3 — Traslado y remesas ✅
+
+**Extiende `core/budget`** (no un bounded context nuevo — son cálculos
+puros sin persistencia propia, el resultado alimenta `POST /v1/budget`).
+
+- `domain/relocation.py` — cotizador de traslado: escala el costo de
+  vuelos por integrantes, aplica un factor según el modo de envío del
+  menaje (aéreo 100%, marítimo 55%, sin menaje 0%), calcula el seguro como
+  un rango sobre el subtotal.
+- `domain/remittance.py` — compara cotizaciones de remesas por monto
+  recibido real (comisión **y** spread cambiario, no solo la comisión
+  visible -- el punto que Hernán marcó explícitamente: "la comisión visible
+  casi nunca es el costo real").
+- Mismo principio que Sprint 1: ningún costo/tarifa de proveedor se
+  hardcodea -- quien llama aporta las cotizaciones.
+
+**API:** `POST /v1/budget/relocation-estimate`, `POST /v1/budget/remittance-estimate`
+(ambos sin persistencia, requieren auth, no requieren un `case_id`).
+
+**Verificación:** 16 tests unitarios + 5 de contrato nuevos. Suite
+completa: **238 passed**, cero regresión. `ruff check` limpio. Sin
+migración nueva (no hay tabla).
+
 ## Siguiente paso
 
-Sprint 3 (Traslado y remesas) — cotizador de traslado + comparación de
-remesas, mismo criterio de "estimados del usuario, no cifras inventadas"
-que Budget.
+Sprint 4 (Planificación familiar ampliada) — encuesta familiar, cascada
+país → estado → ciudad → barrio, colegios y vivienda con el detalle que
+pidió Hernán (foto, sitio web, teléfono, requisitos, costo).

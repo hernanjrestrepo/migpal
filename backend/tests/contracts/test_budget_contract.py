@@ -116,3 +116,57 @@ def test_get_budget_returns_most_recent_calculation():
     r = client.get("/v1/budget", headers=headers)
     assert r.status_code == 200, r.text
     assert r.json()["family_size"] == 6
+
+
+# ---- Sprint 3: cotizador de traslado y comparación de remesas ----
+
+RELOCATION_PAYLOAD = {
+    "family_size": 3,
+    "mode": "AEREO",
+    "flight_cost_per_person_low": 1000,
+    "flight_cost_per_person_high": 1300,
+    "base_cargo_cost_low": 2800,
+    "base_cargo_cost_high": 5500,
+}
+
+
+def test_relocation_estimate_requires_auth():
+    assert client.post("/v1/budget/relocation-estimate", json=RELOCATION_PAYLOAD).status_code == 401
+
+
+def test_relocation_estimate_returns_totals():
+    headers = _register_login_and_open_case()
+    r = client.post("/v1/budget/relocation-estimate", headers=headers, json=RELOCATION_PAYLOAD)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["flight_cost_low"] == 3000
+    assert body["total_low"] > 0 and body["total_high"] > body["total_low"]
+
+
+def test_relocation_estimate_rejects_invalid_range():
+    headers = _register_login_and_open_case()
+    payload = {**RELOCATION_PAYLOAD, "flight_cost_per_person_low": 9999, "flight_cost_per_person_high": 1}
+    r = client.post("/v1/budget/relocation-estimate", headers=headers, json=payload)
+    assert r.status_code == 400
+
+
+REMITTANCE_PAYLOAD = {
+    "amount": 500,
+    "quotes": [
+        {"provider_name": "Western Union", "fee": 8.0, "spread_percent": 3.5},
+        {"provider_name": "Wise", "fee": 4.2, "spread_percent": 0},
+    ],
+}
+
+
+def test_remittance_estimate_requires_auth():
+    assert client.post("/v1/budget/remittance-estimate", json=REMITTANCE_PAYLOAD).status_code == 401
+
+
+def test_remittance_estimate_sorts_best_option_first():
+    headers = _register_login_and_open_case()
+    r = client.post("/v1/budget/remittance-estimate", headers=headers, json=REMITTANCE_PAYLOAD)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body[0]["provider_name"] == "Wise"
+    assert body[0]["amount_received"] > body[1]["amount_received"]

@@ -26,6 +26,8 @@ from core.budget.application.queries import (
     build_budget_view,
     handle_consultar_presupuesto,
 )
+from core.budget.domain.relocation import RelocationMode, estimate_relocation_cost
+from core.budget.domain.remittance import RemittanceQuote, compare_remittance_quotes
 from core.budget.domain.rules import BudgetInvariantError
 from core.budget.infrastructure.repository import BudgetRepository
 from core.case_engine.application.queries import GetCaseForUserQuery, handle_get_case_for_user
@@ -127,3 +129,83 @@ def get_mi_presupuesto(
     if view is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Todavía no calculaste tu presupuesto.")
     return _to_read(view)
+
+
+# ---- Sprint 3: cotizador de traslado y comparación de remesas ----
+# Cálculo puro sin persistencia -- el resultado (relocation_cost_low/high)
+# se usa como insumo del `POST /v1/budget` de arriba, no vive en su propia
+# tabla (ver docs/HITO_5_DESIGN.md, Sprint 3).
+
+
+class RelocationEstimateRequest(BaseModel):
+    family_size: int = Field(ge=1)
+    mode: RelocationMode
+    flight_cost_per_person_low: float = Field(ge=0)
+    flight_cost_per_person_high: float = Field(ge=0)
+    base_cargo_cost_low: float = Field(ge=0)
+    base_cargo_cost_high: float = Field(ge=0)
+
+
+class RelocationEstimateRead(BaseModel):
+    flight_cost_low: float
+    flight_cost_high: float
+    cargo_cost_low: float
+    cargo_cost_high: float
+    insurance_low: float
+    insurance_high: float
+    total_low: float
+    total_high: float
+
+
+@router.post("/relocation-estimate", response_model=RelocationEstimateRead)
+def calcular_traslado(
+    body: RelocationEstimateRequest,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        estimate = estimate_relocation_cost(**body.model_dump())
+    except BudgetInvariantError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return RelocationEstimateRead(
+        flight_cost_low=estimate.flight_cost_low,
+        flight_cost_high=estimate.flight_cost_high,
+        cargo_cost_low=estimate.cargo_cost_low,
+        cargo_cost_high=estimate.cargo_cost_high,
+        insurance_low=estimate.insurance_low,
+        insurance_high=estimate.insurance_high,
+        total_low=estimate.total_low,
+        total_high=estimate.total_high,
+    )
+
+
+class RemittanceQuoteRequest(BaseModel):
+    provider_name: str
+    fee: float = Field(ge=0)
+    spread_percent: float = Field(ge=0)
+
+
+class RemittanceEstimateRequest(BaseModel):
+    amount: float = Field(ge=0)
+    quotes: list[RemittanceQuoteRequest] = Field(min_length=1)
+
+
+class RemittanceResultRead(BaseModel):
+    provider_name: str
+    amount_received: float
+
+
+@router.post("/remittance-estimate", response_model=list[RemittanceResultRead])
+def comparar_remesas(
+    body: RemittanceEstimateRequest,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        results = compare_remittance_quotes(
+            amount=body.amount,
+            quotes=[RemittanceQuote(q.provider_name, q.fee, q.spread_percent) for q in body.quotes],
+        )
+    except BudgetInvariantError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return [RemittanceResultRead(provider_name=r.provider_name, amount_received=r.amount_received) for r in results]
