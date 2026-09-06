@@ -237,7 +237,18 @@ window.MigPAL = (function () {
       return api.post('/v1/community/posts/' + encodeURIComponent(postId) + '/comments', { json: { body: body } });
     },
     likeCommunityPost: function (postId) { return api.post('/v1/community/posts/' + encodeURIComponent(postId) + '/like'); },
-    unlikeCommunityPost: function (postId) { return api.request('/v1/community/posts/' + encodeURIComponent(postId) + '/like', { method: 'DELETE' }); }
+    unlikeCommunityPost: function (postId) { return api.request('/v1/community/posts/' + encodeURIComponent(postId) + '/like', { method: 'DELETE' }); },
+
+    /* — Hito 5: Mercado — */
+    getMarketplaceCategories: function () { return api.get('/v1/marketplace/categories'); },
+    listMarketplaceListings:  function () { return api.get('/v1/marketplace/listings'); },
+    createMarketplaceListing: function (payload) { return api.post('/v1/marketplace/listings', { json: payload }); },
+    listMyTransactions:       function () { return api.get('/v1/marketplace/transactions'); },
+    startMarketplaceTransaction: function (listingId, amount) {
+      return api.post('/v1/marketplace/transactions', { json: { listing_id: listingId, amount: amount } });
+    },
+    completeMarketplaceTransaction: function (id) { return api.post('/v1/marketplace/transactions/' + encodeURIComponent(id) + '/complete'); },
+    cancelMarketplaceTransaction:   function (id) { return api.post('/v1/marketplace/transactions/' + encodeURIComponent(id) + '/cancel'); }
   };
 
   /* ----------------------------------------------------------------- toast */

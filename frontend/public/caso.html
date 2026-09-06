@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=20260906f">
+<link rel="stylesheet" href="/assets/app.css?v=20260906g">
 <style>
   .app-main { padding: var(--sp-8) 0 var(--sp-20); }
 
@@ -372,11 +372,28 @@
       </div>
     </section>
 
+    <!-- ========================== MERCADO (Hito 5) ========================== -->
+    <section class="stage" id="stage-market">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step-num">🛒</span>
+            <div>
+              <h2 data-i18n="market.title">Mercado</h2>
+              <div class="card-sub" data-i18n="market.sub">Servicios entre migrantes — MigPAL es intermediario, no agencia.</div>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-warn mb-5" id="marketDisclaimer" hidden></div>
+        <div id="marketBody"></div>
+      </div>
+    </section>
+
   </div>
 </main>
 
-<script src="/assets/i18n.js?v=20260906f"></script>
-<script src="/assets/app.js?v=20260906f"></script>
+<script src="/assets/i18n.js?v=20260906g"></script>
+<script src="/assets/app.js?v=20260906g"></script>
 <script>
 (function () {
   'use strict';
@@ -389,7 +406,8 @@
   var state = {
     assessment: null, recommendation: null, plan: null, budget: null, settlement: null,
     familyPlanning: null, placeOptions: [],
-    communityGroups: [], communitySelectedGroupId: null, communityPosts: [], communityOpenComments: {}
+    communityGroups: [], communitySelectedGroupId: null, communityPosts: [], communityOpenComments: {},
+    marketListings: [], myTransactions: []
   };
 
   /* ------------------------------------------------------------ chrome */
@@ -1203,6 +1221,135 @@
     }
   }
 
+  /* ----------------------------------------------------- mercado (Hito 5) */
+
+  var MARKET_CATEGORIES = ['PLOMERIA', 'PINTURA', 'CUIDADO_INFANTIL', 'MUDANZAS', 'CLASES', 'BELLEZA', 'ELECTRICIDAD', 'OTRO'];
+
+  function renderMarketListings() {
+    var numLocale = NUMBER_LOCALE[MigPAL.lang] || 'es-CO';
+
+    var items = state.marketListings.map(function (l) {
+      return '<div class="finding" style="display:flex;justify-content:space-between;align-items:center;gap:10px">' +
+        '<div><span class="fw-700">' + esc(l.title) + '</span> ' +
+          '<span class="chip">' + esc(MigPAL.t('market.category.' + l.category)) + '</span>' +
+          (l.city ? ' <span class="text-muted">· ' + esc(l.city) + '</span>' : '') +
+          (l.description ? '<div class="text-sm text-soft">' + esc(l.description) + '</div>' : '') +
+          '<div class="text-sm fw-700 mt-1">$' + Math.round(l.price_amount).toLocaleString(numLocale) + ' / ' + esc(l.price_unit) + '</div></div>' +
+        '<button class="btn btn-secondary btn-sm" data-buy-listing="' + l.id + '" data-price="' + l.price_amount + '">' +
+          esc(MigPAL.t('market.buy')) + '</button>' +
+      '</div>';
+    }).join('') || '<p class="hint">' + esc(MigPAL.t('market.noListings')) + '</p>';
+
+    var txItems = state.myTransactions.map(function (t) {
+      var statusKind = t.status === 'COMPLETED' ? 'success' : t.status === 'CANCELLED' ? 'danger' : 'brand';
+      return '<div class="finding" style="display:flex;justify-content:space-between;align-items:center;gap:10px">' +
+        '<div>#' + t.id + ' — $' + Math.round(t.amount).toLocaleString(numLocale) +
+          '<div class="text-xs text-muted">' + esc(MigPAL.t('market.commission', {
+            n: '$' + Math.round(t.commission_amount).toLocaleString(numLocale)
+          })) + '</div></div>' +
+        '<div class="row gap-2" style="align-items:center">' +
+          '<span class="badge badge-' + statusKind + '">' + esc(MigPAL.t('market.status.' + t.status)) + '</span>' +
+          (t.status === 'PENDING'
+            ? '<button class="btn btn-ghost btn-sm" data-complete-tx="' + t.id + '">' + esc(MigPAL.t('market.complete')) + '</button>' +
+              '<button class="btn btn-ghost btn-sm" data-cancel-tx="' + t.id + '">' + esc(MigPAL.t('market.cancel')) + '</button>'
+            : '') +
+        '</div>' +
+      '</div>';
+    }).join('') || '<p class="hint">' + esc(MigPAL.t('market.noTransactions')) + '</p>';
+
+    document.getElementById('marketBody').innerHTML =
+      '<h3 class="text-md mb-2">' + esc(MigPAL.t('market.listingsTitle')) + '</h3>' + items +
+      '<div class="hr"></div>' +
+      '<h3 class="text-md mb-2">' + esc(MigPAL.t('market.newListingTitle')) + '</h3>' +
+      '<div class="grid grid-2">' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('market.listingTitle')) + '</label><input class="input" id="ml_title"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('market.categoryLabel')) + '</label>' +
+          '<select class="select" id="ml_category">' +
+            MARKET_CATEGORIES.map(function (c) { return '<option value="' + c + '">' + esc(MigPAL.t('market.category.' + c)) + '</option>'; }).join('') +
+          '</select></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('market.price')) + '</label><input class="input" type="number" id="ml_price"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('market.priceUnit')) + '</label><input class="input" id="ml_unit"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('market.listingCity')) + '</label><input class="input" id="ml_city"></div>' +
+      '</div>' +
+      '<div class="field"><label class="label">' + esc(MigPAL.t('market.listingDesc')) + '</label><textarea class="textarea" id="ml_desc"></textarea></div>' +
+      '<button class="btn btn-secondary mb-5" id="ml_submit">' + esc(MigPAL.t('market.publish')) + '</button>' +
+      '<div class="hr"></div>' +
+      '<h3 class="text-md mb-2">' + esc(MigPAL.t('market.myTransactions')) + '</h3>' + txItems;
+
+    document.querySelectorAll('[data-buy-listing]').forEach(function (btn) {
+      btn.addEventListener('click', function () { buyListing(Number(btn.dataset.buyListing), Number(btn.dataset.price), btn); });
+    });
+    document.getElementById('ml_submit').addEventListener('click', publishListing);
+    document.querySelectorAll('[data-complete-tx]').forEach(function (btn) {
+      btn.addEventListener('click', function () { resolveTransaction(Number(btn.dataset.completeTx), 'complete', btn); });
+    });
+    document.querySelectorAll('[data-cancel-tx]').forEach(function (btn) {
+      btn.addEventListener('click', function () { resolveTransaction(Number(btn.dataset.cancelTx), 'cancel', btn); });
+    });
+  }
+
+  async function loadMarketplace() {
+    try {
+      var cats = await api.getMarketplaceCategories();
+      var d = document.getElementById('marketDisclaimer');
+      d.hidden = false;
+      d.innerHTML = '<span class="alert-icon">⚠️</span><div>' + esc(cats.disclaimer) + '</div>';
+    } catch (err) { /* el aviso no bloquea el resto del módulo */ }
+    try { state.marketListings = await api.listMarketplaceListings(); } catch (err) { state.marketListings = []; }
+    try { state.myTransactions = await api.listMyTransactions(); } catch (err) { state.myTransactions = []; }
+    renderMarketListings();
+  }
+
+  async function publishListing() {
+    var title = document.getElementById('ml_title').value.trim();
+    var price = document.getElementById('ml_price').value;
+    var unit = document.getElementById('ml_unit').value.trim();
+    if (!title || !price || !unit) { MigPAL.toast(MigPAL.t('toast.fillFields'), 'error'); return; }
+    var btn = document.getElementById('ml_submit');
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      await api.createMarketplaceListing({
+        category: document.getElementById('ml_category').value,
+        title: title,
+        price_amount: Number(price),
+        price_unit: unit,
+        description: document.getElementById('ml_desc').value.trim() || null,
+        city: document.getElementById('ml_city').value.trim() || null
+      });
+      state.marketListings = await api.listMarketplaceListings();
+      renderMarketListings();
+      MigPAL.toast(MigPAL.t('toast.listingPublished'), 'success');
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+    } finally { restore(); }
+  }
+
+  async function buyListing(listingId, defaultPrice, btn) {
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      await api.startMarketplaceTransaction(listingId, defaultPrice);
+      state.myTransactions = await api.listMyTransactions();
+      renderMarketListings();
+      MigPAL.toast(MigPAL.t('toast.transactionStarted'), 'success');
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+      restore();
+    }
+  }
+
+  async function resolveTransaction(txId, action, btn) {
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      var fn = action === 'complete' ? api.completeMarketplaceTransaction : api.cancelMarketplaceTransaction;
+      await fn(txId);
+      state.myTransactions = await api.listMyTransactions();
+      renderMarketListings();
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+      restore();
+    }
+  }
+
   /* ------------------------------------------------------------ acciones */
 
   async function requestAssessment() {
@@ -1417,11 +1564,13 @@
     if (state.familyPlanning) renderFamilyGeo(state.familyPlanning);
     renderFamilyOptions(state.placeOptions);
     if (state.communitySelectedGroupId) renderCommunityPosts(); else renderCommunityGroupList();
+    renderMarketListings();
     renderJourney();
   });
 
   loadAll();
   loadCommunity();
+  loadMarketplace();
 })();
 </script>
 </body>
