@@ -497,6 +497,12 @@ window.MigPALi18n = (function () {
     'toast.listingPublished': { es: 'Servicio publicado.', pt: 'Serviço publicado.', en: 'Service published.' },
     'toast.transactionStarted': { es: 'Solicitud enviada al proveedor.', pt: 'Solicitação enviada ao fornecedor.', en: 'Request sent to the provider.' },
 
+    /* ------------------------------------------------ progresión (Hito 5) */
+    'progress.xp': { es: '{n} XP', pt: '{n} XP', en: '{n} XP' },
+    'progress.toNext': { es: 'Te faltan {n} XP para {level}', pt: 'Faltam {n} XP para {level}', en: '{n} XP to reach {level}' },
+    'progress.maxLevel': { es: 'Nivel máximo alcanzado', pt: 'Nível máximo alcançado', en: 'Max level reached' },
+    'progress.badges': { es: 'Insignias', pt: 'Emblemas', en: 'Badges' },
+
     'toast.welcome': { es: '¡Bienvenido! Cuéntanos tu situación para empezar.', pt: 'Bem-vindo! Conte sua situação para começar.', en: 'Welcome! Tell us your situation to get started.' },
     'toast.assessReady': { es: 'Evaluación lista.', pt: 'Avaliação pronta.', en: 'Assessment ready.' },
     'toast.routeReady': { es: 'Ruta recomendada lista.', pt: 'Rota recomendada pronta.', en: 'Recommended route ready.' },

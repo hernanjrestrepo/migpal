@@ -248,7 +248,10 @@ window.MigPAL = (function () {
       return api.post('/v1/marketplace/transactions', { json: { listing_id: listingId, amount: amount } });
     },
     completeMarketplaceTransaction: function (id) { return api.post('/v1/marketplace/transactions/' + encodeURIComponent(id) + '/complete'); },
-    cancelMarketplaceTransaction:   function (id) { return api.post('/v1/marketplace/transactions/' + encodeURIComponent(id) + '/cancel'); }
+    cancelMarketplaceTransaction:   function (id) { return api.post('/v1/marketplace/transactions/' + encodeURIComponent(id) + '/cancel'); },
+
+    /* — Hito 5: Gamificación — */
+    getProgress: function () { return api.get('/v1/progression'); }
   };
 
   /* ----------------------------------------------------------------- toast */
