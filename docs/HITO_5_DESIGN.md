@@ -36,7 +36,8 @@ riesgo/tamaño.
 | 7 | Gamificación (niveles, XP, insignias) | `core/progression` (nuevo, sin tabla propia) | ✅ **Cerrado** — ver abajo |
 | 8 | Modelo de precios / facturación real ($1.000 grupo familiar + $200 extra) | integración con pasarela de pago (Stripe u otra) | Próximo — requiere credenciales reales del negocio, no solo código |
 | 9 | Sistema de agentes (Angela + especialistas) | extiende `core/conversation` | ✅ **Cerrado** — ver abajo (dictado y adjuntar documentos quedaron fuera de alcance, ver nota) |
-| 10 | Integraciones reales con ADAN y JobXeeker | adapters nuevos en `core/negocio`/`core/empleo` | Bloqueado en la madurez de esos dos productos, fuera del control de este repo |
+| 10a | Integración real con ADAN (Negocio) | `core/negocio` (nuevo) | ✅ **Cerrado** — ver abajo |
+| 10b | Integración real con JobXeeker (Empleo) | `core/empleo` (nuevo) | En construcción |
 
 ## Sprint 1 — Presupuesto y ROI ✅
 
@@ -299,12 +300,58 @@ respondió en carácter, sin voseo, con contenido sustantivo sobre H-1B/O-1/
 EB-2 NIW. Sin migración nueva. Suite completa: **329 passed**, cero
 regresión.
 
+## Sprint 10a — Negocio (integración real con ADAN) ✅
+
+**Bounded context:** `backend/core/negocio/` -- corrección a la premisa
+original de "bloqueado en la madurez de ADAN": la investigación del 7 sept
+2026 encontró que ADAN Build C **está corriendo en vivo** (puerto 8050) y
+su API real (`/api/v1/auth/*`, `/api/v1/companies/`,
+`/api/v1/nivel1/{company_id}/board-room`) es perfectamente llamable desde
+afuera -- el freeze de WO-090 congela features *dentro* del repo de ADAN,
+no llamadas externas a lo que ya está construido.
+
+**Contrato verificado en vivo antes de escribir código** (no desde la
+documentación, que en dos puntos estaba desactualizada respecto al
+comportamiento real):
+- `POST /api/v1/auth/register` responde **201**, no 200 como decía su
+  propio OpenAPI schema.
+- `POST /nivel1/{id}/board-room` exige un mensaje de chat previo en la
+  compañía ("No hay descripción del dolor. Inicia una conversación
+  primero.") -- por eso el handler manda un `chat` antes de correr el
+  Board Room, no lo hace el usuario a mano.
+
+**Sin refresh token en ADAN** (confirmado contra su `TokenResponse` real):
+JWT de 24h, se renueva con un login nuevo cuando falta menos de 1h. Esto
+obliga a guardar la contraseña de la cuenta de servicio en texto plano por
+caso -- documentado explícitamente como deuda de seguridad aceptable para
+un piloto, a migrar a un secreto cifrado antes de producción real.
+
+**Bug real encontrado y corregido en el camino:** `datetime.now(UTC) -
+integration.token_created_at` fallaba con `TypeError: can't subtract
+offset-naive and offset-aware datetimes` -- Postgres devuelve el datetime
+sin tzinfo al releerlo aunque se guardó en UTC (columna `DateTime` sin
+`timezone=True`). Se normaliza en el punto de uso, no se cambió el tipo de
+columna en todo el repo.
+
+**API:** `POST /v1/negocio/connect` (registra cuenta ADAN + crea
+compañía), `POST /v1/negocio/board-room` (manda el mensaje + corre la
+junta, devuelve `decision/score/confidence/summary/votes[]`).
+
+**Verificación:** 11 tests unitarios (`AdanClient` falso, sin red) + 4 de
+contrato **contra ADAN real** (con `host.docker.internal`, no `localhost`
+-- el backend de MigPAL corre en un contenedor distinto al de ADAN;
+`pytest.mark.skipif` si ADAN no está corriendo, para no volver frágil la
+suite completa de MigPAL por la salud de otro repo). Probado de punta a
+punta con una idea real ("taller de bicicletas eléctricas en Austin") --
+el Board respondió `PROCEED`, aunque con calidad de análisis floja (el
+modelo local de ADAN, qwen2.5:0.5b, no siempre devuelve JSON bien
+formado) -- eso es un problema de calidad del lado de ADAN, ya reconocido
+por Hernán como su propia responsabilidad. Migración `b6c7d8e9f0a1`.
+
 ## Siguiente paso
 
-Con Sprint 8 saltado y Sprint 9 cerrado, quedan pendientes del roadmap
-original: Sprint 10 (integraciones ADAN/JobXeeker, bloqueado en esos
-productos). Fuera del roadmap de 10 sprints pero con alto impacto en el
-puntaje competitivo (ver Blueprint v2.4, respuesta a "por qué 41/100 con
-7 sprints"): reabrir Recommendation con un ADR nuevo (explicabilidad +
-elección de ruta, 18% de peso) y arrancar la validación de documentos por
-IA (10% de peso, el ítem de investigación más grande).
+Sprint 10b (Empleo, integración con JobXeeker) -- en construcción. Después:
+abrir el ADR de Recommendation (explicabilidad + elección de ruta, 18% de
+peso, ya autorizado) y arrancar la validación de documentos por IA vía
+OCR (decisión de Hernán, 7 sept: usar una librería de OCR en vez de
+investigación de IA desde cero).

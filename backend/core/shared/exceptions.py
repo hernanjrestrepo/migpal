@@ -56,3 +56,13 @@ class MarketplaceListingNotFound(DomainError):
 class MarketplaceTransactionNotFound(DomainError):
     """No existe, o no pertenece (ni como comprador ni como vendedor) al
     usuario autenticado -- ver core/marketplace/application/handlers.py."""
+
+
+class NegocioNotFound(DomainError):
+    """El caso todavía no conectó una cuenta de ADAN -- ver
+    core/negocio/application/handlers.py."""
+
+
+class EmpleoNotFound(DomainError):
+    """El caso todavía no conectó una cuenta de JobXeeker -- ver
+    core/empleo/application/handlers.py."""
