@@ -30,8 +30,8 @@ riesgo/tamaño.
 | 1 | Presupuesto y ROI | `core/budget` (nuevo) | ✅ **Cerrado** — ver abajo |
 | 2 | Trámites de instalación | `core/settlement` (nuevo) | ✅ **Cerrado** — ver abajo |
 | 3 | Traslado y remesas | extiende `core/budget` | ✅ **Cerrado** — ver abajo |
-| 4 | Planificación familiar ampliada (encuesta, cascada geográfica, colegios/vivienda) | `core/family_planning` (nuevo) | Próximo |
-| 5 | Comunidad (feed social) | `core/community` (nuevo) | Pendiente |
+| 4 | Planificación familiar ampliada (encuesta, cascada geográfica, colegios/vivienda) | `core/family_planning` (nuevo) | ✅ **Cerrado** — ver abajo |
+| 5 | Comunidad (feed social) | `core/community` (nuevo) | Próximo |
 | 6 | Mercado (marketplace + comisión) | `core/marketplace` (nuevo) | Pendiente — requiere verificación de antecedentes antes de exponerse a producción |
 | 7 | Gamificación (niveles, XP, insignias) | transversal, probablemente vive en `core/case_engine` o un nuevo `core/progression` | Pendiente |
 | 8 | Modelo de precios / facturación real ($1.000 grupo familiar + $200 extra) | integración con pasarela de pago (Stripe u otra) | Pendiente — requiere credenciales reales del negocio, no solo código |
@@ -122,8 +122,40 @@ puros sin persistencia propia, el resultado alimenta `POST /v1/budget`).
 completa: **238 passed**, cero regresión. `ruff check` limpio. Sin
 migración nueva (no hay tabla).
 
+## Sprint 4 — Planificación familiar ampliada ✅
+
+**Bounded context:** `backend/core/family_planning/` -- tres aggregates
+independientes bajo el mismo `case_id` (mismo principio que Assessment/
+Recommendation/ExecutionPlan bajo MigrationCase: el caso es operado sobre,
+no posee):
+
+- **`GeographicSelection`** — cascada país → estado → ciudad → barrio.
+  Invariante real: no podés fijar un nivel sin el anterior, y cambiar un
+  nivel resetea todo lo que dependía de él (elegir otro país borra
+  estado/ciudad/barrio ya elegidos). Es la traducción a regla de negocio
+  del pedido de Hernán ("en la medida en que vayan seleccionando un país,
+  limita las imágenes a ese país...") -- las imágenes en sí son un
+  requisito de producción aparte (ver sección de requisitos duros).
+- **`FamilySurveyResponse`** — una por integrante de la familia
+  (`case_family_member_id`, FK a `case_engine.CaseFamilyMember`) o del
+  titular del caso (`is_primary_applicant=True`, que no aparece como
+  CaseFamilyMember). Invariante: máximo una respuesta del titular por caso.
+  `GET /v1/family-planning` devuelve cuántas de las N+1 respuestas
+  esperadas (N familiares + el titular) ya se completaron.
+- **`PlaceOption`** — colegios o vivienda sugeridos, con el detalle que
+  pidió Hernán explícitamente: sitio web, teléfono, requisitos, costo.
+  `image_url` queda nullable a propósito -- fotos reales necesitan una API
+  de imágenes, ver requisitos duros de producción.
+
+**API:** `GET /v1/family-planning`, `POST /v1/family-planning/geography/{country,state,city,neighborhood}`,
+`POST /v1/family-planning/survey`, `POST`/`GET /v1/family-planning/options`.
+
+**Verificación:** 23 tests unitarios + 7 de contrato (sin depender de
+Ollama/Kimi). Migración `e3c4d5e6f7a8`. Suite completa: **261 passed**,
+cero regresión. `ruff check` limpio.
+
 ## Siguiente paso
 
-Sprint 4 (Planificación familiar ampliada) — encuesta familiar, cascada
-país → estado → ciudad → barrio, colegios y vivienda con el detalle que
-pidió Hernán (foto, sitio web, teléfono, requisitos, costo).
+Sprint 5 (Comunidad) — feed social por ciudad/grupo. El Mercado (Sprint 6)
+queda deliberadamente aparte por su propio riesgo (verificación de
+antecedentes antes de exponerse a producción).

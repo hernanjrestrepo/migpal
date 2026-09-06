@@ -14,6 +14,7 @@ from core.case_engine.adapters.api import router as case_router
 from core.conversation.adapters.api import router as conversation_router
 from core.decision_engine.adapters.api import router as decision_engine_router
 from core.execution_plan.adapters.api import router as execution_plan_router
+from core.family_planning.adapters.api import router as family_planning_router
 from core.identity.adapters.api import router as identity_router
 from core.recommendation.adapters.api import router as recommendation_router
 from core.settlement.adapters.api import router as settlement_router
@@ -83,6 +84,10 @@ app.include_router(budget_router)
 # Hito 5, Sprint 2: checklist de trámites de instalación, 4 configuraciones
 # fijas de país (docs/HITO_5_DESIGN.md §2).
 app.include_router(settlement_router)
+
+# Hito 5, Sprint 4: encuesta familiar, cascada geográfica y opciones de
+# colegio/vivienda (docs/HITO_5_DESIGN.md §2).
+app.include_router(family_planning_router)
 
 
 @app.get("/")
