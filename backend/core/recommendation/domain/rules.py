@@ -140,6 +140,22 @@ def accept(recommendation: Recommendation, *, existing_accepted: Recommendation 
     return recommendation
 
 
+def next_step_for_route(route: RouteEvaluation) -> NextStep:
+    """Construye el `NextStep` determinístico para una ruta evaluada --
+    misma plantilla usada al generar la Recommendation (Sprint 3) y al
+    reelegir ruta (`select_route`, A-ADR-009). Vive en `domain/rules.py`,
+    no en `orchestrator.py`, para que `select_route` (dominio puro) pueda
+    llamarla sin que el dominio dependa de la capa de aplicación."""
+
+    return NextStep(
+        title="Perfilamiento completo",
+        description=(
+            f"Preparar documentación para {route.route.visa_type} ({route.route.country}): "
+            + ", ".join(route.required_documents)
+        ),
+    )
+
+
 def select_route(recommendation: Recommendation, alternative_index: int) -> Recommendation:
     """ISSUED -> ISSUED (A-ADR-009). Promueve
     `alternative_evaluations[alternative_index]` a `primary_evaluation` y
@@ -151,7 +167,13 @@ def select_route(recommendation: Recommendation, alternative_index: int) -> Reco
     `confidence` (ver A-ADR-009, "por qué no se recalcula confidence") ni
     reconstruye `rationale` desde el Assessment -- se le agrega una entrada
     determinística que dice que la elección fue manual, preservando la
-    invariante 5 (rationale no vacío)."""
+    invariante 5 (rationale no vacío).
+
+    `next_step` SÍ se recalcula (corrección encontrada probando la UI en
+    vivo tras el cierre inicial de A-ADR-009): dejarlo apuntando a los
+    documentos de la ruta anterior mostraría instrucciones de una ruta que
+    ya no es la primaria -- el mismo tipo de inconsistencia que Recommendation
+    existe para evitar (§1 del diseño original)."""
 
     if recommendation.status != RecommendationStatus.ISSUED:
         raise RecommendationTransitionError(
@@ -171,6 +193,7 @@ def select_route(recommendation: Recommendation, alternative_index: int) -> Reco
 
     recommendation.primary_evaluation = new_primary.model_dump(mode="json")
     recommendation.alternative_evaluations = [ev.model_dump(mode="json") for ev in alternatives]
+    recommendation.next_step = next_step_for_route(new_primary).model_dump(mode="json")
     recommendation.rationale = [
         *recommendation.rationale,
         "Elegiste esta ruta manualmente entre las evaluadas para tu caso.",

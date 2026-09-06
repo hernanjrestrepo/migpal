@@ -190,6 +190,11 @@ window.MigPAL = (function () {
     getRecommendation:    function () { return api.get('/v1/recommendation'); },
     acceptRecommendation:  function (id) { return api.post('/v1/recommendation/' + encodeURIComponent(id) + '/accept'); },
     discardRecommendation: function (id) { return api.post('/v1/recommendation/' + encodeURIComponent(id) + '/discard'); },
+    selectRoute: function (id, alternativeIndex) {
+      return api.post('/v1/recommendation/' + encodeURIComponent(id) + '/select-route', {
+        json: { alternative_index: alternativeIndex }
+      });
+    },
     createPlan:   function () { return api.post('/v1/execution-plan'); },
     getPlan:      function () { return api.get('/v1/execution-plan'); },
     completeStep: function (stepId) {

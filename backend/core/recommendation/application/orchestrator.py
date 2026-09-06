@@ -30,8 +30,7 @@ from core.decision_engine.domain.aggregates import Assessment
 from core.decision_engine.infrastructure.scoring import matched_signals_from_findings
 from core.policy_engine.rules import evaluate_candidate_routes
 from core.recommendation.domain.aggregates import Recommendation
-from core.recommendation.domain.rules import build_recommendation, issue
-from core.recommendation.domain.value_objects import NextStep
+from core.recommendation.domain.rules import build_recommendation, issue, next_step_for_route
 from core.recommendation.infrastructure.ai_adapter import RecommendationAIAdapter
 
 MAX_ALTERNATIVE_ROUTES = 3
@@ -69,13 +68,7 @@ def generate_recommendation(*, case: MigrationCase, assessment: Assessment) -> R
     if not rationale:
         rationale = [f"Ruta con mejor ajuste disponible en el catálogo actual ({primary.route.visa_type})."]
 
-    next_step = NextStep(
-        title="Perfilamiento completo",
-        description=(
-            f"Preparar documentación para {primary.route.visa_type} ({primary.route.country}): "
-            + ", ".join(primary.required_documents)
-        ),
-    )
+    next_step = next_step_for_route(primary)
 
     recommendation = build_recommendation(
         case_id=case.id,

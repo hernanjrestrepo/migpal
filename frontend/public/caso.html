@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css">
+<link rel="stylesheet" href="/assets/app.css?v=20260906">
 <style>
   .app-main { padding: var(--sp-8) 0 var(--sp-20); }
 
@@ -284,8 +284,8 @@
   </div>
 </main>
 
-<script src="/assets/i18n.js"></script>
-<script src="/assets/app.js"></script>
+<script src="/assets/i18n.js?v=20260906"></script>
+<script src="/assets/app.js?v=20260906"></script>
 <script>
 (function () {
   'use strict';
@@ -430,9 +430,29 @@
     setBadge('recBadge', statusText, statusKind);
 
     var p = r.primary_evaluation;
-    var alts = (r.alternative_evaluations || []).map(function (a) {
-      return '<div class="alt-route"><span>' + esc(a.route.visa_type) + ' · ' + esc(a.route.country) + '</span>' +
-        '<span class="badge badge-neutral">' + Math.round(a.route.fit_score) + '/100</span></div>';
+
+    // Explicabilidad (A-ADR-009): qué señales le faltan al perfil para
+    // esta ruta puntual, no una lista genérica del perfil completo.
+    function missingLine(missing) {
+      if (!missing || !missing.length) return '';
+      var labels = missing.map(function (s) { return MigPAL.t('case.signal.' + s) || s; }).join(', ');
+      return '<div class="finding" style="opacity:.85">⚠ ' + esc(MigPAL.t('case.missingFor', { signals: labels })) + '</div>';
+    }
+
+    // Elección de ruta (A-ADR-009): el usuario puede promover cualquier
+    // alternativa evaluada a ruta primaria, no solo aceptar la que el
+    // sistema ordenó primero.
+    var alts = (r.alternative_evaluations || []).map(function (a, i) {
+      return '<div class="alt-route" style="flex-wrap:wrap">' +
+        '<span>' + esc(a.route.visa_type) + ' · ' + esc(a.route.country) + '</span>' +
+        '<span class="row gap-2" style="align-items:center">' +
+          '<span class="badge badge-neutral">' + Math.round(a.route.fit_score) + '/100</span>' +
+          (r.status === 'ISSUED'
+            ? '<button class="btn btn-ghost btn-sm" data-choose-alt="' + i + '">' + esc(MigPAL.t('case.chooseRoute')) + '</button>'
+            : '') +
+        '</span>' +
+        missingLine(a.missing_signals) +
+      '</div>';
     }).join('');
 
     var rationale = (r.rationale || []).map(function (x) {
@@ -476,6 +496,7 @@
       '</div>' +
       sourceBlock +
       (r.narrative_summary ? '<div class="narrative mb-5">' + esc(r.narrative_summary) + '</div>' : '') +
+      missingLine(p.missing_signals) +
       '<h3 class="text-md mb-2">' + esc(MigPAL.t('case.whyRoute')) + '</h3>' + rationale +
       (p.required_documents && p.required_documents.length
         ? '<h3 class="text-md mb-2 mt-5">' + esc(MigPAL.t('case.docsNeeded')) + '</h3>' +
@@ -493,6 +514,10 @@
     if (discardBtn) discardBtn.addEventListener('click', function () { decideRecommendation('discard', this); });
     var planBtn = document.getElementById('planBtn');
     if (planBtn) planBtn.addEventListener('click', function () { state.plan ? scrollTo('stage-plan') : createPlan(this); });
+
+    document.querySelectorAll('[data-choose-alt]').forEach(function (btn) {
+      btn.addEventListener('click', function () { chooseRoute(Number(btn.dataset.chooseAlt), btn); });
+    });
   }
 
   /* --------------------------------------------------------------- plan */
@@ -597,6 +622,19 @@
       MigPAL.toast(MigPAL.t(action === 'accept' ? 'toast.routeAccepted' : 'toast.routeDiscarded'),
                    action === 'accept' ? 'success' : 'info');
       if (action === 'accept') scrollTo('stage-plan');
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+      restore();
+    }
+  }
+
+  async function chooseRoute(alternativeIndex, btn) {
+    var restore = MigPAL.busy(btn, MigPAL.t('busy.findingRoute'));
+    try {
+      renderRecommendation(await api.selectRoute(state.recommendation.id, alternativeIndex));
+      renderJourney();
+      MigPAL.toast(MigPAL.t('case.routeChosen'), 'success');
+      scrollTo('stage-ruta');
     } catch (err) {
       MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
       restore();

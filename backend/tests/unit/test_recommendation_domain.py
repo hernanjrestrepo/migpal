@@ -225,7 +225,7 @@ def test_discard_fails_if_not_issued():
 # -- select_route (A-ADR-009) --
 
 ALT_ROUTE_A = MigrationRoute(visa_type="Express Entry", country="Canadá", fit_score=60.0)
-ALT_EVAL_A = RouteEvaluation(route=ALT_ROUTE_A, strengths=["..."], risks=["..."], required_documents=["..."])
+ALT_EVAL_A = RouteEvaluation(route=ALT_ROUTE_A, strengths=["..."], risks=["..."], required_documents=["Prueba de idioma"])
 ALT_ROUTE_B = MigrationRoute(visa_type="Subclass 189", country="Australia", fit_score=40.0)
 ALT_EVAL_B = RouteEvaluation(route=ALT_ROUTE_B, strengths=["..."], risks=["..."], required_documents=["..."])
 
@@ -255,6 +255,20 @@ def test_select_route_appends_a_deterministic_manual_choice_note_to_rationale():
 
     assert updated.rationale[: len(original_rationale)] == original_rationale
     assert "Elegiste esta ruta manualmente" in updated.rationale[-1]
+
+
+def test_select_route_regenerates_next_step_for_the_new_primary():
+    """Corrección encontrada probando la UI en vivo: dejar next_step
+    apuntando a los documentos de la ruta anterior sería inconsistente con
+    la primary_evaluation que el usuario efectivamente eligió."""
+    rec = _issued_with_alternatives()
+
+    updated = select_route(rec, alternative_index=0)
+
+    next_step = updated.next_step_detail()
+    assert "Express Entry" in next_step.description
+    assert "Prueba de idioma" in next_step.description
+    assert "O-1" not in next_step.description
 
 
 def test_select_route_does_not_change_confidence():

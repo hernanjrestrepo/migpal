@@ -192,3 +192,20 @@ Toda entrada nueva del catálogo (`policy_engine/catalog.py`) que declare
 `required_signals` queda automáticamente cubierta por `missing_signals` sin
 cambio de código adicional — es una derivación, no una lista mantenida a
 mano.
+
+## Corrección post-cierre (probando la UI en vivo, 2026-09-06)
+
+Al cablear el frontend (`caso.html`) sobre este ADR se encontró que
+`select_route()` dejaba `next_step` intacto: tras promover una alternativa,
+la caja "Próximo paso" seguía mostrando los documentos de la ruta *anterior*,
+no de la que el usuario acababa de elegir — visible de inmediato al probar
+el flujo real de punta a punta, no solo con tests unitarios sobre el VO.
+
+Se corrigió extrayendo la construcción de `NextStep` (antes solo en
+`orchestrator.py::generate_recommendation`) a una función pura nueva,
+`domain/rules.py::next_step_for_route()`, que ahora usan tanto
+`generate_recommendation` como `select_route()`. No cambia ninguna decisión
+de este ADR — `next_step` siempre fue determinístico y dependiente de la
+ruta primaria; simplemente faltaba recalcularlo en la única transición
+nueva que este ADR agrega. Test agregado:
+`test_select_route_regenerates_next_step_for_the_new_primary`.
