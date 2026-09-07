@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=20260906h">
+<link rel="stylesheet" href="/assets/app.css?v=20260906i">
 <style>
   .app-main { padding: var(--sp-8) 0 var(--sp-20); }
 
@@ -392,11 +392,43 @@
       </div>
     </section>
 
+    <!-- ========================= NEGOCIO PROPIO (Hito 5) ========================= -->
+    <section class="stage" id="stage-negocio">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step-num">💼</span>
+            <div>
+              <h2 data-i18n="negocio.title">Negocio propio</h2>
+              <div class="card-sub" data-i18n="negocio.sub">Presenta tu idea a la junta directiva de ADAN — IA, no personas reales.</div>
+            </div>
+          </div>
+        </div>
+        <div id="negocioBody"></div>
+      </div>
+    </section>
+
+    <!-- =========================== EMPLEO (Hito 5) =========================== -->
+    <section class="stage" id="stage-empleo">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step-num">🧑‍💻</span>
+            <div>
+              <h2 data-i18n="empleo.title">Empleo</h2>
+              <div class="card-sub" data-i18n="empleo.sub">Conecta tu perfil con JobXeeker y busca ofertas reales.</div>
+            </div>
+          </div>
+        </div>
+        <div id="empleoBody"></div>
+      </div>
+    </section>
+
   </div>
 </main>
 
-<script src="/assets/i18n.js?v=20260906h"></script>
-<script src="/assets/app.js?v=20260906h"></script>
+<script src="/assets/i18n.js?v=20260906i"></script>
+<script src="/assets/app.js?v=20260906i"></script>
 <script>
 (function () {
   'use strict';
@@ -411,7 +443,9 @@
     familyPlanning: null, placeOptions: [],
     communityGroups: [], communitySelectedGroupId: null, communityPosts: [], communityOpenComments: {},
     marketListings: [], myTransactions: [],
-    progress: null
+    progress: null,
+    negocioConnected: false, negocioBoard: null,
+    empleoConnected: false, empleoMatches: null
   };
 
   /* ------------------------------------------------------------ chrome */
@@ -1392,6 +1426,159 @@
     try { renderProgress(await api.getProgress()); } catch (err) { /* sin caso todavía: sección vacía */ }
   }
 
+  /* ------------------------------------------------------ negocio (Hito 5) */
+
+  /** Sin endpoint para consultar si el caso ya tiene una cuenta de ADAN
+      conectada -- se intenta conectar directamente; un 409 ("ya
+      conectado") se trata como éxito de todos modos, mismo criterio que
+      la encuesta familiar del titular. */
+  function renderNegocioConnectForm() {
+    document.getElementById('negocioBody').innerHTML =
+      '<div class="grid grid-2">' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('negocio.ideaName')) + '</label><input class="input" id="ng_name"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('negocio.industry')) + '</label><input class="input" id="ng_industry"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('negocio.country')) + '</label><input class="input" id="ng_country"></div>' +
+      '</div>' +
+      '<div class="field"><label class="label">' + esc(MigPAL.t('negocio.ideaDesc')) + '</label><textarea class="textarea" id="ng_desc"></textarea></div>' +
+      '<button class="btn btn-primary" id="ng_connect">' + esc(MigPAL.t('negocio.connect')) + '</button>';
+    document.getElementById('ng_connect').addEventListener('click', connectNegocio);
+  }
+
+  async function connectNegocio() {
+    var name = document.getElementById('ng_name').value.trim();
+    var desc = document.getElementById('ng_desc').value.trim();
+    if (!name || !desc) { MigPAL.toast(MigPAL.t('toast.fillFields'), 'error'); return; }
+    var btn = document.getElementById('ng_connect');
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      await api.connectNegocio({
+        idea_name: name, idea_description: desc,
+        industry: document.getElementById('ng_industry').value.trim() || null,
+        country: document.getElementById('ng_country').value.trim() || null
+      });
+      state.negocioConnected = true;
+      renderBoardRoom();
+      MigPAL.toast(MigPAL.t('toast.negocioConnected'), 'success');
+    } catch (err) {
+      if (err.status === 409) { state.negocioConnected = true; renderBoardRoom(); }
+      else { MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error'); restore(); }
+    }
+  }
+
+  function renderBoardResult(board) {
+    var votes = board.votes.map(function (v) {
+      return '<div class="finding"><span class="fw-700">' + esc(v.agent) + '</span> — ' + esc(v.vote) +
+        ' (' + Math.round(v.confidence * 100) + '%)<div class="text-sm text-soft">' + esc(v.analysis) + '</div></div>';
+    }).join('');
+    return '<div class="next-step-box mb-4"><div class="kicker">' + esc(MigPAL.t('negocio.decision')) + '</div>' +
+      '<div class="fw-700">' + esc(board.decision) + '</div>' +
+      '<div class="text-sm mt-1" style="opacity:.85">' + esc(MigPAL.t('negocio.score', {
+        n: Math.round(board.score), c: Math.round(board.confidence * 100)
+      })) + '</div>' +
+      '<div class="text-sm mt-2">' + esc(board.summary) + '</div></div>' + votes;
+  }
+
+  function renderBoardRoom() {
+    document.getElementById('negocioBody').innerHTML =
+      '<h3 class="text-md mb-2">' + esc(MigPAL.t('negocio.boardTitle')) + '</h3>' +
+      '<div class="field"><textarea class="textarea" id="ng_message" placeholder="' + esc(MigPAL.t('negocio.messagePh')) + '"></textarea></div>' +
+      '<button class="btn btn-secondary mb-5" id="ng_ask">' + esc(MigPAL.t('negocio.ask')) + '</button>' +
+      (state.negocioBoard ? renderBoardResult(state.negocioBoard) : '');
+    document.getElementById('ng_ask').addEventListener('click', askBoard);
+  }
+
+  async function askBoard() {
+    var message = document.getElementById('ng_message').value.trim();
+    if (!message) return;
+    var btn = document.getElementById('ng_ask');
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      state.negocioBoard = await api.askBoardRoom(message);
+      renderBoardRoom();
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+      restore();
+    }
+  }
+
+  /* ------------------------------------------------------- empleo (Hito 5) */
+
+  function splitCsv(value) {
+    return value.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+
+  function renderEmpleoConnectForm() {
+    document.getElementById('empleoBody').innerHTML =
+      '<div class="grid grid-2">' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('empleo.name')) + '</label><input class="input" id="em_name"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('empleo.location')) + '</label><input class="input" id="em_location"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('empleo.roles')) + '</label><input class="input" id="em_roles"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('empleo.industries')) + '</label><input class="input" id="em_industries"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('empleo.experience')) + '</label><input class="input" id="em_experience"></div>' +
+        '<div class="field"><label class="label">' + esc(MigPAL.t('empleo.skills')) + '</label><input class="input" id="em_skills"></div>' +
+      '</div>' +
+      '<button class="btn btn-primary" id="em_connect">' + esc(MigPAL.t('empleo.connect')) + '</button>';
+    document.getElementById('em_connect').addEventListener('click', connectEmpleo);
+  }
+
+  async function connectEmpleo() {
+    var name = document.getElementById('em_name').value.trim();
+    if (!name) { MigPAL.toast(MigPAL.t('toast.fillFields'), 'error'); return; }
+    var btn = document.getElementById('em_connect');
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      await api.connectEmpleo({
+        name: name,
+        target_roles: splitCsv(document.getElementById('em_roles').value),
+        target_industries: splitCsv(document.getElementById('em_industries').value),
+        location_preference: document.getElementById('em_location').value.trim() || null,
+        experience_level: document.getElementById('em_experience').value.trim() || null,
+        skills: splitCsv(document.getElementById('em_skills').value)
+      });
+      state.empleoConnected = true;
+      renderEmpleoSearch();
+      MigPAL.toast(MigPAL.t('toast.empleoConnected'), 'success');
+    } catch (err) {
+      if (err.status === 409) { state.empleoConnected = true; renderEmpleoSearch(); }
+      else { MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error'); restore(); }
+    }
+  }
+
+  function renderEmpleoResults(result) {
+    if (!result.matching_disponible) {
+      return '<div class="alert alert-warn mt-3"><span class="alert-icon">⚠️</span><div>' +
+        esc(MigPAL.t('empleo.degraded')) +
+        (result.mensaje ? '<div class="text-xs mt-1">' + esc(result.mensaje) + '</div>' : '') +
+        '</div></div>';
+    }
+    var matches = (result.matches || []).map(function (m) {
+      var title = m.job_title || m.title || JSON.stringify(m);
+      var score = m.score != null ? ' — ' + Math.round(m.score * 100) + '%' : '';
+      return '<div class="finding">' + esc(title) + esc(score) + '</div>';
+    }).join('') || '<p class="hint">' + esc(MigPAL.t('empleo.noMatches')) + '</p>';
+    return '<div class="hint mt-2 mb-2">' + esc(MigPAL.t('empleo.evaluated', {
+      n: result.jobs_evaluated, m: result.new_matches
+    })) + '</div>' + matches;
+  }
+
+  function renderEmpleoSearch() {
+    document.getElementById('empleoBody').innerHTML =
+      '<button class="btn btn-secondary mb-4" id="em_search">' + esc(MigPAL.t('empleo.search')) + '</button>' +
+      '<div id="empleoResults">' + (state.empleoMatches ? renderEmpleoResults(state.empleoMatches) : '') + '</div>';
+    document.getElementById('em_search').addEventListener('click', searchEmpleoMatches);
+  }
+
+  async function searchEmpleoMatches() {
+    var btn = document.getElementById('em_search');
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      state.empleoMatches = await api.searchMatches();
+      document.getElementById('empleoResults').innerHTML = renderEmpleoResults(state.empleoMatches);
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+    } finally { restore(); }
+  }
+
   /* ------------------------------------------------------------ acciones */
 
   async function requestAssessment() {
@@ -1612,12 +1799,16 @@
     if (state.communitySelectedGroupId) renderCommunityPosts(); else renderCommunityGroupList();
     renderMarketListings();
     if (state.progress) renderProgress(state.progress);
+    if (state.negocioConnected) renderBoardRoom(); else renderNegocioConnectForm();
+    if (state.empleoConnected) renderEmpleoSearch(); else renderEmpleoConnectForm();
     renderJourney();
   });
 
   loadAll();
   loadCommunity();
   loadMarketplace();
+  renderNegocioConnectForm();
+  renderEmpleoConnectForm();
 })();
 </script>
 </body>

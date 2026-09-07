@@ -251,7 +251,15 @@ window.MigPAL = (function () {
     cancelMarketplaceTransaction:   function (id) { return api.post('/v1/marketplace/transactions/' + encodeURIComponent(id) + '/cancel'); },
 
     /* — Hito 5: Gamificación — */
-    getProgress: function () { return api.get('/v1/progression'); }
+    getProgress: function () { return api.get('/v1/progression'); },
+
+    /* — Hito 5: Negocio (ADAN) — */
+    connectNegocio: function (payload) { return api.post('/v1/negocio/connect', { json: payload }); },
+    askBoardRoom:   function (message) { return api.post('/v1/negocio/board-room', { json: { message: message } }); },
+
+    /* — Hito 5: Empleo (JobXeeker) — */
+    connectEmpleo:  function (payload) { return api.post('/v1/empleo/connect', { json: payload }); },
+    searchMatches:  function () { return api.post('/v1/empleo/matches'); }
   };
 
   /* ----------------------------------------------------------------- toast */

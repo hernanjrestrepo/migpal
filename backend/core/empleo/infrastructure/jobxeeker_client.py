@@ -35,10 +35,28 @@ class JobXeekerClient:
     def __init__(self, base_url: str = JOBXEEKER_BASE_URL) -> None:
         self._base_url = base_url
 
+    async def _request(
+        self, method: str, path: str, *, headers: dict | None = None, json: dict | None = None,
+        params: dict | None = None,
+    ) -> httpx.Response:
+        """Único punto de llamada HTTP hacia JobXeeker -- traduce cualquier
+        fallo de red (timeout, conexión rechazada, DNS) a
+        `JobXeekerIntegrationError`. Mismo bug encontrado y corregido en
+        `core/negocio/infrastructure/adan_client.py` (7 sept 2026):
+        `httpx.ReadTimeout` sin capturar se colaba como 500 genérico en vez
+        del 502 documentado."""
+
+        async with httpx.AsyncClient(base_url=self._base_url, timeout=JOBXEEKER_TIMEOUT_SECONDS) as client:
+            try:
+                return await client.request(method, path, headers=headers, json=json, params=params)
+            except httpx.HTTPError as exc:
+                raise JobXeekerIntegrationError(f"JobXeeker no respondió en {path}: {exc}") from exc
+
     async def register(self, *, email: str, password: str, name: str) -> tuple[str, str, str]:
         """Devuelve (access_token, refresh_token, user_id)."""
-        async with httpx.AsyncClient(base_url=self._base_url, timeout=JOBXEEKER_TIMEOUT_SECONDS) as client:
-            resp = await client.post("/api/auth/register", json={"email": email, "password": password, "name": name})
+        resp = await self._request(
+            "POST", "/api/auth/register", json={"email": email, "password": password, "name": name}
+        )
         if resp.status_code != 200:
             raise JobXeekerIntegrationError(f"JobXeeker rechazó el registro ({resp.status_code}): {resp.text}")
         body = resp.json()
@@ -46,8 +64,7 @@ class JobXeekerClient:
 
     async def refresh(self, refresh_token: str) -> tuple[str, str]:
         """El refresh token rota -- devuelve (access_token, refresh_token_nuevo)."""
-        async with httpx.AsyncClient(base_url=self._base_url, timeout=JOBXEEKER_TIMEOUT_SECONDS) as client:
-            resp = await client.post("/api/auth/refresh", json={"refresh_token": refresh_token})
+        resp = await self._request("POST", "/api/auth/refresh", json={"refresh_token": refresh_token})
         if resp.status_code != 200:
             raise JobXeekerIntegrationError(f"JobXeeker rechazó el refresh ({resp.status_code}): {resp.text}")
         body = resp.json()
@@ -66,16 +83,16 @@ class JobXeekerClient:
         experience_level: str | None,
         skills: list[str],
     ) -> None:
-        async with httpx.AsyncClient(base_url=self._base_url, timeout=JOBXEEKER_TIMEOUT_SECONDS) as client:
-            resp = await client.put(
-                f"/api/profiles/{user_id}",
-                headers={"Authorization": f"Bearer {access_token}"},
-                json={
-                    "name": name, "email": email, "target_roles": target_roles,
-                    "target_industries": target_industries, "location_preference": location_preference,
-                    "experience_level": experience_level, "skills": skills,
-                },
-            )
+        resp = await self._request(
+            "PUT",
+            f"/api/profiles/{user_id}",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={
+                "name": name, "email": email, "target_roles": target_roles,
+                "target_industries": target_industries, "location_preference": location_preference,
+                "experience_level": experience_level, "skills": skills,
+            },
+        )
         if resp.status_code != 200:
             raise JobXeekerIntegrationError(f"JobXeeker rechazó el perfil ({resp.status_code}): {resp.text}")
 
@@ -84,17 +101,17 @@ class JobXeekerClient:
         ver docstring del módulo) -- eso es un resultado válido, no un
         fallo de transporte. Solo lanza si la llamada HTTP en sí falla."""
 
-        async with httpx.AsyncClient(base_url=self._base_url, timeout=JOBXEEKER_TIMEOUT_SECONDS) as client:
-            resp = await client.post(f"/api/matches/run/{user_id}", headers={"Authorization": f"Bearer {access_token}"})
+        resp = await self._request(
+            "POST", f"/api/matches/run/{user_id}", headers={"Authorization": f"Bearer {access_token}"}
+        )
         if resp.status_code != 200:
             raise JobXeekerIntegrationError(f"JobXeeker rechazó correr el matching ({resp.status_code}): {resp.text}")
         return resp.json()
 
     async def list_matches(self, *, access_token: str, user_id: str) -> list[dict]:
-        async with httpx.AsyncClient(base_url=self._base_url, timeout=JOBXEEKER_TIMEOUT_SECONDS) as client:
-            resp = await client.get(
-                "/api/matches/", headers={"Authorization": f"Bearer {access_token}"}, params={"user_id": user_id}
-            )
+        resp = await self._request(
+            "GET", "/api/matches/", headers={"Authorization": f"Bearer {access_token}"}, params={"user_id": user_id}
+        )
         if resp.status_code != 200:
             raise JobXeekerIntegrationError(f"JobXeeker rechazó listar matches ({resp.status_code}): {resp.text}")
         return resp.json()
