@@ -25,6 +25,23 @@ from sqlmodel import SQLModel
 # haría nada y la suite seguiría chocando con el límite.
 os.environ["RATE_LIMIT_ENABLED"] = "false"
 
+# Mismo criterio, mismo motivo de orden (antes de que se importe
+# `app.config`, que lee el entorno una sola vez al crear `settings`):
+# `.env` de este entorno de desarrollo trae credenciales SMTP reales
+# (la cuenta real de Paradixe) para que un humano pueda probar el flujo
+# de verificación/recuperación a mano. Los contract tests registran
+# decenas de usuarios por corrida con emails @example.com -- sin este
+# blanqueo, cada uno dispara un envío real a través de esa cuenta real
+# (incidente real, 7 sept 2026: una corrida completa de la suite inundó
+# la bandeja de entrada real con cientos de correos de verificación).
+# `app/services/email_sender.py::_smtp_configured()` ya está diseñado
+# para no fallar si el SMTP no está configurado -- solo hace falta
+# asegurar que "no configurado" sea lo que vea el proceso de test,
+# nunca lo que haya en `.env`.
+os.environ["SMTP_HOST"] = ""
+os.environ["SMTP_USER"] = ""
+os.environ["SMTP_PASSWORD"] = ""
+
 from app.db.base import metadata  # noqa: E402,F401 (importa y registra todos los modelos)
 from app.db.session import engine  # noqa: E402
 
