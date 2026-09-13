@@ -129,6 +129,11 @@ window.MigPAL = (function () {
     } else if (options.form !== undefined) {
       headers['Content-Type'] = 'application/x-www-form-urlencoded';
       init.body = new URLSearchParams(options.form).toString();
+    } else if (options.multipart !== undefined) {
+      // Sin Content-Type manual a propósito: el navegador arma el
+      // boundary del multipart solo, y si lo pisamos acá el backend no
+      // puede parsear el body.
+      init.body = options.multipart;
     }
 
     var res;
@@ -259,7 +264,16 @@ window.MigPAL = (function () {
 
     /* — Hito 5: Empleo (JobXeeker) — */
     connectEmpleo:  function (payload) { return api.post('/v1/empleo/connect', { json: payload }); },
-    searchMatches:  function () { return api.post('/v1/empleo/matches'); }
+    searchMatches:  function () { return api.post('/v1/empleo/matches'); },
+
+    /* — Post-Hito 5: Documentos (OCR + veredicto de IA) — */
+    listDocuments:  function () { return api.get('/v1/documents'); },
+    submitDocument: function (documentType, file) {
+      var form = new FormData();
+      form.append('document_type', documentType);
+      form.append('file', file);
+      return api.post('/v1/documents', { multipart: form });
+    }
   };
 
   /* ----------------------------------------------------------------- toast */

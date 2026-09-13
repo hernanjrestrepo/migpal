@@ -43,6 +43,10 @@ google-generativeai==0.8.3
 fpdf2==2.7.9
 reportlab==4.2.5
 
+# --- OCR (validacion de documentos, core/documents, post-Hito 5) ---
+pytesseract==0.3.13
+Pillow==10.4.0
+
 # --- Data / NLP helpers used by scoring & sentiment analysis ---
 numpy==1.26.4
 matplotlib==3.9.2

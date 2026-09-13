@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/app.css?v=20260906i">
+<link rel="stylesheet" href="/assets/app.css?v=20260913a">
 <style>
   .app-main { padding: var(--sp-8) 0 var(--sp-20); }
 
@@ -424,11 +424,27 @@
       </div>
     </section>
 
+    <!-- ========================= DOCUMENTOS (post-Hito 5) ========================= -->
+    <section class="stage" id="stage-documents">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step-num">📄</span>
+            <div>
+              <h2 data-i18n="docs.title">Documentos</h2>
+              <div class="card-sub" data-i18n="docs.sub">Sube tus documentos y recibe una revisión asistida por IA — no es asesoría legal.</div>
+            </div>
+          </div>
+        </div>
+        <div id="documentsBody"></div>
+      </div>
+    </section>
+
   </div>
 </main>
 
-<script src="/assets/i18n.js?v=20260906i"></script>
-<script src="/assets/app.js?v=20260906i"></script>
+<script src="/assets/i18n.js?v=20260913a"></script>
+<script src="/assets/app.js?v=20260913a"></script>
 <script>
 (function () {
   'use strict';
@@ -445,7 +461,8 @@
     marketListings: [], myTransactions: [],
     progress: null,
     negocioConnected: false, negocioBoard: null,
-    empleoConnected: false, empleoMatches: null
+    empleoConnected: false, empleoMatches: null,
+    documents: []
   };
 
   /* ------------------------------------------------------------ chrome */
@@ -1579,6 +1596,100 @@
     } finally { restore(); }
   }
 
+  /* -------------------------------------------------- documentos (post-Hito 5) */
+
+  function renderDocumentsGate() {
+    document.getElementById('documentsBody').innerHTML =
+      '<div class="empty"><div class="empty-icon">📄</div>' +
+      '<h3>' + esc(MigPAL.t('docs.gateTitle')) + '</h3>' +
+      '<p>' + esc(MigPAL.t('docs.gateBody')) + '</p></div>';
+  }
+
+  function renderDocumentsList() {
+    var items = state.documents.map(function (d) {
+      var statusBadge = d.status === 'OCR_FAILED'
+        ? '<span class="badge badge-danger">' + esc(MigPAL.t('docs.status.OCR_FAILED')) + '</span>'
+        : '<span class="badge badge-' +
+            (d.verdict === 'LIKELY_MATCH' ? 'success' : d.verdict === 'LIKELY_MISMATCH' ? 'danger' : 'neutral') +
+            '">' + esc(MigPAL.t('docs.verdict.' + d.verdict)) + '</span>';
+      var concerns = (d.concerns || []).length
+        ? '<div class="text-xs mt-1"><b>' + esc(MigPAL.t('docs.concernsTitle')) + ':</b> ' +
+          d.concerns.map(function (c) { return esc(c); }).join(', ') + '</div>'
+        : '';
+      var ocrPreview = d.extracted_text
+        ? '<details class="mt-1"><summary class="text-xs text-muted">' + esc(MigPAL.t('docs.extractedTextTitle')) + '</summary>' +
+          '<div class="text-xs text-soft mt-1" style="white-space:pre-wrap">' + esc(d.extracted_text) + '</div></details>'
+        : '';
+      return '<div class="finding" style="display:block">' +
+        '<div class="row between" style="align-items:center">' +
+          '<span class="fw-700">' + esc(d.document_type) + '</span>' + statusBadge +
+        '</div>' +
+        '<div class="text-sm text-soft mt-1">' + esc(d.reasoning) + '</div>' +
+        concerns + ocrPreview +
+      '</div>';
+    }).join('') || '<p class="hint">' + esc(MigPAL.t('docs.noDocuments')) + '</p>';
+
+    document.getElementById('documentsList').innerHTML = items;
+  }
+
+  function renderDocumentsUpload() {
+    var requiredDocs = (state.recommendation && state.recommendation.primary_evaluation.required_documents) || [];
+    var options = requiredDocs.map(function (d) {
+      return '<option value="' + esc(d) + '">' + esc(d) + '</option>';
+    }).join('') + '<option value="__other__">' + esc(MigPAL.t('docs.typeOther')) + '</option>';
+
+    document.getElementById('documentsBody').innerHTML =
+      '<div class="alert alert-warn mb-5"><span class="alert-icon">⚠️</span><div>' + esc(MigPAL.t('docs.disclaimer')) + '</div></div>' +
+      '<div class="field"><label class="label">' + esc(MigPAL.t('docs.typeLabel')) + '</label>' +
+        '<select class="select" id="doc_type">' + options + '</select></div>' +
+      '<div class="field hidden" id="doc_type_other_wrap">' +
+        '<input class="input" id="doc_type_other" placeholder="' + esc(MigPAL.t('docs.typeOther')) + '"></div>' +
+      '<div class="field"><label class="label">' + esc(MigPAL.t('docs.fileLabel')) + '</label>' +
+        '<input class="input" type="file" id="doc_file" accept="image/jpeg,image/png,image/webp"></div>' +
+      '<button class="btn btn-primary mb-5" id="doc_submit">' + esc(MigPAL.t('docs.submit')) + '</button>' +
+      '<div class="hr"></div>' +
+      '<h3 class="text-md mb-2">' + esc(MigPAL.t('docs.uploadedTitle')) + '</h3>' +
+      '<div id="documentsList"></div>';
+
+    document.getElementById('doc_type').addEventListener('change', function () {
+      document.getElementById('doc_type_other_wrap').classList.toggle('hidden', this.value !== '__other__');
+    });
+    document.getElementById('doc_submit').addEventListener('click', submitDocument);
+
+    renderDocumentsList();
+  }
+
+  async function submitDocument() {
+    var typeSelect = document.getElementById('doc_type');
+    var documentType = typeSelect.value === '__other__'
+      ? document.getElementById('doc_type_other').value.trim()
+      : typeSelect.value;
+    var fileInput = document.getElementById('doc_file');
+    var file = fileInput.files[0];
+
+    if (!documentType) { MigPAL.toast(MigPAL.t('toast.fillFields'), 'error'); return; }
+    if (!file) { MigPAL.toast(MigPAL.t('toast.chooseFile'), 'error'); return; }
+
+    var btn = document.getElementById('doc_submit');
+    var restore = MigPAL.busy(btn, MigPAL.t('common.loading'));
+    try {
+      var submission = await api.submitDocument(documentType, file);
+      state.documents.unshift(submission);
+      renderDocumentsList();
+      fileInput.value = '';
+      MigPAL.toast(MigPAL.t('toast.documentReviewed'), 'success');
+    } catch (err) {
+      MigPAL.toast(err.detail || MigPAL.t('toast.genericError'), 'error');
+    } finally { restore(); }
+  }
+
+  async function loadDocuments() {
+    var accepted = state.recommendation && state.recommendation.status === 'ACCEPTED';
+    if (!accepted) { renderDocumentsGate(); return; }
+    try { state.documents = await api.listDocuments(); } catch (err) { state.documents = []; }
+    renderDocumentsUpload();
+  }
+
   /* ------------------------------------------------------------ acciones */
 
   async function requestAssessment() {
@@ -1624,7 +1735,7 @@
         : await api.discardRecommendation(state.recommendation.id);
       renderRecommendation(r);
       renderJourney();
-      if (action === 'accept') { renderSettlementGate(); loadProgress(); }
+      if (action === 'accept') { renderSettlementGate(); loadProgress(); loadDocuments(); }
       MigPAL.toast(MigPAL.t(action === 'accept' ? 'toast.routeAccepted' : 'toast.routeDiscarded'),
                    action === 'accept' ? 'success' : 'info');
       if (action === 'accept') scrollTo('stage-plan');
@@ -1765,6 +1876,7 @@
     renderFamilyOptions(opts.status === 'fulfilled' ? opts.value : []);
 
     await loadProgress();
+    await loadDocuments();
     renderJourney();
 
     // Errores reales (no 404 de "todavía no existe") sí se avisan.
@@ -1801,6 +1913,8 @@
     if (state.progress) renderProgress(state.progress);
     if (state.negocioConnected) renderBoardRoom(); else renderNegocioConnectForm();
     if (state.empleoConnected) renderEmpleoSearch(); else renderEmpleoConnectForm();
+    if (state.recommendation && state.recommendation.status === 'ACCEPTED') renderDocumentsUpload();
+    else renderDocumentsGate();
     renderJourney();
   });
 

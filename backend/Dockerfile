@@ -25,9 +25,15 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Install runtime dependencies only
+# tesseract-ocr + tesseract-ocr-spa: validacion de documentos (core/documents,
+# post-Hito 5) usa pytesseract, que llama al binario `tesseract` en runtime,
+# no solo la libreria de Python -- sin esto, pytesseract.image_to_string()
+# falla con "tesseract is not installed" en el contenedor.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     tini \
+    tesseract-ocr \
+    tesseract-ocr-spa \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 

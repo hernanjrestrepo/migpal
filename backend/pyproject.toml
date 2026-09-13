@@ -32,7 +32,7 @@ ignore = [
 extend-safe-fixes = ["UP"]
 
 [tool.ruff.lint.flake8-bugbear]
-extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Body", "fastapi.Path", "fastapi.Header"]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Body", "fastapi.Path", "fastapi.Header", "fastapi.File", "fastapi.Form"]
 
 [tool.black]
 line-length = 110

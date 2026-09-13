@@ -14,6 +14,7 @@ from core.case_engine.adapters.api import router as case_router
 from core.community.adapters.api import router as community_router
 from core.conversation.adapters.api import router as conversation_router
 from core.decision_engine.adapters.api import router as decision_engine_router
+from core.documents.adapters.api import router as documents_router
 from core.empleo.adapters.api import router as empleo_router
 from core.execution_plan.adapters.api import router as execution_plan_router
 from core.family_planning.adapters.api import router as family_planning_router
@@ -113,6 +114,10 @@ app.include_router(negocio_router)
 # Hito 5, Sprint 10b: integración real con JobXeeker (perfil + matching)
 # para empleo (docs/HITO_5_DESIGN.md §2).
 app.include_router(empleo_router)
+
+# Post-Hito 5: validación de documentos por OCR + veredicto asistido por IA
+# (último punto pendiente del roadmap acordado -- ver docs/HITO_5_DESIGN.md).
+app.include_router(documents_router)
 
 
 @app.get("/")

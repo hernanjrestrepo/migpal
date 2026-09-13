@@ -22,17 +22,41 @@ from app.models.user import User  # noqa: F401
 from app.models.user_migration_profile import UserMigrationProfile  # noqa: F401
 from app.models.zillow_listing import ZillowListing  # noqa: F401
 
+# Hito 5 — estos bounded contexts tenían tablas ya viviendo en Postgres
+# (creadas antes de que existiera esta corrección) pero nunca se importaron
+# aquí, así que Alembic autogenerate no las veía y las hubiera marcado
+# "removed" en la primera migración nueva que se generara -- corregido al
+# escribir la migración de core/documents.
+from core.budget.domain.aggregates import BudgetEstimate  # noqa: F401
+
 # Sprint 1 — bounded contexts nuevos (vNext 1.2). core/case_engine es el
 # primero: MigrationCase, el aggregate que no existía como código.
 from core.case_engine.domain.aggregates import CaseFamilyMember, MigrationCase  # noqa: F401
+from core.community.domain.aggregates import (  # noqa: F401
+    CommunityComment,
+    CommunityGroup,
+    CommunityLike,
+    CommunityPost,
+    GroupMembership,
+)
 
 # Hito 2: Decision Engine (Assessment) + Event Log persistido.
 from core.decision_engine.domain.aggregates import Assessment  # noqa: F401
+from core.documents.domain.aggregates import DocumentSubmission  # noqa: F401
+from core.empleo.domain.aggregates import EmpleoIntegration  # noqa: F401
 
 # Hito 3, Sprint 2: Recommendation (baseline docs/RECOMMENDATION_DESIGN.md).
 # Hito 4, Sprint 1: Execution Plan (baseline docs/HITO_4_DESIGN.md).
 from core.execution_plan.domain.aggregates import ExecutionPlan, PlanStep  # noqa: F401
+from core.family_planning.domain.aggregates import (  # noqa: F401
+    FamilySurveyResponse,
+    GeographicSelection,
+    PlaceOption,
+)
+from core.marketplace.domain.aggregates import ServiceListing, ServiceTransaction  # noqa: F401
+from core.negocio.domain.aggregates import NegocioIntegration  # noqa: F401
 from core.recommendation.domain.aggregates import Recommendation  # noqa: F401
+from core.settlement.domain.aggregates import SettlementChecklist, SettlementItem  # noqa: F401
 from core.shared.event_log import PersistedDomainEvent  # noqa: F401
 
 # Resuelve las referencias circulares (forward references) entre los modelos
@@ -55,5 +79,7 @@ MigrationCase.model_rebuild()
 CaseFamilyMember.model_rebuild()
 ExecutionPlan.model_rebuild()
 PlanStep.model_rebuild()
+SettlementChecklist.model_rebuild()
+SettlementItem.model_rebuild()
 
 metadata = SQLModel.metadata
