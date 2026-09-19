@@ -83,6 +83,8 @@ services:
       - LLM_TIMEOUT_SECONDS=${LLM_TIMEOUT_SECONDS:-60}
       - LLM_MAX_ATTEMPTS=${LLM_MAX_ATTEMPTS:-2}
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - LLM_FALLBACK_OLLAMA_MODEL=${LLM_FALLBACK_OLLAMA_MODEL:-migpal:latest}
+      - LLM_FALLBACK_TO_OLLAMA=${LLM_FALLBACK_TO_OLLAMA:-true}
       - AUTH_SECRET_KEY=${AUTH_SECRET_KEY:?AUTH_SECRET_KEY es obligatorio — ver .env.example}
       - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
       - SMTP_PORT=${SMTP_PORT:-587}

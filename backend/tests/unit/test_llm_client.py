@@ -72,6 +72,8 @@ def _fast_and_configured(monkeypatch):
     monkeypatch.setattr(llm_client, "AI_MODEL", "kimi-k2.6")
     monkeypatch.setattr(llm_client, "KIMI_API_KEY", "sk-test")
     monkeypatch.setattr(llm_client, "KIMI_BASE_URL", "https://api.example/v1")
+    monkeypatch.setattr(llm_client, "LLM_FALLBACK_TO_OLLAMA", False)
+    monkeypatch.setattr(llm_client, "OLLAMA_MODEL", "migpal:latest")
 
 
 @pytest.mark.asyncio
@@ -179,3 +181,63 @@ async def test_ollama_provider_delegates_to_the_ollama_client(monkeypatch):
     assert result == "desde ollama"
     assert captured["temperature"] == 0.4  # a Ollama sí se le pasa
     assert captured["num_predict"] == 123
+
+
+def _capture_ollama(monkeypatch, result="desde ollama"):
+    captured = {"calls": 0}
+
+    async def _fake_call_ollama(*, system, prompt, temperature, num_predict, model=None):
+        captured.update(calls=captured["calls"] + 1, model=model, num_predict=num_predict)
+        return result
+
+    monkeypatch.setattr(llm_client, "call_ollama", _fake_call_ollama)
+    return captured
+
+
+@pytest.mark.asyncio
+async def test_falls_back_to_ollama_when_kimi_has_no_balance(monkeypatch):
+    """Caso real: Kimi responde HTTP 429 "suspended due to insufficient
+    balance". No se reintenta (no serviría) y se usa Ollama con SU modelo."""
+    monkeypatch.setattr(llm_client, "LLM_FALLBACK_TO_OLLAMA", True)
+    fake = _FakeAsyncClient(
+        [_FakeResponse(429, text='{"error":{"message":"account is suspended due to insufficient balance"}}')]
+    )
+    monkeypatch.setattr(llm_client.httpx, "AsyncClient", fake)
+    captured = _capture_ollama(monkeypatch)
+
+    result = await call_llm(system="sys", prompt="p", max_tokens=77)
+
+    assert result == "desde ollama"
+    assert fake.call_count == 1
+    assert captured["model"] == "migpal:latest"
+    assert captured["num_predict"] == 77
+
+
+@pytest.mark.asyncio
+async def test_falls_back_to_ollama_when_api_key_is_missing(monkeypatch):
+    monkeypatch.setattr(llm_client, "LLM_FALLBACK_TO_OLLAMA", True)
+    monkeypatch.setattr(llm_client, "KIMI_API_KEY", "")
+    captured = _capture_ollama(monkeypatch)
+
+    assert await call_llm(system="sys", prompt="p", max_tokens=10) == "desde ollama"
+    assert captured["calls"] == 1
+
+
+@pytest.mark.asyncio
+async def test_ollama_is_not_called_when_kimi_answers(monkeypatch):
+    monkeypatch.setattr(llm_client, "LLM_FALLBACK_TO_OLLAMA", True)
+    monkeypatch.setattr(llm_client.httpx, "AsyncClient", _FakeAsyncClient([_kimi_ok("de kimi")]))
+    captured = _capture_ollama(monkeypatch)
+
+    assert await call_llm(system="sys", prompt="p", max_tokens=10) == "de kimi"
+    assert captured["calls"] == 0
+
+
+@pytest.mark.asyncio
+async def test_no_fallback_when_disabled(monkeypatch):
+    fake = _FakeAsyncClient([_FakeResponse(429, text="insufficient balance")])
+    monkeypatch.setattr(llm_client.httpx, "AsyncClient", fake)
+    captured = _capture_ollama(monkeypatch)
+
+    assert await call_llm(system="sys", prompt="p", max_tokens=10) is None
+    assert captured["calls"] == 0

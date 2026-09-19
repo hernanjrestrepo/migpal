@@ -62,6 +62,17 @@ LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "60"))
 LLM_MAX_ATTEMPTS = int(os.getenv("LLM_MAX_ATTEMPTS", "2"))
 LLM_RETRY_BACKOFF_SECONDS = 1.5
 
+# Respaldo local: si Kimi no responde (sin saldo, sin clave, caído), se
+# reintenta con Ollama. `LLM_FALLBACK_OLLAMA_MODEL` es aparte de `AI_MODEL` porque este
+# último apunta a un modelo de Kimi con AI_PROVIDER=kimi.
+LLM_FALLBACK_TO_OLLAMA = os.getenv("LLM_FALLBACK_TO_OLLAMA", "true").strip().lower() in ("1", "true", "yes")
+OLLAMA_MODEL = os.getenv("LLM_FALLBACK_OLLAMA_MODEL", "migpal:latest")
+
+# Fallos donde reintentar contra Kimi no sirve de nada: clave/permisos
+# inválidos o cuenta sin saldo (HTTP 429 "insufficient balance" incluido).
+_NON_RETRYABLE_STATUSES = (401, 402, 403)
+_NON_RETRYABLE_MARKERS = ("insufficient balance", "suspended")
+
 # Modelos que aceptan `thinking={"type":"disabled"}`. `kimi-k3` razona
 # siempre (solo admite `reasoning_effort`), así que si se elige ese modelo
 # hay que darle presupuesto de tokens suficiente para razonar Y responder.
@@ -117,6 +128,11 @@ async def _call_kimi(*, system: str, prompt: str, max_tokens: int) -> str | None
                     )
                 else:
                     last_error = f"Kimi HTTP {response.status_code}: {response.text[:200]}"
+                    body_text = response.text.lower()
+                    if response.status_code in _NON_RETRYABLE_STATUSES or any(
+                        marker in body_text for marker in _NON_RETRYABLE_MARKERS
+                    ):
+                        break
         except Exception as exc:  # noqa: BLE001 -- el contrato es no propagar nunca
             last_error = exc
 
@@ -150,4 +166,15 @@ async def call_llm(
             temperature=temperature,
             num_predict=max_tokens,
         )
-    return await _call_kimi(system=system, prompt=prompt, max_tokens=max_tokens)
+    text = await _call_kimi(system=system, prompt=prompt, max_tokens=max_tokens)
+    if text is not None or not LLM_FALLBACK_TO_OLLAMA:
+        return text
+
+    logger.warning("Kimi no respondió; usando Ollama local como respaldo.")
+    return await call_ollama(
+        system=system,
+        prompt=prompt,
+        temperature=temperature,
+        num_predict=max_tokens,
+        model=OLLAMA_MODEL,
+    )

@@ -50,9 +50,12 @@ async def call_ollama(
     num_predict: int,
     top_p: float = 0.85,
     repeat_penalty: float = 1.2,
+    model: str | None = None,
 ) -> str | None:
     """Devuelve el texto de respuesta, o `None` si se agotaron los
-    reintentos -- nunca lanza. El caller decide el fallback."""
+    reintentos -- nunca lanza. El caller decide el fallback. `model`
+    permite usar un modelo local distinto de `AI_MODEL` (que con
+    AI_PROVIDER=kimi apunta a un modelo de Kimi, inexistente en Ollama)."""
 
     last_error: Exception | str | None = None
     for attempt in range(1, OLLAMA_MAX_ATTEMPTS + 1):
@@ -61,7 +64,7 @@ async def call_ollama(
                 response = await client.post(
                     f"{OLLAMA_URL}/api/generate",
                     json={
-                        "model": AI_MODEL,
+                        "model": model or AI_MODEL,
                         "system": system,
                         "prompt": prompt,
                         "stream": False,
