@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -36,7 +36,7 @@ def create_or_update_assessment(
         # Update existing profile
         for key, value in profile_data.model_dump(exclude_unset=True).items():
             setattr(existing, key, value)
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(timezone.utc)
         session.add(existing)
         session.commit()
         session.refresh(existing)
@@ -70,7 +70,7 @@ def update_my_assessment(
     for key, value in profile_update.model_dump(exclude_unset=True).items():
         setattr(profile, key, value)
 
-    profile.updated_at = datetime.utcnow()
+    profile.updated_at = datetime.now(timezone.utc)
     session.add(profile)
     session.commit()
     session.refresh(profile)
@@ -161,7 +161,7 @@ def update_my_profile(
     for key, value in update_data.items():
         setattr(profile, key, value)
 
-    profile.updated_at = datetime.utcnow()
+    profile.updated_at = datetime.now(timezone.utc)
 
     session.add(profile)
     session.commit()

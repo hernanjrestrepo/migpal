@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -110,7 +110,7 @@ def select_migration_process(
     # Update profile with selected process
     profile.selected_process_id = process_id
     profile.current_stage = "preparation"
-    profile.updated_at = datetime.utcnow()
+    profile.updated_at = datetime.now(timezone.utc)
 
     session.add(profile)
     session.commit()
@@ -166,7 +166,7 @@ def update_migration_stage(
         raise HTTPException(status_code=404, detail="Migration profile not found")
 
     profile.current_stage = new_stage
-    profile.updated_at = datetime.utcnow()
+    profile.updated_at = datetime.now(timezone.utc)
 
     session.add(profile)
     session.commit()

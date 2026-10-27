@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Utility helpers for MigPAL scraping jobs (skeleton for MVP)."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import Session
 
@@ -18,13 +18,13 @@ class ScrapeStatus:
 
 def start_job(session: Session, source: DataSource, job: ScrapeJob) -> None:
     job.status = ScrapeStatus.RUNNING
-    job.started_at = datetime.utcnow()
+    job.started_at = datetime.now(timezone.utc)
     session.add(job)
     session.commit()
 
 
 def finish_job(session: Session, job: ScrapeJob, *, records: int = 0, error: str | None = None) -> None:
-    job.finished_at = datetime.utcnow()
+    job.finished_at = datetime.now(timezone.utc)
     job.records_ingested = records
 
     if error:
