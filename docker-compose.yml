@@ -72,7 +72,10 @@ services:
       - "8010:8000"
     environment:
       - environment=docker-compose
-      - DATABASE_URL=postgresql://migpal:${POSTGRES_PASSWORD:-migpal_dev_password}@postgres:5432/migpal
+      # +psycopg2 explícito: SQLAlchemy 2.1 resuelve "postgresql://" a secas
+      # al driver psycopg (v3), que no está instalado (solo psycopg2-binary,
+      # ver requirements.txt) -- found en el despliegue de Oracle 2026-10-26.
+      - DATABASE_URL=postgresql+psycopg2://migpal:${POSTGRES_PASSWORD:-migpal_dev_password}@postgres:5432/migpal
       - REDIS_URL=redis://redis:6379/0
       # IA: Kimi (Moonshot) por defecto — ver backend/app/services/llm_client.py.
       # AI_PROVIDER=ollama vuelve al proveedor local sin tocar código.

@@ -70,7 +70,11 @@ services:
       # - ./deploy/certbot/conf:/etc/letsencrypt:ro
     restart: always
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost/health"]
+      # 127.0.0.1 explícito: "localhost" resuelve primero a ::1 en algunos
+      # hosts (IPv6 habilitado en el contenedor) y nginx solo escucha IPv4 --
+      # found en el despliegue de Oracle 2026-10-26 (quedaba "unhealthy" sin
+      # estarlo: Caddy sí lo alcanzaba bien por la red).
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
       interval: 30s
       timeout: 5s
       retries: 3
