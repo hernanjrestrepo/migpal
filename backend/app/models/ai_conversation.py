@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import Field, SQLModel
 
@@ -25,7 +25,7 @@ class AIConversation(SQLModel, table=True):
     tokens_used: int | None = None
 
     # Timestamp
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class AIConversationCreate(SQLModel):

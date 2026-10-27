@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
@@ -31,6 +31,6 @@ def sync_scheduler(session: Session) -> list[PlannerTask]:
     tracked = []
     for source in sources:
         task = ensure_task(session, source.slug or source.name)
-        task.updated_at = datetime.utcnow()
+        task.updated_at = datetime.now(timezone.utc)
         tracked.append(task)
     return tracked

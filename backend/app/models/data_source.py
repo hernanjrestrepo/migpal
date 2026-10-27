@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import Field, SQLModel
 
@@ -32,8 +32,8 @@ class DataSource(DataSourceBase, table=True):
     last_error_at: datetime | None = Field(default=None)
     last_error: str | None = Field(default=None, max_length=2000)
     metadata_blob: str | None = Field(default=None, description="JSON with extra info")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class DataSourceCreate(DataSourceBase):
@@ -80,7 +80,7 @@ class ScrapeJob(SQLModel, table=True):
     source_id: int = Field(foreign_key="data_sources.id")
     status: str = Field(default="pending", description="pending|running|success|failed")
     run_by_user_id: int | None = Field(default=None, foreign_key="user.id")
-    started_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     finished_at: datetime | None = None
     records_ingested: int = Field(default=0)
     error_message: str | None = Field(default=None, max_length=2000)
@@ -115,7 +115,7 @@ class ScrapedDocument(SQLModel, table=True):
     language: str | None = Field(default=None, max_length=10)
     published_at: datetime | None = None
     metadata_blob: str | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ScrapedDocumentRead(SQLModel):

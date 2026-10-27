@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
@@ -26,7 +26,7 @@ def get_audit_logs(
     query = select(AuditLog)
 
     # Filter by date
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
     query = query.where(AuditLog.created_at >= since)
 
     if user_id:
@@ -52,7 +52,7 @@ def get_my_activity(
     limit: int = 50,
 ):
     """Get current user's activity logs."""
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
 
     query = (
         select(AuditLog)

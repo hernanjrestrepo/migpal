@@ -1,6 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import Field, SQLModel
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 # Pydantic models for API requests and responses
@@ -40,5 +44,5 @@ class User(SQLModel, table=True):
     password_reset_token: str | None = Field(default=None, index=True)
     password_reset_expires_at: datetime | None = Field(default=None)
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
