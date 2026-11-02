@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import Field, SQLModel
 
@@ -25,4 +25,4 @@ class AuditLog(SQLModel, table=True):
     details: str | None = Field(default=None)  # JSON string with additional info
     ip_address: str | None = Field(default=None)
     user_agent: str | None = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)

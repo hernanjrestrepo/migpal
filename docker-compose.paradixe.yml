@@ -1,0 +1,20 @@
+# MigPAL en el servidor de Paradixe (migpal.paradixe.xyz), detrás del Caddy que ya atiende los puertos 80 y 443
+# (mismo patrón que docker-compose.paradixe.yml de ADAN).
+#
+#   COMPOSE_OVERRIDE=docker-compose.paradixe.yml scripts/deploy.sh   (o el equivalente manual, ver docs/operacion/PARADIXE.md)
+#
+# - nginx no publica puertos propios: el Caddy del servidor lo alcanza por la red compartida `edge` con el nombre
+#   `migpal-web` y le pone el HTTPS (Let's Encrypt) a migpal.paradixe.xyz.
+# - El resto del stack (backend, Postgres, Redis) sigue en la red interna por defecto, sin acceso desde fuera.
+services:
+  nginx:
+    ports: !reset []
+    networks:
+      default: {}
+      edge:
+        aliases: [migpal-web]
+
+networks:
+  edge:
+    external: true
+    name: ${EDGE_NETWORK:-xmart_default}

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session
@@ -25,7 +25,7 @@ def send_verification_email(
     # Generate token
     token = generate_verification_token()
     current_user.email_verification_token = token
-    current_user.updated_at = datetime.utcnow()
+    current_user.updated_at = datetime.now(timezone.utc)
 
     session.commit()
 
@@ -55,7 +55,7 @@ def verify_email(token: str, session: Session = Depends(get_session), request: R
 
     user.email_verified = True
     user.email_verification_token = None
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(timezone.utc)
 
     session.commit()
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
@@ -45,7 +45,7 @@ class UserRepository:
     def save(self, user: User) -> User:
         """Persiste un usuario ya modificado (verificación, cambio de
         contraseña, emisión de token)."""
-        user.updated_at = datetime.utcnow()
+        user.updated_at = datetime.now(timezone.utc)
         self._session.add(user)
         self._session.commit()
         self._session.refresh(user)

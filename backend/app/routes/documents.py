@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -109,7 +109,7 @@ def verify_document(
 
     document.status = "verified"
     document.verification_notes = verification_notes
-    document.verified_at = datetime.utcnow()
+    document.verified_at = datetime.now(timezone.utc)
 
     session.add(document)
     session.commit()

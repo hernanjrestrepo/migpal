@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -42,8 +42,8 @@ def create_user(user_in: UserCreate, session: Session = Depends(get_session), re
         hashed_password=hashed_password,
         username=user_in.username,
         email_verification_token=verification_token,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
 
     session.add(new_user)

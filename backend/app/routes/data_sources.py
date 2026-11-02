@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -60,7 +60,7 @@ def create_data_source(
     if existing:
         raise HTTPException(status_code=409, detail="Slug already exists")
 
-    source = DataSource(**payload.model_dump(), created_at=datetime.utcnow(), updated_at=datetime.utcnow())
+    source = DataSource(**payload.model_dump(), created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc))
     session.add(source)
     session.commit()
     session.refresh(source)
@@ -100,7 +100,7 @@ def update_data_source(
 
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(source, key, value)
-    source.updated_at = datetime.utcnow()
+    source.updated_at = datetime.now(timezone.utc)
 
     session.add(source)
     session.commit()

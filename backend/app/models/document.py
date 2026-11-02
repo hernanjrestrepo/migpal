@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import Field, SQLModel
 
@@ -26,7 +26,7 @@ class Document(SQLModel, table=True):
     verification_notes: str | None = None
 
     # Timestamps
-    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     verified_at: datetime | None = None
 
 

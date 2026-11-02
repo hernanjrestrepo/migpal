@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 from sqlmodel import Session
@@ -37,7 +37,7 @@ def _store_doc(session: Session, source: DataSource, job: ScrapeJob, text: str, 
         content=text,
         content_hash=content_hash,
         metadata_blob=None,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     session.add(doc)
     session.commit()
