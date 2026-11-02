@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlmodel import Session, select
+from sqlmodel import Session, func, or_, select
 
 from app.auth import create_access_token
 from app.config import settings
@@ -18,7 +18,17 @@ router = APIRouter()
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Session = Depends(get_session)
 ):
-    user = db.exec(select(User).where(User.username == form_data.username)).first()
+    # Acepta usuario o email, sin distinguir mayúsculas -- el campo "Usuario"
+    # permite espacios y mayúsculas libres al registrarse (ver UserCreate),
+    # así que exigir una coincidencia exacta byte a byte en el login es una
+    # trampa para el usuario. found en producción 2026-11-02: una cuenta con
+    # username "Hernan Restrepo" no podía iniciar sesión con su email.
+    login_id = form_data.username.strip().lower()
+    user = db.exec(
+        select(User).where(
+            or_(func.lower(User.username) == login_id, func.lower(User.email) == login_id)
+        )
+    ).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
